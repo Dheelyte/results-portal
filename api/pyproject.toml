@@ -11,6 +11,9 @@ dependencies = [
     "alembic>=1.14,<2.0",
     "pydantic>=2.9,<3.0",
     "pydantic-settings>=2.6,<3.0",
+    # Auth (§5.1). Approved in docs/DECISIONS.md D16.
+    "argon2-cffi>=23.1,<26.0",
+    "pyjwt>=2.10,<3.0",
 ]
 
 [dependency-groups]
@@ -47,5 +50,9 @@ known-first-party = ["app"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "function"
+# One event loop for the whole session. The application's engine is built at
+# import time and pools connections; a loop per test would hand a later test a
+# connection bound to a loop that has already closed.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 addopts = "-ra --strict-markers"

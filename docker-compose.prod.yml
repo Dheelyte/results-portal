@@ -21,6 +21,8 @@ services:
     environment:
       APP_ENV: production
       PUBLIC_WEB_ORIGIN: https://${WEB_DOMAIN}
+      # No default: the API refuses to start in production without a real one.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in production}
     ports: !override []
     volumes: !override []
     restart: always

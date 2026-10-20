@@ -1,9 +1,18 @@
 # Generated API client
 
-Types and client functions in this directory are **generated from the API's
-OpenAPI schema**. Never hand-write them (CLAUDE.md, Conventions).
+`schema.d.ts` is **generated from the API's OpenAPI schema**. Never hand-write
+or hand-edit it (CLAUDE.md, Conventions).
 
-Nothing is generated yet — the API exposes only `/healthz` and `/readyz` in
-milestone 1, and the `/api/v1` surface of ARCHITECTURE.md §7 arrives with
-milestone 2. The generation step is added then, along with a CI check that the
-committed output matches the current schema.
+## Regenerating
+
+After any change to a route or a Pydantic schema:
+
+```bash
+docker compose exec -T api python scripts/export_openapi.py > api/openapi.json
+docker compose exec -T web npm run generate:api
+```
+
+Both `api/openapi.json` and `schema.d.ts` are committed, so an API change shows
+up in the diff rather than only in a running container. CI regenerates both and
+fails if they differ from what is committed — which is how a forgotten
+regeneration gets caught.

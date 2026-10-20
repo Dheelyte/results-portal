@@ -19,6 +19,7 @@ def test_settings_read_from_environment(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("LOG_LEVEL", "WARNING")
     monkeypatch.setenv("DATABASE_URL", DSN)
+    monkeypatch.setenv("JWT_SECRET", "a" * 48)
 
     settings = Settings(_env_file=None)
 
@@ -64,3 +65,72 @@ def test_password_never_appears_in_a_log_line(caplog: pytest.LogCaptureFixture) 
         logging.getLogger("test").info("settings loaded", extra={"settings": settings})
 
     assert "s3cr3t-pw" not in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# Auth configuration (§5.1)
+# ---------------------------------------------------------------------------
+
+
+def test_production_refuses_the_development_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Shipping with the placeholder secret would let anyone mint an admin
+    token. Refuse to start rather than run insecurely."""
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+
+    with pytest.raises(ValidationError, match="JWT_SECRET"):
+        Settings(_env_file=None)
+
+
+def test_production_accepts_a_real_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "b" * 48)
+
+    assert Settings(_env_file=None).is_production is True
+
+
+def test_development_tolerates_the_placeholder_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Development must start without ceremony."""
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.delenv("JWT_SECRET", raising=False)
+
+    assert Settings(_env_file=None).app_env == "development"
+
+
+def test_the_jwt_secret_is_never_rendered(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JWT_SECRET", "s3cr3t-signing-key-" + "x" * 32)
+
+    settings = Settings(_env_file=None)
+
+    assert "s3cr3t-signing-key" not in repr(settings)
+    assert "s3cr3t-signing-key" not in str(settings)
+    assert "s3cr3t-signing-key" not in repr(settings.model_dump())
+
+
+def test_secure_cookies_only_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Secure cookies need HTTPS, which development does not have."""
+    monkeypatch.setenv("APP_ENV", "development")
+    assert Settings(_env_file=None).cookie_secure is False
+
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "c" * 48)
+    assert Settings(_env_file=None).cookie_secure is True
+
+
+def test_lockout_defaults_match_the_specification(monkeypatch: pytest.MonkeyPatch) -> None:
+    """§5.1: lock for 15 minutes after 5 failed attempts."""
+    settings = Settings(_env_file=None)
+
+    assert settings.max_failed_attempts == 5
+    assert settings.lockout_minutes == 15
+    assert settings.access_token_minutes == 30
+    assert settings.refresh_token_days == 30
+
+
+def test_production_refuses_a_short_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """RFC 7518 §3.2: an HMAC-SHA256 key should be at least 32 bytes."""
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("JWT_SECRET", "too-short")
+
+    with pytest.raises(ValidationError, match="at least 32 bytes"):
+        Settings(_env_file=None)

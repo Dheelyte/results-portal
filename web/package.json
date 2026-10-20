@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start --hostname 0.0.0.0",
+    "dev": "next dev --hostname 0.0.0.0",
+    "generate:api": "openapi-typescript openapi.json -o lib/api/schema.d.ts",
     "lint": "eslint .",
+    "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "@types/react-dom": "19.0.3",
     "eslint": "9.18.0",
     "eslint-config-next": "15.1.6",
+    "openapi-typescript": "7.5.2",
     "tailwindcss": "4.3.3",
     "typescript": "5.7.3"
   }

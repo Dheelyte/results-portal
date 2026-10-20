@@ -29,3 +29,7 @@ next-env.d.ts
 
 # Generated artefacts
 /api/reports/
+
+# Copied into the web container for client generation; the source of truth
+# is api/openapi.json.
+/web/openapi.json

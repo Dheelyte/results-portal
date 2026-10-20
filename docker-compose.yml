@@ -36,6 +36,7 @@ services:
       # The one origin allowed to call this API from a browser. Never "*" —
       # the refresh cookie is sent with credentials (milestone 2).
       PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:-http://localhost:8080}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-not-a-secret-change-me-before-production}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
@@ -45,6 +46,10 @@ services:
       - ./api/tests:/app/tests
       - ./api/alembic:/app/alembic
       - ./api/alembic.ini:/app/alembic.ini:ro
+      # Tool configuration — ruff and pytest both read it, so an edit must not
+      # need an image rebuild to take effect.
+      - ./api/pyproject.toml:/app/pyproject.toml:ro
+      - ./api/scripts:/app/scripts:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -77,6 +82,9 @@ services:
       - "127.0.0.1:3000:3000"
     volumes:
       - ./web:/app
+      # The committed OpenAPI schema, so `npm run generate:api` works inside
+      # the container without mounting the whole api/ tree.
+      - ./api/openapi.json:/app/openapi.json:ro
       # Keep the image's node_modules — the host has none, and bind-mounting
       # over them would empty the directory.
       - web_node_modules:/app/node_modules

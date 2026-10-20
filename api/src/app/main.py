@@ -9,12 +9,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.config import settings
 from app.db import engine
 from app.logging import configure_logging
-from app.routers import health
+from app.routers import auth, health
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -45,7 +46,23 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json" if docs_enabled else None,
     )
 
+    # The API is on its own hostname (docs/DECISIONS.md, D13), so browser
+    # calls from the web app are cross-origin and need this.
+    #
+    # One explicit origin, never "*": allow_credentials and a wildcard origin
+    # are incompatible by specification, and the refresh cookie travels with
+    # credentials. Browsers reject the combination rather than warn.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[settings.public_web_origin],
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
+        max_age=600,
+    )
+
     app.include_router(health.router)
+    app.include_router(auth.router, prefix=settings.api_v1_prefix)
 
     return app
 

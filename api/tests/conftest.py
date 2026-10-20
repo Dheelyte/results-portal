@@ -1,25 +1,23 @@
-"""Shared test fixtures.
+"""Fixtures shared by every suite.
 
-Tests run against a real PostgreSQL 16, never SQLite (ARCHITECTURE.md §10):
-generated columns, enums, citext and triggers all behave differently, and a
-suite that passes against a database you do not run is worth nothing.
+Database fixtures live in `tests/integration/conftest.py` — unit tests are
+pure and must not be dragged through Postgres to run.
 """
 
-from collections.abc import AsyncIterator
-
 import pytest
-from httpx import ASGITransport, AsyncClient
 
-from app.main import app
+from app.auth.password import hash_password
+
+# Long enough to satisfy the change-password rule, so one constant serves
+# every test.
+TEST_PASSWORD = "correct-horse-battery"
 
 
-@pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    """An HTTP client bound directly to the ASGI app.
+@pytest.fixture(scope="session")
+def password_hash() -> str:
+    """Hash the test password once.
 
-    No lifespan manager is needed: app.db builds the engine at import time, so
-    the database is reachable without starting the application's lifespan.
+    Argon2id is deliberately slow. Hashing per user per test would add minutes
+    to the suite for no coverage.
     """
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
-        yield http_client
+    return hash_password(TEST_PASSWORD)

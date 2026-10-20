@@ -429,3 +429,137 @@ in milestone 2, not before.
   and approved retroactively (supersedes the open question in D6).
 
 All three raised under CLAUDE.md rule 7 before use.
+
+---
+
+## Milestone 2 — auth (2026-10-20)
+
+### D17 — `refresh_tokens` is a new table, not in §4
+
+§5.1 requires refresh tokens to be opaque, hashed at rest, rotated on use,
+and to have reuse detected. §4 specifies no table for them.
+
+```
+refresh_tokens(id, school_id, user_id, token_hash, family_id,
+               issued_at, expires_at, revoked_at, replaced_by)
+```
+
+**`family_id`** groups every token descended from one login. Rotation issues a
+successor in the same family and marks the predecessor revoked, linking them
+through `replaced_by`. Presenting a token that is already revoked means the
+chain has leaked, so the **entire family** is revoked rather than just that
+token.
+
+That logs out the legitimate user as well as the attacker. This is the
+intended outcome: the honest user signs in again, and the stolen token is
+worthless. Revoking only the replayed token would leave the attacker's
+successor working.
+
+**Why the refresh token is opaque while the access token is a JWT.** A JWT
+cannot be withdrawn before it expires. Thirty minutes of that is tolerable;
+thirty days is not. The refresh token means nothing without its row, so
+revocation takes effect immediately.
+
+**Why SHA-256 rather than Argon2 for the token hash.** The token is 256 bits of
+system-generated randomness, so there is no low-entropy guess space for a slow
+hash to defend — it would only tax every refresh. Passwords are the opposite
+case, which is why they use Argon2id.
+
+### D18 — `audit_log` pulled forward from milestone 3
+
+§4.9 requires a row for **every failed login** and every account creation.
+Those are milestone 2 events, so building auth without the table would mean
+shipping a known gap and backfilling nothing. Milestone 3 now creates the rest
+of §4 and not this.
+
+`services/audit.py` is the only writer, and it scrubs a list of forbidden keys
+from `before`/`after` before the row is built. CLAUDE.md forbids tokens and
+password hashes in logs; `audit_log` is as much a log as stdout is. The key is
+kept and the value replaced, so "the password changed" stays legible while the
+value never appears.
+
+### D19 — UUID v7 implemented rather than taken as a dependency
+
+§4 asks for UUID v7 primary keys. Python 3.12's `uuid` module stops at version
+5, and native `uuidv7()` arrives in Postgres 18, not the 16 this project runs.
+
+`app/models/ids.py` implements RFC 9562 §5.7 in about twenty lines rather than
+adding a package for one function (CLAUDE.md rule 7). A v7 value begins with a
+millisecond timestamp, so rows inserted together sort together and index pages
+stay dense where random v4 keys would scatter inserts.
+
+Tested against the specification: version nibble, variant bits, embedded
+timestamp, uniqueness over 10,000 values, and ordering across milliseconds.
+
+### D20 — The access token carries `must_change_password`
+
+So the §5.1 gate can be enforced without a database read on every request.
+
+`CurrentUser` admits a user who still owes a password change; `ActiveUser`
+refuses them with **409**, not 403 — nothing is forbidden, the account is in a
+state the user can resolve. `/auth/change-password` depends on `CurrentUser`,
+or there would be no way out of the gate.
+
+The user row is still loaded on every request, so a deactivated account stops
+working immediately rather than when its access token expires.
+
+### D21 — Login failures are deliberately indistinguishable
+
+An unknown identifier, a wrong password and a deactivated account all return
+the same 401 with the same body. Distinguishing them turns the login form into
+an account-enumeration oracle, and at this school the identifier is often a
+parent's phone number, which is guessable.
+
+A locked account returns **423 Locked**, which does reveal that the account
+exists. That is a deliberate trade: a parent who cannot get in needs to know
+why, and the lock is reachable by anyone willing to make five wrong guesses
+anyway.
+
+`decode_access_token` collapses every failure — expired, bad signature, wrong
+token type, malformed — to one exception with one message, for the same reason.
+
+### D22 — Password rules: a length floor and nothing else
+
+§5.1 sets no password policy. Ten characters minimum, no composition rules.
+Complexity requirements mostly produce `Password1!`, and this system's users
+are teachers and parents on phones. The temporary-password alphabet excludes
+`O 0 l I 1 o` because those get read down a phone line (§5.1 has the admin
+pass them on by SMS or WhatsApp).
+
+Changing a password revokes every refresh token the user holds — a password
+change is how someone responds to a suspected compromise, so leaving sessions
+alive would defeat it.
+
+### D23 — `JWT_SECRET` must be real in production
+
+The API refuses to start when `APP_ENV=production` and the signing key is
+either the development placeholder or shorter than 32 bytes (RFC 7518 §3.2 for
+HMAC-SHA256). A weak signing key lets anyone mint an admin token, and failing
+to boot is a far better outcome than running insecurely.
+
+### D24 — `python -m app.bootstrap` creates the first admin
+
+§5.1 says accounts are admin-created and never self-registered, which leaves
+no way to create the *first* one. A command rather than an endpoint: an
+unauthenticated "create an admin" route is a back door however carefully
+guarded. It refuses to run once an admin exists, takes every value from the
+caller rather than seeding constants (§2.3), and prints the temporary password
+once to stdout — not through the logger, which goes wherever logs go.
+
+### D25 — The OpenAPI schema and the generated client are committed
+
+`api/openapi.json` and `web/lib/api/schema.d.ts` are both in the repository,
+and CI regenerates both and fails on any difference. An API change then shows
+up in review as a schema diff, and a forgotten regeneration is caught by the
+build rather than by a type error weeks later.
+
+### D26 — Test fixtures truncate rather than roll back
+
+The auth rules commit deliberately: a failed login must persist its attempt
+counter even though the request fails. A harness that wrapped each test in a
+rolled-back transaction would hide exactly that behaviour, so the integration
+fixtures `TRUNCATE` between tests instead.
+
+The suite runs on one event loop (`asyncio_default_test_loop_scope = "session"`)
+because the application's engine is built at import time and pools connections;
+a loop per test hands a later test a connection bound to a closed loop.
