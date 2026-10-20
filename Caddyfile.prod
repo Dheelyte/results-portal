@@ -1,0 +1,42 @@
+# Production reverse proxy.
+#
+# Set SITE_ADDRESS to the real domain and Caddy provisions and renews TLS
+# automatically.  The OpenAPI routes of the development Caddyfile are
+# deliberately absent (docs/DECISIONS.md, D8).
+
+{
+	admin off
+}
+
+{$SITE_ADDRESS} {
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	handle /readyz {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

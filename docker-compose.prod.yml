@@ -1,0 +1,50 @@
+# Production overlay.  Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Differences from development: production build targets, no bind mounts, no
+# --reload, no published database or application ports (Caddy is the only way
+# in), and Caddy provisions TLS for SITE_ADDRESS.
+#
+# Migrations remain an explicit deploy step (ARCHITECTURE.md §11):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     exec api alembic upgrade head
+
+services:
+  postgres:
+    ports: !override []
+    restart: always
+
+  api:
+    build:
+      context: ./api
+      target: prod
+    environment:
+      APP_ENV: production
+    ports: !override []
+    volumes: !override []
+    restart: always
+
+  web:
+    build:
+      context: ./web
+      target: prod
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    environment:
+      NODE_ENV: production
+    ports: !override []
+    volumes: !override []
+    restart: always
+
+  caddy:
+    ports: !override
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes: !override
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: always

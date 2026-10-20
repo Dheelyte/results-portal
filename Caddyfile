@@ -1,0 +1,57 @@
+# Development reverse proxy.  Caddy is the only published port; api, web and
+# postgres are reachable on 127.0.0.1 for direct access during development
+# (docs/DECISIONS.md, D8).
+#
+# Production lives in Caddyfile.prod — it drops the OpenAPI routes below.
+
+{
+	# No automatic HTTPS in development; there is no domain to provision for.
+	auto_https off
+	admin off
+}
+
+:80 {
+	# --- API -------------------------------------------------------------
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	# Liveness and readiness sit at the root, not under /api/v1
+	# (ARCHITECTURE.md §11).
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+
+	handle /readyz {
+		reverse_proxy api:8000
+	}
+
+	# --- OpenAPI — development only --------------------------------------
+	# Absent from Caddyfile.prod, and FastAPI also sets docs_url=None when
+	# APP_ENV=production, so the surface is closed at both layers.
+	handle /docs* {
+		reverse_proxy api:8000
+	}
+
+	handle /redoc* {
+		reverse_proxy api:8000
+	}
+
+	handle /openapi.json {
+		reverse_proxy api:8000
+	}
+
+	# --- Everything else is the Next.js app ------------------------------
+	# reverse_proxy upgrades websockets automatically, which next dev's
+	# hot-module reload needs.
+	handle {
+		reverse_proxy web:3000
+	}
+
+	encode gzip
+
+	log {
+		output stdout
+		format json
+	}
+}

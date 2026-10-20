@@ -1,0 +1,154 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A new push to the same ref supersedes the run in flight.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Tests run against a real PostgreSQL 16, never SQLite (ARCHITECTURE.md §10).
+  POSTGRES_USER: portal
+  POSTGRES_PASSWORD: portal
+  POSTGRES_DB: portal
+
+jobs:
+  api:
+    name: API — lint, migrate, test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: portal
+          POSTGRES_PASSWORD: portal
+          POSTGRES_DB: portal
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U portal -d portal"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+asyncpg://portal:portal@localhost:5432/portal
+
+    defaults:
+      run:
+        working-directory: api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.5.x"
+          enable-cache: true
+          cache-dependency-glob: api/uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen --all-groups
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Check formatting
+        run: uv run ruff format --check .
+
+      # Milestone 1's migration criterion (ARCHITECTURE.md §12): the baseline
+      # revision applies to an empty database.  Asserted here directly, not
+      # only through the test suite.
+      - name: Apply migrations to an empty database
+        run: |
+          uv run alembic upgrade head
+          uv run alembic current
+
+      - name: Test
+        run: uv run pytest -q
+
+  web:
+    name: Web — lint, typecheck, build
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  compose:
+    name: Compose — the stack actually comes up
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --wait --wait-timeout 300
+
+      # The done-when criteria of milestone 1, exercised through Caddy rather
+      # than against the containers directly.
+      - name: GET /healthz returns 200
+        run: |
+          curl --fail --silent --show-error -o /dev/null -w '%{http_code}\n' \
+            http://localhost:8080/healthz
+
+      - name: GET /readyz returns 200 with the database reachable
+        run: |
+          body=$(curl --fail --silent --show-error http://localhost:8080/readyz)
+          echo "$body"
+          echo "$body" | grep -q '"database":"ok"'
+
+      - name: The baseline migration applies
+        run: |
+          docker compose exec -T api alembic upgrade head
+          docker compose exec -T api alembic current | grep -q '0001_baseline'
+
+      - name: The web app is served through Caddy
+        run: |
+          curl --fail --silent --show-error http://localhost:8080/ | grep -q 'Results Portal'
+
+      - name: GET /readyz returns 503 with the database down
+        run: |
+          docker compose stop postgres
+          code=$(curl --silent -o /tmp/readyz.json -w '%{http_code}' http://localhost:8080/readyz)
+          cat /tmp/readyz.json
+          test "$code" = "503"
+          # The failure body must name no connection detail (DECISIONS.md, D9).
+          ! grep -qiE 'portal|5432|asyncpg|password' /tmp/readyz.json
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

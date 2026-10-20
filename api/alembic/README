@@ -1,0 +1,20 @@
+Alembic migrations for the School Results Portal.
+
+Every schema change ships as a migration (CLAUDE.md rule 3).  Never edit a model
+without generating and reviewing the migration, and never hand-edit the database.
+
+    docker compose exec api alembic upgrade head
+    docker compose exec api alembic revision --autogenerate -m "..."
+    docker compose exec api alembic current
+    docker compose exec api alembic downgrade -1
+
+The database URL comes from app.config.settings, never from alembic.ini.
+
+Revision ids are sequential and explicit (0001, 0002, ...) because this is a
+single-branch repository and readable history is worth more than collision
+resistance.  Pass the next number when creating a revision:
+
+    alembic revision --autogenerate -m "add core schema" --rev-id 0002
+
+Migrations are an explicit deploy step and never run at container start
+(ARCHITECTURE.md §11).
