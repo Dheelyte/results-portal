@@ -175,3 +175,95 @@ discovered in milestone 5. No stub code was written into them.
 `api/src/app/models/` contains only the declarative `Base`, which Alembic needs
 as an autogenerate target. It defines no tables — those are milestone 3's, and
 milestone 3 is blocked on B1–B3.
+
+---
+
+## Milestone 0 — blocking questions (2026-10-20)
+
+All four decided by the client, 2026-10-20.
+
+### B2 — The head teacher and the admin are two distinct roles
+
+The head teacher approves results. A separate admin holds a portal-wide
+overview. They are not the same person.
+
+**Consequences.** §1.6's workflow stands unchanged: approve (head teacher) and
+publish (admin) remain two steps, which preserves the audit trail that §4.9
+depends on. `users.role` stays the single-value enum of §4.1 —
+`('admin','head_teacher','teacher','parent')` — and milestone 2 can build the
+users table as specified. The §5.2 matrix needs no change.
+
+**Fallback, should one person ever need both:** issue two accounts rather than
+widen `role` to a set. Recorded here so it is a known answer rather than a
+rediscovered problem.
+
+### B1 — The narrative is split between class teacher and specialist
+
+The specialist teacher writes the curriculum-area narrative for their own
+subject. The class teacher writes every other curriculum area, and all of
+sections B through J.
+
+**Consequences.** §5.2's single "Write narrative sections" row has been split
+into three, and the scope resolver for narrative entries now has two paths
+rather than one: a class-teacher scope over the pupils of their class, and a
+subject-teacher scope over the pupils they teach for one section.
+
+Sections B–J (Work/Study Habits, Attendance/Tardiness, Attitude, Classroom
+Behaviour, Outside Behaviour, Character Development, Peer Relations, Personal
+Development, Performance) are behavioural, not subject-bound, and stay entirely
+with the class teacher.
+
+**Still open, needed by milestone 3.** Two pieces of this are not yet settled
+and the `narrative_sections` table cannot be finalised without them:
+
+1. **Which of the seven curriculum areas are specialist-taught?** The seven are
+   English Language Arts, Mathematics, Science, Social Studies, Computer
+   Skills, Art & Music, Physical Education. Computer Skills, Art & Music and
+   Physical Education are the likely three, but Science may also be specialist
+   at this school.
+2. **How does a curriculum area map to a scored subject?** §1.4 notes the two
+   lists differ. "Computer Skills" maps cleanly to the scored subject
+   "Computer", and "Physical Education" to "Physical/Health Education", but
+   **"Art & Music" spans "Creative Art" and no music subject exists in the
+   scored list at all.** Whoever teaches music, if anyone, has no class-subject
+   to hang authorship on.
+
+The likely schema answer is a nullable `narrative_sections.subject_id`: when
+set, the teacher assigned to that class-subject writes the section; when null,
+the class teacher does. That is a data-model change and so is **not** being
+made until asked (CLAUDE.md rule 7).
+
+**Workload note.** This redistributes the §8.2 load rather than reducing it. A
+class teacher drops from seventeen passages per pupil to roughly fourteen, but
+a specialist who teaches every class now writes one passage for **every pupil
+in the school** — around 500 — against a class teacher's 30 × 14. Worth putting
+to the school alongside N7 (all seventeen sections, or a reduced set?).
+
+### B3 — No import of earlier terms
+
+Earlier terms will not be loaded into the system.
+
+**Consequences.** No historical-import milestone and no import CSV format —
+this removes work rather than adding it. The second-half sheet's *1st Term
+Ave.*, *2nd Term Ave.* and *Annual Scores (Ave.)* columns will have no data in
+the first year; §9 already requires that a cumulative column be omitted when
+the pupil has no results for that term, rather than printed empty or
+zero-filled, so no change is needed to carry this.
+
+This is also what makes assumption A1 cheap to reverse, and the two reinforce
+each other.
+
+**Still open, now low-stakes:** which term is go-live. With no import it no
+longer changes the data model — only which columns appear on the first cards
+printed, and that is already conditional.
+
+### A11 — Confirmed: the API is same-origin at `/api/*`
+
+*Moved here from ARCHITECTURE.md §14, where it was a working assumption.*
+
+The API is served through Caddy on the same origin as the web application. The
+application therefore carries no CORS configuration, and the refresh-token
+cookie of §5.1 can use a host-only `Domain` with `SameSite=Lax` as that section
+specifies.
+
+Milestone 2 can build auth against this without a pending reversal.

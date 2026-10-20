@@ -763,7 +763,9 @@ Every router builds its query from a scope resolver. No router composes a raw
 | Create users, assign teachers | ✅ | — | — | — | — |
 | Grading scale, marks obtainable, narrative sections, comment bank | ✅ | — | — | — | — |
 | Enter scores | — | — | own class-subjects | own class-subjects | — |
-| Write narrative sections | — | — | own class | — | — |
+| Write narrative sections — behavioural (B–J) | — | — | own class | — | — |
+| Write narrative sections — curriculum (A), non-specialist | — | — | own class | — | — |
+| Write narrative sections — curriculum (A), specialist | — | — | — | own class-subjects | — |
 | Attendance, growth records | — | — | own class | — | — |
 | Submit class for review | — | — | own class | — | — |
 | Approve / return class | — | ✅ all | — | — | — |
@@ -1135,13 +1137,16 @@ endpoints is how school portals leak results.
 Record every answer in `docs/DECISIONS.md` with the date and who decided. Do not
 guess and build.
 
-### Blocking — answer before writing code
+### Blocking — answered 2026-10-20
 
-| # | Question | Why it blocks |
+All three were settled by the client on 2026-10-20. Full wording and
+consequences in `docs/DECISIONS.md` (B1–B3). Summary:
+
+| # | Question | Answer |
 |---|---|---|
-| B1 | **Who writes the narrative for specialist subjects?** The card's "Area of Curriculum" includes Computer Skills, Art & Music and Physical Education, which specialists teach — but this spec gives the whole narrative to the class teacher. | Changes the §5.2 authorization matrix and the §8.2 screen. Milestone 4 encodes the matrix as tests. |
-| B2 | **Is the head teacher also the admin?** At a school this size one person often holds both. | If so, approve and publish collapse into one person and the §1.6 workflow needs a decision: keep both steps for the audit trail, or merge them. |
-| B3 | **Which term is go-live, and must earlier terms be imported?** A third-term card prints 1st and 2nd Term Ave. Going live in third term means those terms must be loaded first. | Adds a historical import milestone and a CSV format. Cheap now, expensive once live. |
+| B1 | Who writes the narrative for specialist subjects? | **Split.** The specialist teacher writes the curriculum-area section for their own subject; the class teacher writes the remaining curriculum areas and all of B–J. §5.2 updated. **Still open:** which of the seven curriculum areas count as specialist, and how "Art & Music" maps to the scored subjects — needed by milestone 3. |
+| B2 | Is the head teacher also the admin? | **No — two distinct roles.** The head teacher approves results; a separate admin sees a portal-wide overview. §1.6's approve-then-publish workflow stands unchanged, and `users.role` remains the single-value enum of §4.1. |
+| B3 | Which term is go-live, must earlier terms be imported? | **No import of earlier terms.** No historical-import milestone, no CSV format. The cumulative columns of §9 therefore render empty in the first year and are omitted rather than zero-filled, exactly as §9 already requires. **Still open, now low-stakes:** which term is go-live. |
 
 ### Needed before the milestone shown
 
@@ -1194,4 +1199,3 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A8 | A digital acknowledgement by the parent replaces the physical signature and the returned card. | **Low** technically. The school may still want paper; that is their call, not a code change. |
 | A9 | ~500 pupils, ~450 accounts, three releases a year — the scale the whole design rests on. | **High if badly wrong.** Everything in §0 follows from it. Confirm the real roll before milestone 1. |
 | A10 | Deployment is a single host running Docker Compose, with Caddy terminating TLS for one domain. No staging environment is modelled in the repository. | **Low.** A third compose overlay and a second Caddy site block. Taken in milestone 1; see `docs/DECISIONS.md` D8. |
-| A11 | The API is served same-origin through Caddy at `/api/*`, so the application carries no CORS configuration. | **Low now, Medium after milestone 2.** A separate `api.` subdomain needs CORS middleware *and* changes the refresh-token cookie's `Domain` and `SameSite` in §5.1. Cheaper to settle before auth is built. |
