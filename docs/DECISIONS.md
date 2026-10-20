@@ -46,15 +46,21 @@ HEIC originals, so the paths in the specification resolve and the images open in
 a browser. Originals retained — they are the reference for the PDF in
 milestone 11 and are the highest-fidelity copy available.
 
-### D4 — The repository was initialised with git, with no remote
+### D4 — The repository lives on GitHub
 
-No git repository existed. "CI runs lint and tests on every push" needs one.
-`git init` was run on the project root; no remote is configured, so the workflow
-in `.github/workflows/` does not execute until one is added.
+*Updated 2026-10-20: the remote was added by the client during milestone 3.*
 
-**Open:** which host the repository lives on, and who owns the account. This is
-adjacent to the hosting and data-protection questions in §13's project-level
-list.
+No git repository existed at the start. "CI runs lint and tests on every push"
+needs one, so `git init` was run on the project root.
+
+The remote is now `github.com/Dheelyte/results-portal`, which settles the
+question this entry originally left open and confirms D1's choice of GitHub
+Actions. The workflow runs on the first push.
+
+**Still open:** who owns the account long term, and whether the repository
+moves to an HSD or school-owned organisation at handover. That is adjacent to
+the hosting and data-protection questions in §13's project-level list — the
+repository holds no pupil data, but it does hold the deployment configuration.
 
 ### D5 — Structured JSON logs via the standard library, not `structlog`
 
