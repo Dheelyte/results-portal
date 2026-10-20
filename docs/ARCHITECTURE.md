@@ -227,6 +227,28 @@ Do **not** build tenant management UI, subdomain routing, or per-tenant config
 screens. The column alone is cheap now and saves a painful migration if HSD
 sells this to a second school. Everything beyond the column is speculative.
 
+### 2.3 Configuration, not code
+
+**Standing rule** (`docs/DECISIONS.md`, D14). Everything the school can change
+is a row in the database, edited through the platform. Nothing in that set may
+be a compiled-in constant that drives behaviour.
+
+*Seeded* initial data is fine — the school should not meet a blank screen on day
+one — but every seeded value must be editable afterwards. So §1.5's subject
+list, §1.3's grade bands and §4.6's narrative sections all ship as seed rows.
+
+None of these may exist anywhere in the codebase:
+
+- a `CURRENT_TERM` constant — the active term is `terms.is_current`, set by an
+  admin
+- a hardcoded set of specialist subjects — a flag on the row, set by an admin
+- an enum or literal list of subject names
+- grade bands in Python — they are `grading_scales` and `grade_bands` rows
+  (§4.5), versioned precisely so the school can change them
+
+Seeding must be idempotent and must never re-assert a value the school has
+since edited.
+
 ---
 
 ## 3. Repository layout
@@ -602,6 +624,22 @@ written assessments for the whole term.
 Seed the seventeen sections of §1.4 in card order: the seven curriculum areas
 under group label "Area of Curriculum", then B through J.
 
+**Who writes each section** (B1, answered; `docs/DECISIONS.md` D15). A
+narrative section carries its own **per-class teacher assignment**, set by an
+admin. Where no assignment exists, the class teacher writes it — which covers
+the behavioural sections B through J and every non-specialist curriculum area.
+
+The two lists of §1.4 are deliberately **not** linked. Mapping the seven
+curriculum areas onto the eighteen scored subjects does not work cleanly:
+"Computer Skills" → *Computer* and "Physical Education" →
+*Physical/Health Education* are fine, but **"Art & Music" has no counterpart**
+— the scored list has *Creative Art* and no music subject at all. An explicit
+assignment sidesteps the problem and keeps authorship as data the school edits,
+per §2.3.
+
+This needs a table for the assignment — class, section, teacher — added in
+milestone 3 alongside `narrative_sections`.
+
 ```sql
 CREATE TABLE comment_bank (
   id         uuid PRIMARY KEY,
@@ -891,7 +929,7 @@ PUT        /assessment-periods/{id}/marks-obtainable
 GET/PUT    /classes/{id}/subjects
 PUT        /class-subjects/{id}/teacher
 PUT        /classes/{id}/class-teacher
-GET/POST   /pupils          POST /pupils/import        # CSV
+GET/POST   /pupils                                     # manual entry; see DECISIONS N8
 GET/POST   /users           POST /users/{id}/reset-password
 POST       /guardians/{id}/children
 GET/POST   /grading-scales
@@ -1078,16 +1116,23 @@ Those last two fixtures catch most multi-child and cumulative-average bugs.
 
 Single host, Docker Compose, Caddy terminating TLS.
 
+Two hostnames under one registrable domain (`docs/DECISIONS.md`, D13):
+
 ```
-caddy → web (Next.js :3000)
-      → api (FastAPI/uvicorn :8000)
-api   → postgres :5432
-      → R2 (object storage)
+<domain>      → caddy → web (Next.js :3000)
+api.<domain>  → caddy → api (FastAPI/uvicorn :8000)
+                api   → postgres :5432
+                      → R2 (object storage)
 ```
+
+Both must share a registrable domain, so browser requests from the web app to
+the API are cross-origin but still **same-site** — which is what lets the
+refresh-token cookie of §5.1 keep `SameSite=Lax`.
 
 - All configuration from environment variables; `.env.example` lists every key.
   No secrets in the repository.
-- `/healthz` (liveness) and `/readyz` (database reachable).
+- `/healthz` (liveness) and `/readyz` (database reachable), on the **API host
+  only**.
 - Structured JSON logs to stdout. Never log scores, narrative text or tokens.
 - Sentry with PII scrubbing on.
 - **Backups:** nightly `pg_dump` to R2, 30 days retained, plus a dump taken
@@ -1159,7 +1204,6 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 | N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
 | N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) |
 | N7 | All seventeen narrative sections, or a reduced set? | 7 |
-| N8 | Source and format of the pupil and staff lists. Do admission numbers already exist, and are they unique? | 3 (seed and import) |
 | N9 | Teacher devices and connectivity — school Wi-Fi, or personal phones on mobile data at home? | 6 (offline behaviour) |
 
 `docs/CARD-FINDINGS.md` holds the photographic evidence behind N1–N7.
@@ -1197,5 +1241,5 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A6 | The narrative is written once per term, not per half term. | **Medium.** `narrative_entries` is keyed on `term_id`; moving to half term is a migration plus a rework of §8.2. |
 | A7 | Parents log in with email **or** phone, and parent password resets are admin-initiated rather than by email. | **Low.** Both paths exist in the schema. |
 | A8 | A digital acknowledgement by the parent replaces the physical signature and the returned card. | **Low** technically. The school may still want paper; that is their call, not a code change. |
-| A9 | ~500 pupils, ~450 accounts, three releases a year — the scale the whole design rests on. | **High if badly wrong.** Everything in §0 follows from it. Confirm the real roll before milestone 1. |
 | A10 | Deployment is a single host running Docker Compose, with Caddy terminating TLS for one domain. No staging environment is modelled in the repository. | **Low.** A third compose overlay and a second Caddy site block. Taken in milestone 1; see `docs/DECISIONS.md` D8. |
+| A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

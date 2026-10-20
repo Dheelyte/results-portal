@@ -1,39 +1,59 @@
 # Production reverse proxy.
 #
-# Set SITE_ADDRESS to the real domain and Caddy provisions and renews TLS
-# automatically.  The OpenAPI routes of the development Caddyfile are
-# deliberately absent (docs/DECISIONS.md, D8).
+# Two hostnames sharing one parent domain, so that browser requests from the
+# web app to the API are cross-origin but still same-site — which is what lets
+# the refresh-token cookie of ARCHITECTURE.md §5.1 keep SameSite=Lax
+# (docs/DECISIONS.md, D13).
+#
+#     API_DOMAIN=api.example.ng
+#     WEB_DOMAIN=portal.example.ng
+#
+# Both must sit under the same registrable domain. Putting them on unrelated
+# domains makes every request cross-site, which forces SameSite=None and
+# explicit CSRF tokens.
+#
+# Caddy provisions and renews TLS for both automatically.
 
 {
 	admin off
 }
 
-{$SITE_ADDRESS} {
-	handle /api/* {
-		reverse_proxy api:8000
-	}
-
-	handle /healthz {
-		reverse_proxy api:8000
-	}
-
-	handle /readyz {
-		reverse_proxy api:8000
-	}
-
-	handle {
-		reverse_proxy web:3000
-	}
-
-	encode gzip
-
+(hardening) {
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
+}
+
+# --- API -------------------------------------------------------------------
+# The OpenAPI routes of the development Caddyfile are deliberately absent.
+# FastAPI also sets docs_url=None when APP_ENV=production, so the surface is
+# closed at both layers.
+{$API_DOMAIN} {
+	reverse_proxy api:8000
+
+	import hardening
+
+	encode gzip
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# --- Web app ---------------------------------------------------------------
+{$WEB_DOMAIN} {
+	reverse_proxy web:3000
+
+	import hardening
+
+	# Only the web app is framed-sensitive; the API serves no HTML.
+	header X-Frame-Options "DENY"
+
+	encode gzip
 
 	log {
 		output stdout

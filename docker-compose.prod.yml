@@ -20,6 +20,7 @@ services:
       target: prod
     environment:
       APP_ENV: production
+      PUBLIC_WEB_ORIGIN: https://${WEB_DOMAIN}
     ports: !override []
     volumes: !override []
     restart: always
@@ -29,7 +30,8 @@ services:
       context: ./web
       target: prod
       args:
-        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+        NEXT_PUBLIC_SITE_URL: https://${WEB_DOMAIN}
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
     environment:
       NODE_ENV: production
     ports: !override []
@@ -42,7 +44,9 @@ services:
       - "443:443"
       - "443:443/udp"
     environment:
-      SITE_ADDRESS: ${SITE_ADDRESS}
+      # Both must share one registrable domain — see Caddyfile.prod.
+      API_DOMAIN: ${API_DOMAIN}
+      WEB_DOMAIN: ${WEB_DOMAIN}
     volumes: !override
       - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

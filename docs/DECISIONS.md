@@ -102,9 +102,13 @@ would rather read `os.environ` directly.
 
 ### D8 — Networking and exposed ports
 
-Caddy publishes `8080:80` in development — port 80 needs root and commonly
-collides. It routes `/api/*`, `/healthz`, `/readyz`, `/docs`, `/redoc` and
-`/openapi.json` to the API and everything else to Next.js.
+> **Superseded in part by D13**, which moved the API onto its own hostname.
+> The port and exposure decisions below still stand; the path-based routing
+> described here does not.
+
+Caddy publishes `8080:8080` in development — port 80 needs root and commonly
+collides, and matching the port inside and out keeps the `Host` header's port
+identical to the site address in the Caddyfile.
 
 `api`, `web` and `postgres` are additionally published on `127.0.0.1` (8000,
 3000, 5432) for direct access while developing. Loopback only, and
@@ -257,13 +261,171 @@ each other.
 longer changes the data model — only which columns appear on the first cards
 printed, and that is already conditional.
 
-### A11 — Confirmed: the API is same-origin at `/api/*`
+### A11 — Same-origin at `/api/*` — ❌ **REVERSED the same day. See D13.**
 
 *Moved here from ARCHITECTURE.md §14, where it was a working assumption.*
 
-The API is served through Caddy on the same origin as the web application. The
-application therefore carries no CORS configuration, and the refresh-token
-cookie of §5.1 can use a host-only `Domain` with `SameSite=Lax` as that section
-specifies.
+The original decision: the API is served through Caddy on the same origin as
+the web application, so the application carries no CORS configuration.
 
-Milestone 2 can build auth against this without a pending reversal.
+**This was reversed hours later**, before any auth code was written, in favour
+of a dedicated `api.*` subdomain. The entry is kept rather than deleted so the
+reversal is visible: §14 had priced A11 at *Low now, Medium after milestone 2*
+precisely because this kind of change gets expensive once the refresh cookie
+exists, and that pricing is what made catching it early worth the five files
+it cost.
+
+The replacement is **D13**.
+
+---
+
+## Milestone 0 continued — onboarding, configurability, topology (2026-10-20)
+
+All decided by the client, 2026-10-20.
+
+### N8 — Pupils, users and subjects are onboarded manually in the platform
+
+There is no external source to import from and no CSV format. The admin enters
+pupils, staff, parent accounts and subjects through the platform, and sets the
+active term there too.
+
+**Consequences.**
+
+- `POST /pupils/import` is struck from §7. It is descoped, not impossible — if
+  typing proves painful the endpoint can return, and that is a product call.
+- Milestone 5's admin screens carry more weight than the spec implied: they are
+  now the *only* way data enters the system, so their quality decides whether
+  setup is tolerable.
+- The admission-number question behind N8 dissolves: the platform assigns them,
+  so uniqueness is enforced by the `UNIQUE (school_id, admission_number)`
+  constraint of §4.1 rather than hoped for.
+
+**Raised, not blocking.** Roughly 500 pupils, 450 parent accounts and 30 staff
+is on the order of a thousand records — a day or two of typing before go-live.
+Worth scheduling deliberately rather than discovering the week before.
+
+### D14 — Nothing in the configurable set is hardcoded
+
+> "Students and the portal users will be onboarded through the platform by
+> manually entering their details. Subjects will also be created through the
+> platform and they can be flagged as a special subject. The active term will
+> also be determined on the platform. All these details and similar ones should
+> not be hardcoded."
+
+**The rule, as I am applying it.** *Seeded* initial data is fine — the school
+should not meet a blank screen on day one — but every seeded value must be
+editable in the platform afterwards, and none may be a compiled-in constant
+that drives behaviour.
+
+So these still ship as **seed rows**, exactly as the spec says:
+
+- §1.5's subject list, with English as a group over five sub-subjects
+- §1.3's seven grade bands
+- §4.6's seventeen narrative sections
+
+And none of these may exist anywhere in the codebase:
+
+- a `CURRENT_TERM` constant — the active term is `terms.is_current`, set by an
+  admin (§4.2 already has the column)
+- a hardcoded set of specialist subjects — a flag on the row, set by an admin
+- an enum or literal list of subject names
+- a grade-band table in Python — `grading_scales` and `grade_bands` are rows
+  (§4.5), and they are versioned precisely so the school can change them
+
+This generalises what the spec already wanted in places (§1.5 "admin-editable",
+§4.5 versioned scales, marks obtainable as configuration) into a standing rule,
+so it stops being a series of local judgement calls.
+
+**Where it binds hardest:** the seed module. Seeding must be idempotent and
+must never *re-assert* a value the school has since edited.
+
+### D15 — Narrative sections carry their own teacher assignment
+
+Settling the sub-question left open by B1.
+
+§1.4 notes that the seven narrative curriculum areas are **not** the same list
+as the eighteen scored subjects. Rather than map between them, the two lists
+stay unconnected: `narrative_sections` get their own per-class teacher
+assignment, which an admin sets.
+
+**Why this over linking to a scored subject.** The mapping does not exist
+cleanly. "Computer Skills" → *Computer* and "Physical Education" →
+*Physical/Health Education* both work, but **"Art & Music" has no counterpart**
+— the scored list has *Creative Art* and no music subject at all. A link-based
+design needs an answer for that case; an assignment-based one does not, because
+the admin simply picks whoever writes it.
+
+It is also the answer most consistent with D14: who writes what is data the
+school edits, not a structure baked into the schema.
+
+**Consequence for §5.2.** The single "Write narrative sections" row became
+three: behavioural sections B–J and non-specialist curriculum areas to the
+class teacher, specialist curriculum areas to the assigned teacher. Already
+applied.
+
+**Built in milestone 3**, with the rest of the schema.
+
+### A9 — Confirmed: 300–600 pupils
+
+*Moved here from ARCHITECTURE.md §14.*
+
+The school's roll is in the range §0 assumes. The single-host design — one
+FastAPI process, one Postgres, no queue, no cache, PDFs generated on demand —
+is correct and needs no revisiting. §14 had this at **High** cost to reverse
+because everything in §0 follows from it; it is now settled.
+
+### D13 — The API has its own subdomain, sharing a parent domain
+
+**Replaces A11**, which was confirmed as same-origin earlier the same day and
+reversed before any auth code existed.
+
+The API is served from `api.<domain>`; the web app from `<domain>` (or
+`portal.<domain>`). **Both must sit under the same registrable domain.**
+
+**Why the same-parent-domain constraint matters.** Requests from the web app to
+the API are then cross-**origin** but still same-**site**, because `SameSite`
+compares registrable domains rather than origins. That means the refresh-token
+cookie of §5.1 keeps `SameSite=Lax` and the CSRF protection it provides. Put
+the two on unrelated domains and every request becomes cross-site, forcing
+`SameSite=None; Secure` — which removes that protection, needs explicit CSRF
+tokens, and runs into Safari's ITP.
+
+**What this costs, applied in milestone 1:**
+
+- `Caddyfile` — two site blocks keyed on hostname instead of one keyed on path.
+  Caddy now listens on 8080 inside the container as well as out, so the `Host`
+  header's port matches the site address exactly.
+- `Caddyfile.prod` — `API_DOMAIN` and `WEB_DOMAIN` replace `SITE_ADDRESS`;
+  Caddy provisions TLS for both.
+- `.env.example` — `PUBLIC_WEB_ORIGIN`, `NEXT_PUBLIC_API_URL`, `API_DOMAIN`,
+  `WEB_DOMAIN` added.
+- `docker-compose*.yml`, `web/app/page.tsx`, `.github/workflows/ci.yml`.
+- `/healthz` and `/readyz` now answer on the **API host only**. CI asserts that
+  the web host returns 404 for them, so a regression to same-origin routing
+  cannot pass silently.
+
+**Development.** `api.localhost:8080` and `localhost:8080`, both through Caddy.
+`*.localhost` resolves to loopback without an `/etc/hosts` entry on most
+systems; CI pins it explicitly because runner images vary.
+
+**One caveat, stated because it will otherwise confuse someone.** Browsers may
+treat `localhost` as a public suffix, which would make `localhost` ↔
+`api.localhost` **cross-site in development while production is same-site**.
+That errs safe — anything working in dev works in production — but it can
+produce dev-only cookie puzzles. For an exact mirror, add to `/etc/hosts`:
+
+```
+127.0.0.1  portal.sshms.test  api.sshms.test
+```
+
+and set the origin variables to match. Worth doing when the cookie work starts
+in milestone 2, not before.
+
+### D16 — Three dependencies approved
+
+- **`argon2-cffi`** — Argon2id password hashing, named in §5.1.
+- **`pyjwt`** — access-token encode and decode, named in §5.1.
+- **`pydantic-settings`** — environment configuration, shipped in milestone 1
+  and approved retroactively (supersedes the open question in D6).
+
+All three raised under CLAUDE.md rule 7 before use.

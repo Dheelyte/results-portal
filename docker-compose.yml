@@ -33,6 +33,9 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://portal:portal@postgres:5432/portal}
+      # The one origin allowed to call this API from a browser. Never "*" —
+      # the refresh cookie is sent with credentials (milestone 2).
+      PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:-http://localhost:8080}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
@@ -65,6 +68,9 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:8080}
+      # Browser-side calls go to the API's own hostname; server components
+      # take the short path over the Docker network instead.
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.localhost:8080}
       INTERNAL_API_URL: ${INTERNAL_API_URL:-http://api:8000}
       WATCHPACK_POLLING: "true"
     ports:
@@ -89,7 +95,9 @@ services:
   caddy:
     image: caddy:2-alpine
     ports:
-      - "8080:80"
+      # Same port inside and out, so the Host header's port matches the site
+      # address in the Caddyfile exactly.
+      - "8080:8080"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -100,7 +108,15 @@ services:
       web:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:80/healthz"]
+      # Probes the API hostname, which is the block most likely to be
+      # misconfigured after a routing change.
+      test:
+        - CMD
+        - wget
+        - --spider
+        - -q
+        - "--header=Host: api.localhost:8080"
+        - http://127.0.0.1:8080/healthz
       interval: 10s
       timeout: 5s
       retries: 12

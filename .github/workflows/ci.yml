@@ -109,6 +109,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # *.localhost resolution varies by runner image; pin it so the API
+      # hostname is unambiguous.
+      - name: Resolve the API hostname
+        run: echo "127.0.0.1 api.localhost" | sudo tee -a /etc/hosts
+
       - name: Start the stack
         run: |
           cp .env.example .env
@@ -116,16 +121,24 @@ jobs:
 
       # The done-when criteria of milestone 1, exercised through Caddy rather
       # than against the containers directly.
-      - name: GET /healthz returns 200
+      - name: GET /healthz returns 200 on the API host
         run: |
           curl --fail --silent --show-error -o /dev/null -w '%{http_code}\n' \
-            http://localhost:8080/healthz
+            http://api.localhost:8080/healthz
 
       - name: GET /readyz returns 200 with the database reachable
         run: |
-          body=$(curl --fail --silent --show-error http://localhost:8080/readyz)
+          body=$(curl --fail --silent --show-error http://api.localhost:8080/readyz)
           echo "$body"
           echo "$body" | grep -q '"database":"ok"'
+
+      # The split is only real if the web host does not also answer for the
+      # API. A regression here would silently restore same-origin behaviour.
+      - name: The web host does not serve the API
+        run: |
+          code=$(curl --silent -o /dev/null -w '%{http_code}' http://localhost:8080/healthz)
+          echo "web host /healthz -> $code"
+          test "$code" = "404"
 
       - name: The baseline migration applies
         run: |
@@ -139,7 +152,8 @@ jobs:
       - name: GET /readyz returns 503 with the database down
         run: |
           docker compose stop postgres
-          code=$(curl --silent -o /tmp/readyz.json -w '%{http_code}' http://localhost:8080/readyz)
+          code=$(curl --silent -o /tmp/readyz.json -w '%{http_code}' \
+            http://api.localhost:8080/readyz)
           cat /tmp/readyz.json
           test "$code" = "503"
           # The failure body must name no connection detail (DECISIONS.md, D9).

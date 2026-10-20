@@ -2,6 +2,9 @@
 // end to end; milestone 2 replaces it with the login screen of
 // ARCHITECTURE.md §8.
 
+// Server-side only, so this takes the short path across the Docker network
+// rather than the API's public hostname — no CORS involved.  Browser-side
+// calls arrive with auth in milestone 2 and use NEXT_PUBLIC_API_URL instead.
 const API_URL = process.env.INTERNAL_API_URL ?? "http://api:8000";
 
 type ApiStatus =
