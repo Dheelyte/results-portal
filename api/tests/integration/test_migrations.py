@@ -134,6 +134,9 @@ async def test_the_models_and_the_migrations_agree(empty_database: str) -> None:
                 lambda sync_connection: compare_metadata(
                     MigrationContext.configure(
                         sync_connection,
+                        # The same options alembic/env.py uses, so this
+                        # test sees exactly what `alembic revision
+                        # --autogenerate` would.
                         opts={"compare_type": True, "compare_server_default": True},
                     ),
                     Base.metadata,

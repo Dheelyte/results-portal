@@ -132,6 +132,13 @@ on ______ when next term begins"
 Note the narrative section A uses **seven coarse curriculum areas**, which are
 not the same list as the eighteen scored subjects. Both lists must exist.
 
+**Count: sixteen, not seventeen.** Seven curriculum areas under A, plus B
+through J, is 7 + 9 = 16 written passages per pupil per term. Earlier revisions
+of this document said seventeen throughout and sized the teacher workload at
+510 passages for a class of 30; the correct figures are sixteen and 480. The
+photographs are the authority here and they show sixteen. See
+`docs/DECISIONS.md` D27.
+
 **⚠ UNCONFIRMED:** whether *Position (In grades)* is filled in. The school said
 they do not rank pupils; the card has the field. Until answered, store it as a
 nullable free-text field that a head teacher may type into, and **never compute
@@ -621,7 +628,7 @@ CREATE TABLE narrative_entries (
 Narrative is **per term**, not per half term — the card carries one set of
 written assessments for the whole term.
 
-Seed the seventeen sections of §1.4 in card order: the seven curriculum areas
+Seed the sixteen sections of §1.4 in card order: the seven curriculum areas
 under group label "Area of Curriculum", then B through J.
 
 **Who writes each section** (B1, answered; `docs/DECISIONS.md` D15). A
@@ -650,7 +657,7 @@ CREATE TABLE comment_bank (
 );
 ```
 
-A class of 30 needs **510 written passages per term** (17 sections × 30 pupils)
+A class of 30 needs **480 written passages per term** (16 sections × 30 pupils)
 from one class teacher. Without a strong phrase bank this feature will not be
 used as intended. Treat the comment bank as core, not optional, and scope its
 entries to each section so the suggestions are relevant.
@@ -869,7 +876,7 @@ Reject any attempt to write a score against one.
 
 ### R8 — Narrative completeness
 A pupil's narrative is complete when every active section has a non-empty body.
-Seventeen sections per pupil.
+Sixteen sections per pupil.
 
 ### R9 — Attendance bounds
 `times_present + times_absent = terms.times_school_opened`, and
@@ -1005,10 +1012,10 @@ will not use the portal.
 
 ### 8.2 Narrative writing screen
 
-This is the heaviest task in the system — seventeen passages per pupil, 510 for
+This is the heaviest task in the system — sixteen passages per pupil, 480 for
 a class of 30 — and it belongs to one person, the class teacher.
 
-- Work **pupil by pupil**, not section by section: one pupil, all seventeen
+- Work **pupil by pupil**, not section by section: one pupil, all sixteen
   sections on a page, with previous/next pupil navigation.
 - Each section is a plain textarea with a character count and a **phrase bank**
   button scoped to that section.
@@ -1018,7 +1025,7 @@ a class of 30 — and it belongs to one person, the class teacher.
   point. They will otherwise do it through the clipboard anyway, and an explicit
   control is honest about it.
 
-If the school confirms all seventeen sections, raise the workload with them
+If the school confirms all sixteen sections, raise the workload with them
 before launch. A reduced set is a product decision, not a technical one.
 
 ### 8.3 Class teacher progress view
@@ -1065,7 +1072,7 @@ Structure, in order:
    the foot
 6. **Key** — the grade bands in force for that report, printed from the
    snapshotted scale, not the current one
-7. **Assessment pages** — the seventeen narrative sections, A through J, with
+7. **Assessment pages** — the sixteen narrative sections, A through J, with
    "Area of Curriculum" grouping its seven
 8. **Footer** — class teacher comment, head teacher comment, parent
    acknowledgement, and the card return date
@@ -1137,7 +1144,7 @@ refresh-token cookie of §5.1 keep `SameSite=Lax`.
 - Sentry with PII scrubbing on.
 - **Backups:** nightly `pg_dump` to R2, 30 days retained, plus a dump taken
   immediately before every publish. Results data is irreplaceable — no teacher
-  will rewrite 510 passages. Document and test the restore procedure; an
+  will rewrite 480 passages. Document and test the restore procedure; an
   untested backup is not a backup.
 - Migrations run as an explicit deploy step, never automatically at startup.
 
@@ -1157,7 +1164,7 @@ begins. Do not start a milestone's frontend until its API is tested.
 | 4 | Authorization scopes + the §5.2 matrix as tests | Every cell has a passing allow or deny test |
 | 5 | Admin setup API + screens, assessment periods, marks obtainable | An admin configures a full term from an empty database |
 | 6 | Score entry API + grid (§8.1), both period layouts | A teacher enters a full class on a phone viewport; autosave and recovery verified |
-| 7 | Narrative screen (§8.2), attendance, growth, phrase bank | A class teacher completes one pupil's seventeen sections and moves to the next |
+| 7 | Narrative screen (§8.2), attendance, growth, phrase bank | A class teacher completes one pupil's sixteen sections and moves to the next |
 | 8 | Submission gate (R10) | Submission blocked with an accurate missing-items list, allowed when complete |
 | 9 | Head teacher review, approve, return, grade snapshot | Approval writes `grade_letter` and `grading_scale_id` on every row |
 | 10 | Publication, withhold, release, audit log | Withheld pupil's parent sees the R12 message; every action audited |
@@ -1203,7 +1210,7 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 | N4 | Is *Position (In grades)* filled in, and in what form? | 9 |
 | N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
 | N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) |
-| N7 | All seventeen narrative sections, or a reduced set? | 7 |
+| N7 | All sixteen narrative sections, or a reduced set? | 7 |
 | N9 | Teacher devices and connectivity — school Wi-Fi, or personal phones on mobile data at home? | 6 (offline behaviour) |
 
 `docs/CARD-FINDINGS.md` holds the photographic evidence behind N1–N7.

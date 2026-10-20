@@ -67,7 +67,7 @@ sections, each about three ruled lines:
 - **J.** Performance
 
 This is a Montessori narrative report. It is a different screen, a different
-table, and a much heavier writing load for teachers — seventeen paragraphs per
+table, and a much heavier writing load for teachers — sixteen paragraphs per
 pupil per term, on top of the scores.
 
 ## 5. The card has a Position field
@@ -119,7 +119,7 @@ the narrative comments.
    are built either way; this decides whether publication runs twice a term.
 6. **Keep in the digital version?** Health and physical growth, house, times
    collected late, parent signature and card return.
-7. **Narrative load** — seventeen written sections per pupil per term is heavy.
+7. **Narrative load** — sixteen written sections per pupil per term is heavy.
    Does the school want all of them digitised, or a reduced set?
 
 Record the answers in `docs/DECISIONS.md` and update `docs/ARCHITECTURE.md`

@@ -56,3 +56,11 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 addopts = "-ra --strict-markers"
+filterwarnings = [
+    "error",
+    # Alembic cannot read a GENERATED ALWAYS expression back out of the
+    # database to compare it, and says so once per autogenerate run. Expected:
+    # a change to result_entries.ca_test_total (R2) needs a hand-written
+    # migration, which alembic/env.py documents.
+    "ignore:Computed default on .* cannot be modified:UserWarning",
+]

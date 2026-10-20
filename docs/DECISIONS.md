@@ -238,10 +238,10 @@ the class teacher does. That is a data-model change and so is **not** being
 made until asked (CLAUDE.md rule 7).
 
 **Workload note.** This redistributes the §8.2 load rather than reducing it. A
-class teacher drops from seventeen passages per pupil to roughly fourteen, but
+class teacher drops from sixteen passages per pupil to roughly thirteen, but
 a specialist who teaches every class now writes one passage for **every pupil
 in the school** — around 500 — against a class teacher's 30 × 14. Worth putting
-to the school alongside N7 (all seventeen sections, or a reduced set?).
+to the school alongside N7 (all sixteen sections, or a reduced set?).
 
 ### B3 — No import of earlier terms
 
@@ -321,7 +321,7 @@ So these still ship as **seed rows**, exactly as the spec says:
 
 - §1.5's subject list, with English as a group over five sub-subjects
 - §1.3's seven grade bands
-- §4.6's seventeen narrative sections
+- §4.6's sixteen narrative sections
 
 And none of these may exist anywhere in the codebase:
 
@@ -563,3 +563,85 @@ fixtures `TRUNCATE` between tests instead.
 The suite runs on one event loop (`asyncio_default_test_loop_scope = "session"`)
 because the application's engine is built at import time and pools connections;
 a loop per test hands a later test a connection bound to a closed loop.
+
+---
+
+## Milestone 3 — schema and seed (2026-10-20)
+
+### D27 — The card has sixteen narrative sections, not seventeen
+
+**A correction to the specification, found while seeding.**
+
+ARCHITECTURE.md said "seventeen" in ten places and sized the teacher workload
+at 510 passages for a class of 30. Its own enumerated list in §1.4 does not
+support that:
+
+- **A — Area of Curriculum:** English Language Arts, Mathematics, Science,
+  Social Studies, Computer Skills, Art & Music, Physical Education — **7**
+- **B through J:** Work/Study Habits, Attendance/Tardiness, Attitude,
+  Classroom Behaviour, Outside Behaviour, Character Development, Peer
+  Relations, Personal Development, Performance — **9**
+
+7 + 9 = **16**. The photographs confirm it: "Area of Curriculum" is a group
+heading with no ruled lines of its own, and the nine lettered sections B–J
+each have three.
+
+The brief says the photographs win wherever they disagree with the spec, so
+sixteen it is. ARCHITECTURE.md, CARD-FINDINGS.md and the workload arithmetic
+(510 → **480** per class of 30) have all been corrected.
+
+**Why it mattered enough to chase.** R8 defines a pupil's narrative as complete
+when every active section has a body, and R10 blocks class submission until
+every pupil's narrative is complete. A hardcoded seventeen would have made
+submission unreachable — the gate would never open, with no useful explanation.
+As it happens nothing is hardcoded (§2.3): completeness counts active rows. The
+count was only ever wrong in prose.
+
+### D28 — R9's attendance invariant is enforced by two triggers
+
+§4.7 requires `times_present + times_absent = terms.times_school_opened`,
+enforced in the service layer *and* with a trigger so that no path can write a
+bad row. Postgres cannot express a cross-table CHECK, so migration 0003 adds:
+
+- **`attendance_bounds`** on `attendance_records` — rejects a row whose
+  present + absent does not equal the term's opened count, or whose present
+  exceeds it. A NULL `times_school_opened` means the admin has not set the
+  term calendar yet, so there is nothing to check and the row is allowed.
+- **`term_attendance_consistency`** on `terms` — the other direction. Changing
+  `times_school_opened` after attendance exists would leave rows the first
+  trigger forbids, so the change is refused with a count of how many records
+  would stop adding up.
+
+The second trigger is not in the spec. Without it the invariant holds only for
+new rows and rots quietly the first time an admin corrects the term calendar,
+which is a normal thing to do.
+
+A5 assumes the equality is exact. If the school allows a discrepancy, both
+triggers relax in one migration.
+
+### D29 — `subjects.is_specialist`, set in the platform
+
+Per the client's instruction that subjects are created in the platform and
+"can be flagged as a special subject". A boolean on `subjects`, not on
+`class_subjects`: a subject is specialist school-wide, not per class.
+
+A CHECK forbids a group heading from being specialist — a group holds no
+scores and so has no teacher to be a specialist.
+
+Which subjects carry the flag is the school's to set and change. The demo seed
+starts Computer, Creative Art, Physical/Health Education and French as
+specialist, purely so the §5.2 union case (a teacher who is class teacher of
+one class and subject teacher in another) exists in development data.
+
+### D30 — Seeding is idempotent and never re-asserts an edited value
+
+`app/seed/reference.py` creates the subject tree, the card's grade bands and
+the narrative sections **only when absent**. It never updates an existing row.
+
+This is §2.3 in practice: seeded values are starting points the school owns.
+Re-running the seed after an admin has renamed a subject or moved a grade
+boundary must not quietly undo their work, and a seed that upserts would do
+exactly that on the next deploy.
+
+`app/seed/demo.py` is separate and refuses to run against a database that
+already holds pupils.

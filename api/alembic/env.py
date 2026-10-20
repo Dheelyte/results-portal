@@ -34,8 +34,14 @@ if not config.get_main_option("sqlalchemy.url", None):
 target_metadata = Base.metadata
 
 # compare_type and compare_server_default are on from the first revision so
-# that milestone 3's autogenerate notices a numeric(5,2) widening or a changed
-# DEFAULT instead of silently skipping it.
+# that autogenerate notices a numeric(5,2) widening or a changed DEFAULT
+# instead of silently skipping it.
+#
+# Known limitation: Alembic cannot read a GENERATED ALWAYS expression back out
+# of the database to compare it, and warns once per run saying so. A change to
+# `result_entries.ca_test_total`'s expression (R2) is therefore NOT detected by
+# autogenerate and needs a hand-written migration. The warning is expected and
+# is filtered in pyproject.toml with this same explanation.
 _COMPARE_OPTIONS = {
     "compare_type": True,
     "compare_server_default": True,

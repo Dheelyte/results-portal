@@ -23,7 +23,11 @@ from app.main import app
 from app.models import School, User, UserRole
 from tests.conftest import TEST_PASSWORD
 
-TABLES = ("audit_log", "refresh_tokens", "users", "schools")
+# Everything tenant-scoped references schools, directly or through one hop,
+# and TRUNCATE ... CASCADE follows those references transitively. Naming the
+# root keeps this correct as tables are added, and is far faster than
+# truncating thirty tables by name before every test.
+TABLES = ("schools",)
 
 
 @pytest.fixture(autouse=True)
