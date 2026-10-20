@@ -90,6 +90,11 @@ would rather read `os.environ` directly.
 - **`compare_type` and `compare_server_default` are on from the first
   revision**, so milestone 3's autogenerate notices a changed `numeric(5,2)` or
   a changed `DEFAULT` instead of skipping it silently.
+- **A URL already set on the Alembic `Config` wins over settings.** `env.py`
+  fills in `sqlalchemy.url` from settings only when the caller has not supplied
+  one. Overriding unconditionally would send a migration aimed at a throwaway
+  test database — or at a restored backup — silently at the development
+  database instead. The migration tests depend on this, and caught it.
 - **Migrations never run at container start** (§11). `alembic upgrade head`
   stays an explicit step in both development and deployment.
 - `alembic/versions/0001_baseline.py` creates nothing. It establishes the chain
@@ -133,6 +138,22 @@ through a committed `package-lock.json`.
 
 `next.config.ts` sets `output: "standalone"` so the production image ships a
 self-contained server, and `poweredByHeader: false`.
+
+Tailwind is pinned to an exact version for both `tailwindcss` and
+`@tailwindcss/postcss`, not a caret range. Tailwind v4's work is done by a
+native `@tailwindcss/oxide` binary whose ABI tracks the release: pinning the
+plugin at 4.0.0 while npm floated oxide to 4.3.3 broke every CSS build with
+`Missing field 'negated' on ScannerOptions.sources`. Bump the two together.
+
+**Operational note.** `node_modules` lives in a named volume so the host needs
+no Node installed. Rebuilding the image does *not* refresh that volume, so
+after a change to `web/package.json`:
+
+```bash
+docker compose rm -sf web
+docker volume rm results-portal_web_node_modules results-portal_web_next_cache
+docker compose up -d --wait web
+```
 
 ### D11 — `.env.example` carries milestone-1 keys only
 
