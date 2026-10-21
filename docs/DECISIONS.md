@@ -651,3 +651,90 @@ exactly that on the next deploy.
 
 `app/seed/demo.py` is separate and refuses to run against a database that
 already holds pupils.
+
+---
+
+## Milestone 4 — authorization (2026-10-21)
+
+### D31 — Authorization is split into visibility and capability
+
+`authz/scope.py` answers *which rows may this caller see*; `authz/policy.py`
+answers *may this caller perform this action*. Two modules because the two
+questions genuinely differ, and conflating them produces the wrong answer in
+both directions.
+
+An admin sees every class-subject — they assign the teachers — and may not
+enter a single score against one. A head teacher sees every class in order to
+review it and writes no narrative. A parent sees two pupils and may do almost
+nothing with them.
+
+§5.2 also wants the two to *fail differently*. A capability denial is a 403.
+A row outside scope is a **404**, because a 403 confirms the row exists:
+
+> "A subject teacher hitting another class's results must get a 404."
+
+Scope functions therefore return a `Select` rather than a boolean, so a router
+builds its query from a filtered statement and cannot produce a 403 by
+accident.
+
+### D32 — Teacher scope comes from the tables, never from `users.role`
+
+The §5.2 matrix has separate columns for "class teacher" and "subject
+teacher". Neither is a role: both are `UserRole.TEACHER`. What separates them
+is a row in `class_teachers` or in `teaching_assignments`, and one teacher is
+routinely both in different classes.
+
+So the scoped checks take the database, and `class_ids_taught_by` is a union
+of the two routes. The specification calls this out by name — "class teacher
+of 4A and subject teacher of French in 5B gets the union of both scopes,
+nothing wider" — and it is asserted directly.
+
+The distinction has teeth:
+
+- **Score entry** is per *class-subject*. Being class teacher of 4A does not
+  grant 4A Computer; that belongs to whoever is assigned to teach it.
+- **Attendance, growth and submission** are per *class*, and only for the
+  class teacher. A specialist who teaches the class does not record its
+  attendance.
+
+### D33 — The matrix is data, and every cell is asserted
+
+`policy.ROLE_ACTIONS` is a table of role to permitted actions, shaped to read
+against §5.2 side by side. The test suite parametrises 4 roles × 14 actions
+and asserts all 56 cells, so a cell cannot go untested by omission — and a
+further test fails if an `Action` is added without a row in the expectation
+table.
+
+The pure cells live in `tests/unit/`: `policy.can` reads a role and an active
+flag and touches no database. The scoped half needs real rows and stays in
+`tests/integration/`.
+
+### D34 — A test enforces "no router composes a raw select()"
+
+§5.2 says it; `tests/unit/test_no_raw_tenant_queries.py` checks it, by walking
+the AST of every module under `routers/` for a `select()` against a
+tenant-scoped model.
+
+A convention nobody checks lasts until the first busy afternoon, and the
+failure mode here — one router that forgets `school_id` — is precisely how a
+school portal leaks another family's results. The guard was verified by
+planting a violating router and watching it fail; a scan that passes
+vacuously is worse than no scan.
+
+A companion test fails if a new tenant table is added without being listed, so
+the scan's coverage cannot quietly shrink.
+
+### D35 — Test cleanup uses DELETE, not TRUNCATE
+
+Measured, not assumed. Across this schema `TRUNCATE ... CASCADE` costs about
+**650ms** per call — it rewrites each table's file and fsyncs — against about
+**19ms** for a DELETE over the same, nearly always empty, tables. At one call
+per test that was the difference between a three-minute suite and a
+one-minute one.
+
+The delete order is derived from `Base.metadata.sorted_tables` reversed, so a
+table added in a later milestone is cleaned without anyone remembering to add
+it to a list.
+
+This does not revisit D26: cleanup is still between tests rather than a
+rolled-back transaction, because the auth rules commit on purpose.
