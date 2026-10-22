@@ -62,7 +62,7 @@ CARD_GRADE_BANDS = (
 CARD_SCALE_NAME = "Card scale (seven bands)"
 
 # --- Narrative sections (§1.4, §4.6) --------------------------------------
-# Seventeen in card order: seven curriculum areas under "Area of Curriculum",
+# Sixteen in card order: seven curriculum areas under "Area of Curriculum",
 # then B through J. N7 may reduce this; `is_active` handles that without a
 # migration.
 CURRICULUM_AREA = "Area of Curriculum"
@@ -160,7 +160,7 @@ async def seed_grading_scale(session: AsyncSession, school_id: uuid.UUID) -> int
 
 
 async def seed_narrative_sections(session: AsyncSession, school_id: uuid.UUID) -> int:
-    """Create the seventeen sections if absent."""
+    """Create the sixteen sections if absent (7 + 9 — see D27)."""
     existing = set(
         (
             await session.execute(

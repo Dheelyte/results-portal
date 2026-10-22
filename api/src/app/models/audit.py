@@ -34,7 +34,34 @@ class AuditAction(str):
     TOKEN_REUSE_DETECTED = "token.reuse_detected"
     PASSWORD_CHANGED = "password.changed"
     USER_CREATED = "user.created"
+    PASSWORD_RESET = "password.reset"
     SCHOOL_CREATED = "school.created"
+
+    # Setup (milestone 5). §4.9 requires a row for every grading-scale and
+    # marks-obtainable change; the rest of the setup surface is audited on the
+    # same terms, because "who changed the current term" is the first question
+    # asked when a class of results goes missing (docs/DECISIONS.md D40).
+    SESSION_CREATED = "academic_session.created"
+    SESSION_MADE_CURRENT = "academic_session.made_current"
+    TERM_CREATED = "term.created"
+    TERM_UPDATED = "term.updated"
+    TERM_MADE_CURRENT = "term.made_current"
+    ASSESSMENT_PERIOD_SAVED = "assessment_period.saved"
+    MARKS_OBTAINABLE_SAVED = "marks_obtainable.saved"
+    CLASS_CREATED = "class.created"
+    HOUSE_CREATED = "house.created"
+    SUBJECT_CREATED = "subject.created"
+    SUBJECT_UPDATED = "subject.updated"
+    CLASS_SUBJECTS_SET = "class_subjects.set"
+    CLASS_SUBJECT_TEACHER_SET = "class_subject.teacher_set"
+    CLASS_TEACHER_SET = "class.class_teacher_set"
+    PUPIL_CREATED = "pupil.created"
+    GUARDIAN_CHILDREN_SET = "guardian.children_set"
+    GRADING_SCALE_CREATED = "grading_scale.created"
+    GRADING_SCALE_ACTIVATED = "grading_scale.activated"
+    NARRATIVE_SECTIONS_SAVED = "narrative_sections.saved"
+    NARRATIVE_ASSIGNMENTS_SET = "narrative_assignments.set"
+    COMMENT_BANK_ENTRY_CREATED = "comment_bank.created"
 
 
 class AuditLog(Base):

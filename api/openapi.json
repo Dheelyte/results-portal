@@ -1,6 +1,239 @@
 {
   "components": {
     "schemas": {
+      "AcademicSessionCreate": {
+        "properties": {
+          "ends_on": {
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "is_current": {
+            "default": false,
+            "description": "Make this the current session, demoting any other. Everything a teacher or parent sees is scoped to the current session.",
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "As the school writes it, e.g. 2026/2027.",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "starts_on",
+          "ends_on"
+        ],
+        "title": "AcademicSessionCreate",
+        "type": "object"
+      },
+      "AcademicSessionRead": {
+        "properties": {
+          "ends_on": {
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "starts_on",
+          "ends_on",
+          "is_current"
+        ],
+        "title": "AcademicSessionRead",
+        "type": "object"
+      },
+      "AccountRead": {
+        "description": "An account as an admin sees it. Never carries the password hash.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_login_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Login At"
+          },
+          "must_change_password": {
+            "title": "Must Change Password",
+            "type": "boolean"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "full_name",
+          "email",
+          "phone",
+          "must_change_password",
+          "is_active",
+          "last_login_at",
+          "created_at"
+        ],
+        "title": "AccountRead",
+        "type": "object"
+      },
+      "AssessmentPeriodRead": {
+        "properties": {
+          "closes_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes On"
+          },
+          "half": {
+            "$ref": "#/components/schemas/TermHalf"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opens_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opens On"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "term_id",
+          "half",
+          "opens_on",
+          "closes_on"
+        ],
+        "title": "AssessmentPeriodRead",
+        "type": "object"
+      },
+      "AssessmentPeriodSave": {
+        "properties": {
+          "closes_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes On"
+          },
+          "half": {
+            "$ref": "#/components/schemas/TermHalf"
+          },
+          "opens_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opens On"
+          }
+        },
+        "required": [
+          "half"
+        ],
+        "title": "AssessmentPeriodSave",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -23,6 +256,663 @@
         "title": "ChangePasswordRequest",
         "type": "object"
       },
+      "ChecklistItemRead": {
+        "properties": {
+          "blocking": {
+            "description": "A blocking item stops teachers working at all. An advisory one is a real gap that work can start without.",
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outstanding": {
+            "description": "What is missing, named \u2014 the classes with no teacher, and so on.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Outstanding",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "done",
+          "blocking",
+          "detail"
+        ],
+        "title": "ChecklistItemRead",
+        "type": "object"
+      },
+      "ChecklistRead": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "academic_session_name": {
+            "title": "Academic Session Name",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ready": {
+            "description": "True when every blocking item is done.",
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "term_label": {
+            "title": "Term Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "term_id",
+          "term_label",
+          "academic_session_id",
+          "academic_session_name",
+          "ready",
+          "items"
+        ],
+        "title": "ChecklistRead",
+        "type": "object"
+      },
+      "ClassCreate": {
+        "properties": {
+          "level_order": {
+            "description": "Display order only. Never a rank of pupils (R11).",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Level Order",
+            "type": "integer"
+          },
+          "name": {
+            "description": "As the school names it, e.g. Primary 4.",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "level_order"
+        ],
+        "title": "ClassCreate",
+        "type": "object"
+      },
+      "ClassRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "level_order": {
+            "title": "Level Order",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "level_order",
+          "is_active"
+        ],
+        "title": "ClassRead",
+        "type": "object"
+      },
+      "ClassSubjectRead": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "class_id",
+          "subject_id",
+          "academic_session_id",
+          "display_order"
+        ],
+        "title": "ClassSubjectRead",
+        "type": "object"
+      },
+      "ClassSubjectsSave": {
+        "description": "The complete set of subjects a class is taught this session.",
+        "properties": {
+          "academic_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the school's current session.",
+            "title": "Academic Session Id"
+          },
+          "subject_ids": {
+            "description": "Replaces the class's current list. Group headings are rejected (R7).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Subject Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "subject_ids"
+        ],
+        "title": "ClassSubjectsSave",
+        "type": "object"
+      },
+      "ClassTeacherRead": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "teacher_user_id": {
+            "format": "uuid",
+            "title": "Teacher User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "class_id",
+          "academic_session_id",
+          "teacher_user_id"
+        ],
+        "title": "ClassTeacherRead",
+        "type": "object"
+      },
+      "ClassTeacherSave": {
+        "properties": {
+          "academic_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Session Id"
+          },
+          "teacher_user_id": {
+            "format": "uuid",
+            "title": "Teacher User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teacher_user_id"
+        ],
+        "title": "ClassTeacherSave",
+        "type": "object"
+      },
+      "CommentCreate": {
+        "properties": {
+          "scope": {
+            "description": "A narrative section's code, or 'class_teacher' or 'head_teacher' for the card's footer comments.",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Scope",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "text"
+        ],
+        "title": "CommentCreate",
+        "type": "object"
+      },
+      "CommentRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "text",
+          "is_active"
+        ],
+        "title": "CommentRead",
+        "type": "object"
+      },
+      "CreatedAccountRead": {
+        "description": "A new or reset account, with its temporary password.\n\nThe password is shown **once**, here. It is not stored in readable form,\nnot logged and not audited, so if it is lost the only route is another\nreset. Pass it to the account holder out of band; they must change it\nbefore the portal will let them do anything else.",
+        "properties": {
+          "temporary_password": {
+            "title": "Temporary Password",
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AccountRead"
+          }
+        },
+        "required": [
+          "user",
+          "temporary_password"
+        ],
+        "title": "CreatedAccountRead",
+        "type": "object"
+      },
+      "EnrollmentRead": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "joined_on": {
+            "format": "date",
+            "title": "Joined On",
+            "type": "string"
+          },
+          "left_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left On"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "pupil_id",
+          "class_id",
+          "academic_session_id",
+          "joined_on",
+          "left_on",
+          "status"
+        ],
+        "title": "EnrollmentRead",
+        "type": "object"
+      },
+      "EnrollmentSave": {
+        "properties": {
+          "academic_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Session Id"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "joined_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Joined On"
+          }
+        },
+        "required": [
+          "class_id"
+        ],
+        "title": "EnrollmentSave",
+        "type": "object"
+      },
+      "GradeBandRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "letter": {
+            "title": "Letter",
+            "type": "string"
+          },
+          "max_score": {
+            "title": "Max Score",
+            "type": "string"
+          },
+          "min_score": {
+            "title": "Min Score",
+            "type": "string"
+          },
+          "remark": {
+            "title": "Remark",
+            "type": "string"
+          },
+          "sort_order": {
+            "title": "Sort Order",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "letter",
+          "remark",
+          "min_score",
+          "max_score",
+          "sort_order"
+        ],
+        "title": "GradeBandRead",
+        "type": "object"
+      },
+      "GradeBandWrite": {
+        "properties": {
+          "letter": {
+            "examples": [
+              "A+"
+            ],
+            "maxLength": 10,
+            "minLength": 1,
+            "title": "Letter",
+            "type": "string"
+          },
+          "max_score": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max Score"
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Min Score"
+          },
+          "remark": {
+            "examples": [
+              "Excellence"
+            ],
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Remark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "letter",
+          "remark",
+          "min_score",
+          "max_score"
+        ],
+        "title": "GradeBandWrite",
+        "type": "object"
+      },
+      "GradingScaleCreate": {
+        "properties": {
+          "activate": {
+            "default": false,
+            "description": "Make this the active scale, deactivating any other.",
+            "title": "Activate",
+            "type": "boolean"
+          },
+          "bands": {
+            "description": "Must not overlap and must cover every mark from 0 to 100, so that every average resolves to exactly one grade.",
+            "items": {
+              "$ref": "#/components/schemas/GradeBandWrite"
+            },
+            "minItems": 1,
+            "title": "Bands",
+            "type": "array"
+          },
+          "effective_from": {
+            "format": "date",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "name": {
+            "examples": [
+              "Card scale (seven bands)"
+            ],
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "effective_from",
+          "bands"
+        ],
+        "title": "GradingScaleCreate",
+        "type": "object"
+      },
+      "GradingScaleRead": {
+        "properties": {
+          "bands": {
+            "items": {
+              "$ref": "#/components/schemas/GradeBandRead"
+            },
+            "title": "Bands",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "effective_from": {
+            "format": "date",
+            "title": "Effective From",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "effective_from",
+          "is_active",
+          "created_at"
+        ],
+        "title": "GradingScaleRead",
+        "type": "object"
+      },
+      "GuardianChild": {
+        "properties": {
+          "is_primary": {
+            "default": false,
+            "title": "Is Primary",
+            "type": "boolean"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "relationship": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "Mother"
+            ],
+            "title": "Relationship"
+          }
+        },
+        "required": [
+          "pupil_id"
+        ],
+        "title": "GuardianChild",
+        "type": "object"
+      },
+      "GuardianChildrenSave": {
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GuardianChild"
+            },
+            "minItems": 1,
+            "title": "Children",
+            "type": "array"
+          }
+        },
+        "required": [
+          "children"
+        ],
+        "title": "GuardianChildrenSave",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -34,6 +924,40 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HouseCreate": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "HouseCreate",
+        "type": "object"
+      },
+      "HouseRead": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "HouseRead",
         "type": "object"
       },
       "LoginRequest": {
@@ -60,6 +984,250 @@
         "title": "LoginRequest",
         "type": "object"
       },
+      "MarksObtainableRead": {
+        "properties": {
+          "assessment_period_id": {
+            "format": "uuid",
+            "title": "Assessment Period Id",
+            "type": "string"
+          },
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "class_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Id"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          }
+        },
+        "required": [
+          "id",
+          "assessment_period_id",
+          "class_id",
+          "ca_test_1",
+          "ca_test_2",
+          "ca_test_3",
+          "ca_test_4",
+          "ca_test_5",
+          "mid_term_test",
+          "exam"
+        ],
+        "title": "MarksObtainableRead",
+        "type": "object"
+      },
+      "MarksObtainableSave": {
+        "description": "One sheet's column maxima.\n\n`class_id = null` sets the school-wide row. A class's own row overrides it\nentirely for that class \u2014 R1 resolves \"per-class row if present, otherwise\nthe school-wide row\", so there is no partial override.\n\nThe sheet's own columns only: the first-half sheet has Mid Term Test and\nno Exam, the second-half sheet the reverse (\u00a71.2).",
+        "properties": {
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "class_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null for every class; a class id to override one class.",
+            "title": "Class Id"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Second half term only.",
+            "title": "Exam"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "First half term only.",
+            "title": "Mid Term Test"
+          }
+        },
+        "title": "MarksObtainableSave",
+        "type": "object"
+      },
       "MessageResponse": {
         "properties": {
           "detail": {
@@ -71,6 +1239,920 @@
           "detail"
         ],
         "title": "MessageResponse",
+        "type": "object"
+      },
+      "NarrativeAssignment": {
+        "properties": {
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "teacher_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null clears the assignment, which hands the section back to the class teacher \u2014 that is the default, not nobody (D15).",
+            "title": "Teacher User Id"
+          }
+        },
+        "required": [
+          "section_id"
+        ],
+        "title": "NarrativeAssignment",
+        "type": "object"
+      },
+      "NarrativeAssignmentRead": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "teacher_user_id": {
+            "format": "uuid",
+            "title": "Teacher User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "class_id",
+          "section_id",
+          "academic_session_id",
+          "teacher_user_id"
+        ],
+        "title": "NarrativeAssignmentRead",
+        "type": "object"
+      },
+      "NarrativeAssignmentsSave": {
+        "properties": {
+          "academic_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Session Id"
+          },
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/NarrativeAssignment"
+            },
+            "minItems": 1,
+            "title": "Assignments",
+            "type": "array"
+          }
+        },
+        "required": [
+          "assignments"
+        ],
+        "title": "NarrativeAssignmentsSave",
+        "type": "object"
+      },
+      "NarrativeSectionRead": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Label"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "label",
+          "group_label",
+          "display_order",
+          "is_active"
+        ],
+        "title": "NarrativeSectionRead",
+        "type": "object"
+      },
+      "NarrativeSectionSave": {
+        "properties": {
+          "code": {
+            "examples": [
+              "A.english_language_arts"
+            ],
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "display_order": {
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "examples": [
+              "Area of Curriculum"
+            ],
+            "title": "Group Label"
+          },
+          "is_active": {
+            "default": true,
+            "description": "Retire a section rather than deleting it; past cards still cite it.",
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "label": {
+            "examples": [
+              "English Language Arts"
+            ],
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "display_order"
+        ],
+        "title": "NarrativeSectionSave",
+        "type": "object"
+      },
+      "NarrativeSectionsSave": {
+        "properties": {
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/NarrativeSectionSave"
+            },
+            "minItems": 1,
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sections"
+        ],
+        "title": "NarrativeSectionsSave",
+        "type": "object"
+      },
+      "PupilCreate": {
+        "properties": {
+          "academic_session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the school's current session.",
+            "title": "Academic Session Id"
+          },
+          "admission_number": {
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "class_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Enrol the pupil into this class at the same time. Optional, but a pupil with no enrolment appears in no class list and gets no report.",
+            "title": "Class Id"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "first_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "house_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Id"
+          },
+          "joined_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the session's start date.",
+            "title": "Joined On"
+          },
+          "last_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "enum": [
+                  "M",
+                  "F"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "As the card records it.",
+            "title": "Sex"
+          }
+        },
+        "required": [
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "PupilCreate",
+        "type": "object"
+      },
+      "PupilPageRead": {
+        "description": "A page of the roll. Paged because the school has roughly 500 pupils.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PupilRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "PupilPageRead",
+        "type": "object"
+      },
+      "PupilRead": {
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "house_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          }
+        },
+        "required": [
+          "id",
+          "admission_number",
+          "first_name",
+          "middle_name",
+          "last_name",
+          "sex",
+          "date_of_birth",
+          "house_id",
+          "is_active"
+        ],
+        "title": "PupilRead",
+        "type": "object"
+      },
+      "SubjectCreate": {
+        "properties": {
+          "display_order": {
+            "default": 0,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "is_group": {
+            "default": false,
+            "description": "A heading that prints on the card and carries no scores (R7). A group can never be offered to a class.",
+            "title": "Is Group",
+            "type": "boolean"
+          },
+          "is_specialist": {
+            "default": false,
+            "description": "Taught by a specialist rather than the class teacher. The school sets this; nothing is hardcoded (\u00a72.3).",
+            "title": "Is Specialist",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The group heading this sits under. English is the only one on the card.",
+            "title": "Parent Subject Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SubjectCreate",
+        "type": "object"
+      },
+      "SubjectRead": {
+        "properties": {
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "is_group": {
+            "title": "Is Group",
+            "type": "boolean"
+          },
+          "is_specialist": {
+            "title": "Is Specialist",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Subject Id"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "parent_subject_id",
+          "is_group",
+          "is_specialist",
+          "display_order",
+          "is_active"
+        ],
+        "title": "SubjectRead",
+        "type": "object"
+      },
+      "SubjectUpdate": {
+        "properties": {
+          "display_order": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Order"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Retire a subject rather than deleting it; past cards still cite it.",
+            "title": "Is Active"
+          },
+          "is_group": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Group"
+          },
+          "is_specialist": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Specialist"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "parent_subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Subject Id"
+          }
+        },
+        "title": "SubjectUpdate",
+        "type": "object"
+      },
+      "TeacherAssignmentSave": {
+        "properties": {
+          "teacher_user_id": {
+            "format": "uuid",
+            "title": "Teacher User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "teacher_user_id"
+        ],
+        "title": "TeacherAssignmentSave",
+        "type": "object"
+      },
+      "TeachingAssignmentRead": {
+        "properties": {
+          "class_subject_id": {
+            "format": "uuid",
+            "title": "Class Subject Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "teacher_user_id": {
+            "format": "uuid",
+            "title": "Teacher User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "class_subject_id",
+          "teacher_user_id"
+        ],
+        "title": "TeachingAssignmentRead",
+        "type": "object"
+      },
+      "TermCreate": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "card_return_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prints as \"return this card to the School on \u2026\".",
+            "title": "Card Return On"
+          },
+          "ends_on": {
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "is_current": {
+            "default": false,
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "next_resumption_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Resumption On"
+          },
+          "number": {
+            "$ref": "#/components/schemas/TermNumber"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "R9 measures attendance against this. Can be filled in later.",
+            "title": "Times School Opened"
+          }
+        },
+        "required": [
+          "academic_session_id",
+          "number",
+          "starts_on",
+          "ends_on"
+        ],
+        "title": "TermCreate",
+        "type": "object"
+      },
+      "TermHalf": {
+        "description": "Two assessment sheets per term.\n\n\"The single most important structural fact about this system\" (\u00a71.1): each\nhalf term produces its own sheet with its own columns.",
+        "enum": [
+          "first_half",
+          "second_half"
+        ],
+        "title": "TermHalf",
+        "type": "string"
+      },
+      "TermNumber": {
+        "enum": [
+          "first",
+          "second",
+          "third"
+        ],
+        "title": "TermNumber",
+        "type": "string"
+      },
+      "TermRead": {
+        "properties": {
+          "academic_session_id": {
+            "format": "uuid",
+            "title": "Academic Session Id",
+            "type": "string"
+          },
+          "card_return_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Return On"
+          },
+          "ends_on": {
+            "format": "date",
+            "title": "Ends On",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "next_resumption_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Resumption On"
+          },
+          "number": {
+            "$ref": "#/components/schemas/TermNumber"
+          },
+          "starts_on": {
+            "format": "date",
+            "title": "Starts On",
+            "type": "string"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          }
+        },
+        "required": [
+          "id",
+          "academic_session_id",
+          "number",
+          "starts_on",
+          "ends_on",
+          "times_school_opened",
+          "next_resumption_on",
+          "card_return_on",
+          "is_current"
+        ],
+        "title": "TermRead",
+        "type": "object"
+      },
+      "TermUpdate": {
+        "description": "Every field optional; only what is sent is changed.",
+        "properties": {
+          "card_return_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Return On"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "is_current": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Current"
+          },
+          "next_resumption_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Resumption On"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          }
+        },
+        "title": "TermUpdate",
         "type": "object"
       },
       "TokenResponse": {
@@ -100,6 +2182,51 @@
           "user"
         ],
         "title": "TokenResponse",
+        "type": "object"
+      },
+      "UserCreate": {
+        "description": "\u00a75.1: accounts are admin-created. There is no self-registration.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Either an email address or a phone number is required \u2014 many parents' email addresses are inactive, and both sign in against one password (A7).",
+            "title": "Phone"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        },
+        "required": [
+          "role",
+          "full_name"
+        ],
+        "title": "UserCreate",
         "type": "object"
       },
       "UserRead": {
@@ -227,6 +2354,116 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/assessment-periods/{assessment_period_id}/marks-obtainable": {
+      "get": {
+        "description": "The school-wide row first, then any per-class overrides.",
+        "operationId": "list_marks_obtainable_api_v1_assessment_periods__assessment_period_id__marks_obtainable_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_period_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Period Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MarksObtainableRead"
+                  },
+                  "title": "Response List Marks Obtainable Api V1 Assessment Periods  Assessment Period Id  Marks Obtainable Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A sheet's column maxima",
+        "tags": [
+          "admin: academic structure"
+        ]
+      },
+      "put": {
+        "description": "Set what each column on one sheet is out of.\n\nThe card's \"Marks Obtainable\" row. R1 validates every score against these\nnumbers and names the applicable maximum when it refuses one, so until\nthey are set no score entry is really being checked.\n\n**N2 is unanswered.** The row is blank on both photographed cards, so only\nthe school can supply these figures; nothing in the system defaults them.",
+        "operationId": "save_marks_obtainable_api_v1_assessment_periods__assessment_period_id__marks_obtainable_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_period_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Assessment Period Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarksObtainableSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarksObtainableRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set a sheet's column maxima",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
     "/api/v1/auth/change-password": {
       "post": {
         "description": "Change the signed-in user's password.\n\nDepends on `CurrentUser`, not `ActiveUser`: a user who must change their\npassword has to be able to reach this endpoint, and only this one.\n\nEvery existing session is revoked, so the caller signs in again.",
@@ -440,6 +2677,2047 @@
         "summary": "Rotate the session",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/class-subjects/{class_subject_id}/teacher": {
+      "put": {
+        "description": "One teacher per class-subject (\u00a74.3).\n\n\u00a75.2 limits score entry to \"own class-subjects\", so this is the record\nthat decides who can fill the sheet in \u2014 being class teacher of the class\nis not enough.",
+        "operationId": "set_class_subject_teacher_api_v1_class_subjects__class_subject_id__teacher_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeacherAssignmentSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TeachingAssignmentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign the teacher who enters scores",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/classes": {
+      "get": {
+        "operationId": "list_classes_api_v1_classes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassRead"
+                  },
+                  "title": "Response List Classes Api V1 Classes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List classes",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
+      "post": {
+        "operationId": "create_class_api_v1_classes_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a class",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/class-teacher": {
+      "put": {
+        "description": "The most consequential assignment in setup.\n\n\u00a75.2 hands this person the narrative sections, attendance, growth, the\nclass teacher's comment and the submission gate for every pupil in the\nclass.",
+        "operationId": "set_class_teacher_api_v1_classes__class_id__class_teacher_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassTeacherSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassTeacherRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign a class teacher",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/narrative-assignments": {
+      "get": {
+        "description": "Only the explicit assignments.\n\nA section with no row here is written by the class teacher \u2014 that is the\ndefault by D15, not an omission, which is why the list is usually short.",
+        "operationId": "list_narrative_assignments_api_v1_classes__class_id__narrative_assignments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academic_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NarrativeAssignmentRead"
+                  },
+                  "title": "Response List Narrative Assignments Api V1 Classes  Class Id  Narrative Assignments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Who writes which section for this class",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      },
+      "put": {
+        "description": "Hand named sections of this class's card to named teachers (B1, D15).\n\nA specialist writes their own curriculum area; the class teacher writes\neverything else. A `teacher_user_id` of null clears an assignment, which\nhands that section back to the class teacher.\n\nNot in \u00a77's list, which predates B1 being answered (docs/DECISIONS.md\nD37).",
+        "operationId": "set_narrative_assignments_api_v1_classes__class_id__narrative_assignments_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NarrativeAssignmentsSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NarrativeAssignmentRead"
+                  },
+                  "title": "Response Set Narrative Assignments Api V1 Classes  Class Id  Narrative Assignments Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Assign narrative sections to teachers",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/subjects": {
+      "get": {
+        "operationId": "list_class_subjects_api_v1_classes__class_id__subjects_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academic_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSubjectRead"
+                  },
+                  "title": "Response List Class Subjects Api V1 Classes  Class Id  Subjects Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A class's subject list",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
+      "put": {
+        "description": "Replace the whole set of subjects this class is taught.\n\nA group heading is refused (R7) \u2014 English prints as a heading over its\nfive sub-subjects and carries no scores of its own. A subject that already\nhas scores entered cannot be removed; retire it instead, so the record\nsurvives.",
+        "operationId": "set_class_subjects_api_v1_classes__class_id__subjects_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassSubjectsSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ClassSubjectRead"
+                  },
+                  "title": "Response Set Class Subjects Api V1 Classes  Class Id  Subjects Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set a class's subject list",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/comment-bank": {
+      "get": {
+        "operationId": "list_comments_api_v1_comment_bank_get",
+        "parameters": [
+          {
+            "description": "A narrative section code, 'class_teacher' or 'head_teacher'.",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A narrative section code, 'class_teacher' or 'head_teacher'.",
+              "title": "Scope"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CommentRead"
+                  },
+                  "title": "Response List Comments Api V1 Comment Bank Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List phrases",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      },
+      "post": {
+        "description": "Add a phrase, scoped to one section or to a footer comment.\n\n\u00a74.6 treats this as core, not optional: a class of thirty needs 480\nwritten passages a term from one class teacher, and without a phrase bank\nthis is the feature that gets abandoned first.",
+        "operationId": "create_comment_api_v1_comment_bank_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add a phrase",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
+    "/api/v1/grading-scales": {
+      "get": {
+        "description": "Every scale the school has used, active one first.\n\nOld scales are kept because \u00a74.5 requires it: a card printed last term\nmust still agree with the portal, and its grades were resolved from the\nscale in force then.",
+        "operationId": "list_grading_scales_api_v1_grading_scales_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GradingScaleRead"
+                  },
+                  "title": "Response List Grading Scales Api V1 Grading Scales Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List grading scales",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      },
+      "post": {
+        "description": "Create a new version of the grading scale.\n\nBands must not overlap and must cover every mark from 0 to 100, so that\nevery average resolves to exactly one grade.\n\n**N1 is unanswered**: the card prints seven bands with plus grades, the\nSeptember requirements described six without. The school's answer arrives\nas a new scale here, never as an edit to an existing one \u2014 grades already\nsnapshotted onto approved results are not touched (CLAUDE.md rule 6).",
+        "operationId": "create_grading_scale_api_v1_grading_scales_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GradingScaleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradingScaleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a grading scale",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
+    "/api/v1/grading-scales/{scale_id}/activate": {
+      "post": {
+        "description": "Switch which scale new grades resolve from.\n\nNot in \u00a77's list. Switching between versions is the point of versioning\nthem, and answering N1 means saying \"use this one from now on\"\n(docs/DECISIONS.md D37).",
+        "operationId": "activate_grading_scale_api_v1_grading_scales__scale_id__activate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scale_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scale Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GradingScaleRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Make a grading scale active",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
+    "/api/v1/guardians/{guardian_user_id}/children": {
+      "get": {
+        "operationId": "list_children_api_v1_guardians__guardian_user_id__children_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "guardian_user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Guardian User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PupilRead"
+                  },
+                  "title": "Response List Children Api V1 Guardians  Guardian User Id  Children Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A parent's children",
+        "tags": [
+          "admin: people"
+        ]
+      },
+      "post": {
+        "description": "Attach pupils to a parent account.\n\nThis is the link \u00a75.2's most important filter rests on: a parent sees\nexactly the pupils named here. Additive, so adding a second child later\ndoes not detach the first.",
+        "operationId": "link_children_api_v1_guardians__guardian_user_id__children_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "guardian_user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Guardian User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuardianChildrenSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PupilRead"
+                  },
+                  "title": "Response Link Children Api V1 Guardians  Guardian User Id  Children Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Attach children to a parent account",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/houses": {
+      "get": {
+        "operationId": "list_houses_api_v1_houses_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HouseRead"
+                  },
+                  "title": "Response List Houses Api V1 Houses Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List houses",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
+      "post": {
+        "operationId": "create_house_api_v1_houses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HouseCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a house",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/narrative-sections": {
+      "get": {
+        "description": "The sixteen sections of \u00a71.4, in card order.\n\nSeven curriculum areas under \"Area of Curriculum\", then B through J.",
+        "operationId": "list_narrative_sections_api_v1_narrative_sections_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NarrativeSectionRead"
+                  },
+                  "title": "Response List Narrative Sections Api V1 Narrative Sections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The card's narrative sections",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      },
+      "put": {
+        "description": "Relabel, reorder, add or retire sections, keyed on `code`.\n\nA section is retired with `is_active = false`, never deleted: a term's\nwritten passages point at it and last term's card must keep saying what it\nsaid. N7 may yet reduce the sixteen, and this is how.",
+        "operationId": "save_narrative_sections_api_v1_narrative_sections_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NarrativeSectionsSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NarrativeSectionRead"
+                  },
+                  "title": "Response Save Narrative Sections Api V1 Narrative Sections Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit the narrative sections",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
+    "/api/v1/pupils": {
+      "get": {
+        "description": "A page of the roll, filterable by class and searchable by name or number.",
+        "operationId": "list_pupils_api_v1_pupils_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "class_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Class Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academic_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Session Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilPageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List pupils",
+        "tags": [
+          "admin: people"
+        ]
+      },
+      "post": {
+        "operationId": "create_pupil_api_v1_pupils_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PupilCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add a pupil",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/pupils/{pupil_id}/enrollment": {
+      "put": {
+        "description": "Enrol a pupil, or move them to another class this session.\n\nNot in \u00a77's list, which assumed enrolment always happened alongside pupil\ncreation. A roll typed in before the classes were settled needs placing,\nand pupils do change class mid-year (docs/DECISIONS.md D37).",
+        "operationId": "set_enrollment_api_v1_pupils__pupil_id__enrollment_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnrollmentSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnrollmentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Place a pupil in a class",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/sessions": {
+      "get": {
+        "operationId": "list_sessions_api_v1_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AcademicSessionRead"
+                  },
+                  "title": "Response List Sessions Api V1 Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List sessions",
+        "tags": [
+          "admin: academic structure"
+        ]
+      },
+      "post": {
+        "operationId": "create_session_api_v1_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicSessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a session",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/sessions/{session_id}/current": {
+      "post": {
+        "description": "Switch the school into another academic year.\n\nNot in \u00a77's list, which has only GET and POST for sessions. \u00a72.3 requires\nthe active session to be set in the platform rather than derived from the\nclock, so the verb has to exist somewhere (docs/DECISIONS.md D37).",
+        "operationId": "make_session_current_api_v1_sessions__session_id__current_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Make a session the current one",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/setup-checklist": {
+      "get": {
+        "description": "Everything standing between this term and a teacher entering a score.\n\n`ready` is true when every **blocking** item is done. Advisory items \u2014 an\nempty phrase bank, a parent account with no child attached \u2014 are real gaps\nthat score entry can start without, and they are reported rather than\nenforced.\n\nEach item names what is outstanding, by class and by subject. \"Setup\nincomplete\" with no list generates a support call every term.",
+        "operationId": "setup_checklist_api_v1_setup_checklist_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChecklistRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Is this term ready?",
+        "tags": [
+          "admin: setup"
+        ]
+      }
+    },
+    "/api/v1/subjects": {
+      "get": {
+        "description": "The subject tree in display order, group headings included.",
+        "operationId": "list_subjects_api_v1_subjects_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SubjectRead"
+                  },
+                  "title": "Response List Subjects Api V1 Subjects Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List subjects",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
+      "post": {
+        "operationId": "create_subject_api_v1_subjects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a subject",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/subjects/{subject_id}": {
+      "patch": {
+        "description": "Rename, reorder, retire or regroup a subject.\n\nNot in \u00a77's list, which has only GET and POST. \u00a71.5 requires it: \"the list\nmust be admin-editable and the display order must be configurable\", and\nthe card leaves blank rows for additions (docs/DECISIONS.md D37).",
+        "operationId": "update_subject_api_v1_subjects__subject_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubjectUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubjectRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a subject",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/terms": {
+      "get": {
+        "operationId": "list_terms_api_v1_terms_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "academic_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TermRead"
+                  },
+                  "title": "Response List Terms Api V1 Terms Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List terms",
+        "tags": [
+          "admin: academic structure"
+        ]
+      },
+      "post": {
+        "description": "Create a term. Both assessment periods are created with it.\n\n\u00a71.1 states the two halves as a fact about the domain, not an option, so a\nterm can never exist with nowhere to enter scores.",
+        "operationId": "create_term_api_v1_terms_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create a term and its two half terms",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/terms/{term_id}": {
+      "patch": {
+        "description": "Change a term's dates or its calendar figures.\n\n`times_school_opened` is why this exists: R9 measures every pupil's\nattendance against it and it is rarely known on the day a term is created.",
+        "operationId": "update_term_api_v1_terms__term_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a term",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/terms/{term_id}/assessment-periods": {
+      "get": {
+        "operationId": "list_assessment_periods_api_v1_terms__term_id__assessment_periods_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AssessmentPeriodRead"
+                  },
+                  "title": "Response List Assessment Periods Api V1 Terms  Term Id  Assessment Periods Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The term's two half terms",
+        "tags": [
+          "admin: academic structure"
+        ]
+      },
+      "post": {
+        "description": "Set the opening and closing dates of one half term.\n\nAn upsert keyed on `half`: `POST /terms` already created both rows, so the\nonly thing this can mean is \"these are the dates\". 201 if a row had to be\ncreated, 200 if an existing one was updated.",
+        "operationId": "save_assessment_period_api_v1_terms__term_id__assessment_periods_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessmentPeriodSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentPeriodRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Set a half term's window",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/terms/{term_id}/current": {
+      "post": {
+        "operationId": "make_term_current_api_v1_terms__term_id__current_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TermRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Make a term the current one",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "operationId": "list_users_api_v1_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/UserRole"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Role"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_inactive",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Include Inactive",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AccountRead"
+                  },
+                  "title": "Response List Users Api V1 Users Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List accounts",
+        "tags": [
+          "admin: people"
+        ]
+      },
+      "post": {
+        "description": "Create an account and return its temporary password **once**.\n\n\u00a75.1: accounts are admin-created and never self-registered. The temporary\npassword is shown here and nowhere else \u2014 it is not stored readably, not\nlogged and not audited. The holder must change it before the portal will\nlet them do anything else.",
+        "operationId": "create_user_api_v1_users_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAccountRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create an account",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/reset-password": {
+      "post": {
+        "description": "Issue a fresh temporary password and revoke every live session.\n\nWhat an admin does when a parent's phone is lost or a password has been\npassed around. Audited, as \u00a74.9 requires of every reset.",
+        "operationId": "reset_password_api_v1_users__user_id__reset_password_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedAccountRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reset someone's password",
+        "tags": [
+          "admin: people"
         ]
       }
     },

@@ -51,7 +51,16 @@ async def clean_database() -> AsyncIterator[None]:
 
 
 @pytest.fixture
-async def session() -> AsyncIterator[AsyncSession]:
+async def session(clean_database: None) -> AsyncIterator[AsyncSession]:
+    """A session for test setup.
+
+    Depends on `clean_database` explicitly even though that fixture is
+    autouse. Autouse ordering against a requested fixture chain is not
+    guaranteed in every case, and when it lost the race the wipe landed
+    *between* a user being committed and that user logging in — which
+    presented as an intermittent 401 in fixture setup rather than as anything
+    resembling its cause. Naming the dependency makes the order a fact.
+    """
     async with SessionLocal() as db_session:
         yield db_session
 
@@ -363,3 +372,26 @@ async def world(session: AsyncSession, school, password_hash: str):
         pupils=pupils,
         reports=reports,
     )
+
+
+@pytest.fixture
+async def headers_for(login):
+    """Sign a user in and return their Authorization header.
+
+    Goes through the real login endpoint rather than minting a token directly,
+    so every authorization test also exercises the path a browser takes.
+    """
+
+    async def _headers(user: User, password: str = TEST_PASSWORD) -> dict[str, str]:
+        response = await login(user.email or user.phone, password)
+        assert response.status_code == 200, response.text
+        return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+    return _headers
+
+
+@pytest.fixture
+async def admin_headers(make_user, headers_for) -> dict[str, str]:
+    """An admin's Authorization header, against an otherwise empty school."""
+    admin = await make_user(UserRole.ADMIN)
+    return await headers_for(admin)

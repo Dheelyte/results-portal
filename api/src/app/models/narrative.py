@@ -1,6 +1,6 @@
 """The written assessment (ARCHITECTURE.md §4.6).
 
-Seventeen free-text sections per pupil per term: seven curriculum areas under
+Sixteen free-text sections per pupil per term: seven curriculum areas under
 "Area of Curriculum", then B through J. This is a Montessori narrative report,
 not a set of 1-5 ratings (CARD-FINDINGS §4).
 """
@@ -118,7 +118,7 @@ class NarrativeEntry(Base):
 class CommentBank(Base):
     """Reusable phrases, scoped to a section.
 
-    Core, not optional (§4.6): a class of 30 needs 510 written passages a term
+    Core, not optional (§4.6): a class of 30 needs 480 written passages a term
     from one teacher. Without a strong phrase bank the feature will not be used
     as intended.
     """

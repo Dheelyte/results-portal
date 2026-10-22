@@ -4,6 +4,37 @@
  */
 
 export interface paths {
+    "/api/v1/assessment-periods/{assessment_period_id}/marks-obtainable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A sheet's column maxima
+         * @description The school-wide row first, then any per-class overrides.
+         */
+        get: operations["list_marks_obtainable_api_v1_assessment_periods__assessment_period_id__marks_obtainable_get"];
+        /**
+         * Set a sheet's column maxima
+         * @description Set what each column on one sheet is out of.
+         *
+         *     The card's "Marks Obtainable" row. R1 validates every score against these
+         *     numbers and names the applicable maximum when it refuses one, so until
+         *     they are set no score entry is really being checked.
+         *
+         *     **N2 is unanswered.** The row is blank on both photographed cards, so only
+         *     the school can supply these figures; nothing in the system defaults them.
+         */
+        put: operations["save_marks_obtainable_api_v1_assessment_periods__assessment_period_id__marks_obtainable_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -119,6 +150,588 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/class-subjects/{class_subject_id}/teacher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign the teacher who enters scores
+         * @description One teacher per class-subject (§4.3).
+         *
+         *     §5.2 limits score entry to "own class-subjects", so this is the record
+         *     that decides who can fill the sheet in — being class teacher of the class
+         *     is not enough.
+         */
+        put: operations["set_class_subject_teacher_api_v1_class_subjects__class_subject_id__teacher_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List classes */
+        get: operations["list_classes_api_v1_classes_get"];
+        put?: never;
+        /** Create a class */
+        post: operations["create_class_api_v1_classes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/class-teacher": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Assign a class teacher
+         * @description The most consequential assignment in setup.
+         *
+         *     §5.2 hands this person the narrative sections, attendance, growth, the
+         *     class teacher's comment and the submission gate for every pupil in the
+         *     class.
+         */
+        put: operations["set_class_teacher_api_v1_classes__class_id__class_teacher_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/narrative-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who writes which section for this class
+         * @description Only the explicit assignments.
+         *
+         *     A section with no row here is written by the class teacher — that is the
+         *     default by D15, not an omission, which is why the list is usually short.
+         */
+        get: operations["list_narrative_assignments_api_v1_classes__class_id__narrative_assignments_get"];
+        /**
+         * Assign narrative sections to teachers
+         * @description Hand named sections of this class's card to named teachers (B1, D15).
+         *
+         *     A specialist writes their own curriculum area; the class teacher writes
+         *     everything else. A `teacher_user_id` of null clears an assignment, which
+         *     hands that section back to the class teacher.
+         *
+         *     Not in §7's list, which predates B1 being answered (docs/DECISIONS.md
+         *     D37).
+         */
+        put: operations["set_narrative_assignments_api_v1_classes__class_id__narrative_assignments_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/subjects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A class's subject list */
+        get: operations["list_class_subjects_api_v1_classes__class_id__subjects_get"];
+        /**
+         * Set a class's subject list
+         * @description Replace the whole set of subjects this class is taught.
+         *
+         *     A group heading is refused (R7) — English prints as a heading over its
+         *     five sub-subjects and carries no scores of its own. A subject that already
+         *     has scores entered cannot be removed; retire it instead, so the record
+         *     survives.
+         */
+        put: operations["set_class_subjects_api_v1_classes__class_id__subjects_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comment-bank": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List phrases */
+        get: operations["list_comments_api_v1_comment_bank_get"];
+        put?: never;
+        /**
+         * Add a phrase
+         * @description Add a phrase, scoped to one section or to a footer comment.
+         *
+         *     §4.6 treats this as core, not optional: a class of thirty needs 480
+         *     written passages a term from one class teacher, and without a phrase bank
+         *     this is the feature that gets abandoned first.
+         */
+        post: operations["create_comment_api_v1_comment_bank_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/grading-scales": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List grading scales
+         * @description Every scale the school has used, active one first.
+         *
+         *     Old scales are kept because §4.5 requires it: a card printed last term
+         *     must still agree with the portal, and its grades were resolved from the
+         *     scale in force then.
+         */
+        get: operations["list_grading_scales_api_v1_grading_scales_get"];
+        put?: never;
+        /**
+         * Create a grading scale
+         * @description Create a new version of the grading scale.
+         *
+         *     Bands must not overlap and must cover every mark from 0 to 100, so that
+         *     every average resolves to exactly one grade.
+         *
+         *     **N1 is unanswered**: the card prints seven bands with plus grades, the
+         *     September requirements described six without. The school's answer arrives
+         *     as a new scale here, never as an edit to an existing one — grades already
+         *     snapshotted onto approved results are not touched (CLAUDE.md rule 6).
+         */
+        post: operations["create_grading_scale_api_v1_grading_scales_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/grading-scales/{scale_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a grading scale active
+         * @description Switch which scale new grades resolve from.
+         *
+         *     Not in §7's list. Switching between versions is the point of versioning
+         *     them, and answering N1 means saying "use this one from now on"
+         *     (docs/DECISIONS.md D37).
+         */
+        post: operations["activate_grading_scale_api_v1_grading_scales__scale_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/guardians/{guardian_user_id}/children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A parent's children */
+        get: operations["list_children_api_v1_guardians__guardian_user_id__children_get"];
+        put?: never;
+        /**
+         * Attach children to a parent account
+         * @description Attach pupils to a parent account.
+         *
+         *     This is the link §5.2's most important filter rests on: a parent sees
+         *     exactly the pupils named here. Additive, so adding a second child later
+         *     does not detach the first.
+         */
+        post: operations["link_children_api_v1_guardians__guardian_user_id__children_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/houses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List houses */
+        get: operations["list_houses_api_v1_houses_get"];
+        put?: never;
+        /** Create a house */
+        post: operations["create_house_api_v1_houses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/narrative-sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The card's narrative sections
+         * @description The sixteen sections of §1.4, in card order.
+         *
+         *     Seven curriculum areas under "Area of Curriculum", then B through J.
+         */
+        get: operations["list_narrative_sections_api_v1_narrative_sections_get"];
+        /**
+         * Edit the narrative sections
+         * @description Relabel, reorder, add or retire sections, keyed on `code`.
+         *
+         *     A section is retired with `is_active = false`, never deleted: a term's
+         *     written passages point at it and last term's card must keep saying what it
+         *     said. N7 may yet reduce the sixteen, and this is how.
+         */
+        put: operations["save_narrative_sections_api_v1_narrative_sections_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pupils": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List pupils
+         * @description A page of the roll, filterable by class and searchable by name or number.
+         */
+        get: operations["list_pupils_api_v1_pupils_get"];
+        put?: never;
+        /** Add a pupil */
+        post: operations["create_pupil_api_v1_pupils_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pupils/{pupil_id}/enrollment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Place a pupil in a class
+         * @description Enrol a pupil, or move them to another class this session.
+         *
+         *     Not in §7's list, which assumed enrolment always happened alongside pupil
+         *     creation. A roll typed in before the classes were settled needs placing,
+         *     and pupils do change class mid-year (docs/DECISIONS.md D37).
+         */
+        put: operations["set_enrollment_api_v1_pupils__pupil_id__enrollment_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List sessions */
+        get: operations["list_sessions_api_v1_sessions_get"];
+        put?: never;
+        /** Create a session */
+        post: operations["create_session_api_v1_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sessions/{session_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a session the current one
+         * @description Switch the school into another academic year.
+         *
+         *     Not in §7's list, which has only GET and POST for sessions. §2.3 requires
+         *     the active session to be set in the platform rather than derived from the
+         *     clock, so the verb has to exist somewhere (docs/DECISIONS.md D37).
+         */
+        post: operations["make_session_current_api_v1_sessions__session_id__current_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/setup-checklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Is this term ready?
+         * @description Everything standing between this term and a teacher entering a score.
+         *
+         *     `ready` is true when every **blocking** item is done. Advisory items — an
+         *     empty phrase bank, a parent account with no child attached — are real gaps
+         *     that score entry can start without, and they are reported rather than
+         *     enforced.
+         *
+         *     Each item names what is outstanding, by class and by subject. "Setup
+         *     incomplete" with no list generates a support call every term.
+         */
+        get: operations["setup_checklist_api_v1_setup_checklist_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subjects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List subjects
+         * @description The subject tree in display order, group headings included.
+         */
+        get: operations["list_subjects_api_v1_subjects_get"];
+        put?: never;
+        /** Create a subject */
+        post: operations["create_subject_api_v1_subjects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subjects/{subject_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a subject
+         * @description Rename, reorder, retire or regroup a subject.
+         *
+         *     Not in §7's list, which has only GET and POST. §1.5 requires it: "the list
+         *     must be admin-editable and the display order must be configurable", and
+         *     the card leaves blank rows for additions (docs/DECISIONS.md D37).
+         */
+        patch: operations["update_subject_api_v1_subjects__subject_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List terms */
+        get: operations["list_terms_api_v1_terms_get"];
+        put?: never;
+        /**
+         * Create a term and its two half terms
+         * @description Create a term. Both assessment periods are created with it.
+         *
+         *     §1.1 states the two halves as a fact about the domain, not an option, so a
+         *     term can never exist with nowhere to enter scores.
+         */
+        post: operations["create_term_api_v1_terms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/terms/{term_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a term
+         * @description Change a term's dates or its calendar figures.
+         *
+         *     `times_school_opened` is why this exists: R9 measures every pupil's
+         *     attendance against it and it is rarely known on the day a term is created.
+         */
+        patch: operations["update_term_api_v1_terms__term_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/terms/{term_id}/assessment-periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The term's two half terms */
+        get: operations["list_assessment_periods_api_v1_terms__term_id__assessment_periods_get"];
+        put?: never;
+        /**
+         * Set a half term's window
+         * @description Set the opening and closing dates of one half term.
+         *
+         *     An upsert keyed on `half`: `POST /terms` already created both rows, so the
+         *     only thing this can mean is "these are the dates". 201 if a row had to be
+         *     created, 200 if an existing one was updated.
+         */
+        post: operations["save_assessment_period_api_v1_terms__term_id__assessment_periods_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/terms/{term_id}/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Make a term the current one */
+        post: operations["make_term_current_api_v1_terms__term_id__current_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List accounts */
+        get: operations["list_users_api_v1_users_get"];
+        put?: never;
+        /**
+         * Create an account
+         * @description Create an account and return its temporary password **once**.
+         *
+         *     §5.1: accounts are admin-created and never self-registered. The temporary
+         *     password is shown here and nowhere else — it is not stored readably, not
+         *     logged and not audited. The holder must change it before the portal will
+         *     let them do anything else.
+         */
+        post: operations["create_user_api_v1_users_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset someone's password
+         * @description Issue a fresh temporary password and revoke every live session.
+         *
+         *     What an admin does when a parent's phone is lost or a password has been
+         *     passed around. Audited, as §4.9 requires of every reset.
+         */
+        post: operations["reset_password_api_v1_users__user_id__reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -168,6 +781,107 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcademicSessionCreate */
+        AcademicSessionCreate: {
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /**
+             * Is Current
+             * @description Make this the current session, demoting any other. Everything a teacher or parent sees is scoped to the current session.
+             * @default false
+             */
+            is_current: boolean;
+            /**
+             * Name
+             * @description As the school writes it, e.g. 2026/2027.
+             */
+            name: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /** AcademicSessionRead */
+        AcademicSessionRead: {
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Current */
+            is_current: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+        };
+        /**
+         * AccountRead
+         * @description An account as an admin sees it. Never carries the password hash.
+         */
+        AccountRead: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Email */
+            email: string | null;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Login At */
+            last_login_at: string | null;
+            /** Must Change Password */
+            must_change_password: boolean;
+            /** Phone */
+            phone: string | null;
+            role: components["schemas"]["UserRole"];
+        };
+        /** AssessmentPeriodRead */
+        AssessmentPeriodRead: {
+            /** Closes On */
+            closes_on: string | null;
+            half: components["schemas"]["TermHalf"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Opens On */
+            opens_on: string | null;
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+        };
+        /** AssessmentPeriodSave */
+        AssessmentPeriodSave: {
+            /** Closes On */
+            closes_on?: string | null;
+            half: components["schemas"]["TermHalf"];
+            /** Opens On */
+            opens_on?: string | null;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -175,10 +889,347 @@ export interface components {
             /** New Password */
             new_password: string;
         };
+        /** ChecklistItemRead */
+        ChecklistItemRead: {
+            /**
+             * Blocking
+             * @description A blocking item stops teachers working at all. An advisory one is a real gap that work can start without.
+             */
+            blocking: boolean;
+            /** Detail */
+            detail: string;
+            /** Done */
+            done: boolean;
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Outstanding
+             * @description What is missing, named — the classes with no teacher, and so on.
+             */
+            outstanding?: string[];
+        };
+        /** ChecklistRead */
+        ChecklistRead: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /** Academic Session Name */
+            academic_session_name: string;
+            /** Items */
+            items: components["schemas"]["ChecklistItemRead"][];
+            /**
+             * Ready
+             * @description True when every blocking item is done.
+             */
+            ready: boolean;
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Term Label */
+            term_label: string;
+        };
+        /** ClassCreate */
+        ClassCreate: {
+            /**
+             * Level Order
+             * @description Display order only. Never a rank of pupils (R11).
+             */
+            level_order: number;
+            /**
+             * Name
+             * @description As the school names it, e.g. Primary 4.
+             */
+            name: string;
+        };
+        /** ClassRead */
+        ClassRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Level Order */
+            level_order: number;
+            /** Name */
+            name: string;
+        };
+        /** ClassSubjectRead */
+        ClassSubjectRead: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Display Order */
+            display_order: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+        };
+        /**
+         * ClassSubjectsSave
+         * @description The complete set of subjects a class is taught this session.
+         */
+        ClassSubjectsSave: {
+            /**
+             * Academic Session Id
+             * @description Defaults to the school's current session.
+             */
+            academic_session_id?: string | null;
+            /**
+             * Subject Ids
+             * @description Replaces the class's current list. Group headings are rejected (R7).
+             */
+            subject_ids: string[];
+        };
+        /** ClassTeacherRead */
+        ClassTeacherRead: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Teacher User Id
+             * Format: uuid
+             */
+            teacher_user_id: string;
+        };
+        /** ClassTeacherSave */
+        ClassTeacherSave: {
+            /** Academic Session Id */
+            academic_session_id?: string | null;
+            /**
+             * Teacher User Id
+             * Format: uuid
+             */
+            teacher_user_id: string;
+        };
+        /** CommentCreate */
+        CommentCreate: {
+            /**
+             * Scope
+             * @description A narrative section's code, or 'class_teacher' or 'head_teacher' for the card's footer comments.
+             */
+            scope: string;
+            /** Text */
+            text: string;
+        };
+        /** CommentRead */
+        CommentRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Scope */
+            scope: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * CreatedAccountRead
+         * @description A new or reset account, with its temporary password.
+         *
+         *     The password is shown **once**, here. It is not stored in readable form,
+         *     not logged and not audited, so if it is lost the only route is another
+         *     reset. Pass it to the account holder out of band; they must change it
+         *     before the portal will let them do anything else.
+         */
+        CreatedAccountRead: {
+            /** Temporary Password */
+            temporary_password: string;
+            user: components["schemas"]["AccountRead"];
+        };
+        /** EnrollmentRead */
+        EnrollmentRead: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Joined On
+             * Format: date
+             */
+            joined_on: string;
+            /** Left On */
+            left_on: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Status */
+            status: string;
+        };
+        /** EnrollmentSave */
+        EnrollmentSave: {
+            /** Academic Session Id */
+            academic_session_id?: string | null;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Joined On */
+            joined_on?: string | null;
+        };
+        /** GradeBandRead */
+        GradeBandRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Letter */
+            letter: string;
+            /** Max Score */
+            max_score: string;
+            /** Min Score */
+            min_score: string;
+            /** Remark */
+            remark: string;
+            /** Sort Order */
+            sort_order: number;
+        };
+        /** GradeBandWrite */
+        GradeBandWrite: {
+            /** Letter */
+            letter: string;
+            /** Max Score */
+            max_score: number | string;
+            /** Min Score */
+            min_score: number | string;
+            /** Remark */
+            remark: string;
+        };
+        /** GradingScaleCreate */
+        GradingScaleCreate: {
+            /**
+             * Activate
+             * @description Make this the active scale, deactivating any other.
+             * @default false
+             */
+            activate: boolean;
+            /**
+             * Bands
+             * @description Must not overlap and must cover every mark from 0 to 100, so that every average resolves to exactly one grade.
+             */
+            bands: components["schemas"]["GradeBandWrite"][];
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /** Name */
+            name: string;
+        };
+        /** GradingScaleRead */
+        GradingScaleRead: {
+            /** Bands */
+            bands?: components["schemas"]["GradeBandRead"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Effective From
+             * Format: date
+             */
+            effective_from: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+        };
+        /** GuardianChild */
+        GuardianChild: {
+            /**
+             * Is Primary
+             * @default false
+             */
+            is_primary: boolean;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Relationship */
+            relationship?: string | null;
+        };
+        /** GuardianChildrenSave */
+        GuardianChildrenSave: {
+            /** Children */
+            children: components["schemas"]["GuardianChild"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HouseCreate */
+        HouseCreate: {
+            /** Name */
+            name: string;
+        };
+        /** HouseRead */
+        HouseRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
         };
         /**
          * LoginRequest
@@ -193,10 +1244,429 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MarksObtainableRead */
+        MarksObtainableRead: {
+            /**
+             * Assessment Period Id
+             * Format: uuid
+             */
+            assessment_period_id: string;
+            /** Ca Test 1 */
+            ca_test_1: string | null;
+            /** Ca Test 2 */
+            ca_test_2: string | null;
+            /** Ca Test 3 */
+            ca_test_3: string | null;
+            /** Ca Test 4 */
+            ca_test_4: string | null;
+            /** Ca Test 5 */
+            ca_test_5: string | null;
+            /** Class Id */
+            class_id: string | null;
+            /** Exam */
+            exam: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Mid Term Test */
+            mid_term_test: string | null;
+        };
+        /**
+         * MarksObtainableSave
+         * @description One sheet's column maxima.
+         *
+         *     `class_id = null` sets the school-wide row. A class's own row overrides it
+         *     entirely for that class — R1 resolves "per-class row if present, otherwise
+         *     the school-wide row", so there is no partial override.
+         *
+         *     The sheet's own columns only: the first-half sheet has Mid Term Test and
+         *     no Exam, the second-half sheet the reverse (§1.2).
+         */
+        MarksObtainableSave: {
+            /** Ca Test 1 */
+            ca_test_1?: number | string | null;
+            /** Ca Test 2 */
+            ca_test_2?: number | string | null;
+            /** Ca Test 3 */
+            ca_test_3?: number | string | null;
+            /** Ca Test 4 */
+            ca_test_4?: number | string | null;
+            /** Ca Test 5 */
+            ca_test_5?: number | string | null;
+            /**
+             * Class Id
+             * @description null for every class; a class id to override one class.
+             */
+            class_id?: string | null;
+            /**
+             * Exam
+             * @description Second half term only.
+             */
+            exam?: number | string | null;
+            /**
+             * Mid Term Test
+             * @description First half term only.
+             */
+            mid_term_test?: number | string | null;
+        };
         /** MessageResponse */
         MessageResponse: {
             /** Detail */
             detail: string;
+        };
+        /** NarrativeAssignment */
+        NarrativeAssignment: {
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /**
+             * Teacher User Id
+             * @description null clears the assignment, which hands the section back to the class teacher — that is the default, not nobody (D15).
+             */
+            teacher_user_id?: string | null;
+        };
+        /** NarrativeAssignmentRead */
+        NarrativeAssignmentRead: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /**
+             * Teacher User Id
+             * Format: uuid
+             */
+            teacher_user_id: string;
+        };
+        /** NarrativeAssignmentsSave */
+        NarrativeAssignmentsSave: {
+            /** Academic Session Id */
+            academic_session_id?: string | null;
+            /** Assignments */
+            assignments: components["schemas"]["NarrativeAssignment"][];
+        };
+        /** NarrativeSectionRead */
+        NarrativeSectionRead: {
+            /** Code */
+            code: string;
+            /** Display Order */
+            display_order: number;
+            /** Group Label */
+            group_label: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Label */
+            label: string;
+        };
+        /** NarrativeSectionSave */
+        NarrativeSectionSave: {
+            /** Code */
+            code: string;
+            /** Display Order */
+            display_order: number;
+            /** Group Label */
+            group_label?: string | null;
+            /**
+             * Is Active
+             * @description Retire a section rather than deleting it; past cards still cite it.
+             * @default true
+             */
+            is_active: boolean;
+            /** Label */
+            label: string;
+        };
+        /** NarrativeSectionsSave */
+        NarrativeSectionsSave: {
+            /** Sections */
+            sections: components["schemas"]["NarrativeSectionSave"][];
+        };
+        /** PupilCreate */
+        PupilCreate: {
+            /**
+             * Academic Session Id
+             * @description Defaults to the school's current session.
+             */
+            academic_session_id?: string | null;
+            /** Admission Number */
+            admission_number: string;
+            /**
+             * Class Id
+             * @description Enrol the pupil into this class at the same time. Optional, but a pupil with no enrolment appears in no class list and gets no report.
+             */
+            class_id?: string | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** First Name */
+            first_name: string;
+            /** House Id */
+            house_id?: string | null;
+            /**
+             * Joined On
+             * @description Defaults to the session's start date.
+             */
+            joined_on?: string | null;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Sex
+             * @description As the card records it.
+             */
+            sex?: ("M" | "F") | null;
+        };
+        /**
+         * PupilPageRead
+         * @description A page of the roll. Paged because the school has roughly 500 pupils.
+         */
+        PupilPageRead: {
+            /** Items */
+            items: components["schemas"]["PupilRead"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /** PupilRead */
+        PupilRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** Date Of Birth */
+            date_of_birth: string | null;
+            /** First Name */
+            first_name: string;
+            /** House Id */
+            house_id: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name: string | null;
+            /** Sex */
+            sex: string | null;
+        };
+        /** SubjectCreate */
+        SubjectCreate: {
+            /**
+             * Display Order
+             * @default 0
+             */
+            display_order: number;
+            /**
+             * Is Group
+             * @description A heading that prints on the card and carries no scores (R7). A group can never be offered to a class.
+             * @default false
+             */
+            is_group: boolean;
+            /**
+             * Is Specialist
+             * @description Taught by a specialist rather than the class teacher. The school sets this; nothing is hardcoded (§2.3).
+             * @default false
+             */
+            is_specialist: boolean;
+            /** Name */
+            name: string;
+            /**
+             * Parent Subject Id
+             * @description The group heading this sits under. English is the only one on the card.
+             */
+            parent_subject_id?: string | null;
+        };
+        /** SubjectRead */
+        SubjectRead: {
+            /** Display Order */
+            display_order: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Is Group */
+            is_group: boolean;
+            /** Is Specialist */
+            is_specialist: boolean;
+            /** Name */
+            name: string;
+            /** Parent Subject Id */
+            parent_subject_id: string | null;
+        };
+        /** SubjectUpdate */
+        SubjectUpdate: {
+            /** Display Order */
+            display_order?: number | null;
+            /**
+             * Is Active
+             * @description Retire a subject rather than deleting it; past cards still cite it.
+             */
+            is_active?: boolean | null;
+            /** Is Group */
+            is_group?: boolean | null;
+            /** Is Specialist */
+            is_specialist?: boolean | null;
+            /** Name */
+            name?: string | null;
+            /** Parent Subject Id */
+            parent_subject_id?: string | null;
+        };
+        /** TeacherAssignmentSave */
+        TeacherAssignmentSave: {
+            /**
+             * Teacher User Id
+             * Format: uuid
+             */
+            teacher_user_id: string;
+        };
+        /** TeachingAssignmentRead */
+        TeachingAssignmentRead: {
+            /**
+             * Class Subject Id
+             * Format: uuid
+             */
+            class_subject_id: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Teacher User Id
+             * Format: uuid
+             */
+            teacher_user_id: string;
+        };
+        /** TermCreate */
+        TermCreate: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /**
+             * Card Return On
+             * @description Prints as "return this card to the School on …".
+             */
+            card_return_on?: string | null;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /**
+             * Is Current
+             * @default false
+             */
+            is_current: boolean;
+            /** Next Resumption On */
+            next_resumption_on?: string | null;
+            number: components["schemas"]["TermNumber"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /**
+             * Times School Opened
+             * @description R9 measures attendance against this. Can be filled in later.
+             */
+            times_school_opened?: number | null;
+        };
+        /**
+         * TermHalf
+         * @description Two assessment sheets per term.
+         *
+         *     "The single most important structural fact about this system" (§1.1): each
+         *     half term produces its own sheet with its own columns.
+         * @enum {string}
+         */
+        TermHalf: "first_half" | "second_half";
+        /**
+         * TermNumber
+         * @enum {string}
+         */
+        TermNumber: "first" | "second" | "third";
+        /** TermRead */
+        TermRead: {
+            /**
+             * Academic Session Id
+             * Format: uuid
+             */
+            academic_session_id: string;
+            /** Card Return On */
+            card_return_on: string | null;
+            /**
+             * Ends On
+             * Format: date
+             */
+            ends_on: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Current */
+            is_current: boolean;
+            /** Next Resumption On */
+            next_resumption_on: string | null;
+            number: components["schemas"]["TermNumber"];
+            /**
+             * Starts On
+             * Format: date
+             */
+            starts_on: string;
+            /** Times School Opened */
+            times_school_opened: number | null;
+        };
+        /**
+         * TermUpdate
+         * @description Every field optional; only what is sent is changed.
+         */
+        TermUpdate: {
+            /** Card Return On */
+            card_return_on?: string | null;
+            /** Ends On */
+            ends_on?: string | null;
+            /** Is Current */
+            is_current?: boolean | null;
+            /** Next Resumption On */
+            next_resumption_on?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Times School Opened */
+            times_school_opened?: number | null;
         };
         /**
          * TokenResponse
@@ -220,6 +1690,22 @@ export interface components {
              */
             token_type: string;
             user: components["schemas"]["UserRead"];
+        };
+        /**
+         * UserCreate
+         * @description §5.1: accounts are admin-created. There is no self-registration.
+         */
+        UserCreate: {
+            /** Email */
+            email?: string | null;
+            /** Full Name */
+            full_name: string;
+            /**
+             * Phone
+             * @description Either an email address or a phone number is required — many parents' email addresses are inactive, and both sign in against one password (A7).
+             */
+            phone?: string | null;
+            role: components["schemas"]["UserRole"];
         };
         /**
          * UserRead
@@ -280,6 +1766,72 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_marks_obtainable_api_v1_assessment_periods__assessment_period_id__marks_obtainable_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assessment_period_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarksObtainableRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_marks_obtainable_api_v1_assessment_periods__assessment_period_id__marks_obtainable_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assessment_period_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarksObtainableSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarksObtainableRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_password_api_v1_auth_change_password_post: {
         parameters: {
             query?: never;
@@ -415,6 +1967,1219 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_class_subject_teacher_api_v1_class_subjects__class_subject_id__teacher_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeacherAssignmentSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeachingAssignmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_classes_api_v1_classes_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_class_api_v1_classes_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_class_teacher_api_v1_classes__class_id__class_teacher_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassTeacherSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassTeacherRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_narrative_assignments_api_v1_classes__class_id__narrative_assignments_get: {
+        parameters: {
+            query?: {
+                academic_session_id?: string | null;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrativeAssignmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_narrative_assignments_api_v1_classes__class_id__narrative_assignments_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NarrativeAssignmentsSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrativeAssignmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_class_subjects_api_v1_classes__class_id__subjects_get: {
+        parameters: {
+            query?: {
+                academic_session_id?: string | null;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSubjectRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_class_subjects_api_v1_classes__class_id__subjects_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassSubjectsSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassSubjectRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_comments_api_v1_comment_bank_get: {
+        parameters: {
+            query?: {
+                /** @description A narrative section code, 'class_teacher' or 'head_teacher'. */
+                scope?: string | null;
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_comment_api_v1_comment_bank_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_grading_scales_api_v1_grading_scales_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingScaleRead"][];
+                };
+            };
+        };
+    };
+    create_grading_scale_api_v1_grading_scales_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GradingScaleCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingScaleRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_grading_scale_api_v1_grading_scales__scale_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scale_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GradingScaleRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_children_api_v1_guardians__guardian_user_id__children_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guardian_user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_children_api_v1_guardians__guardian_user_id__children_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guardian_user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardianChildrenSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_houses_api_v1_houses_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseRead"][];
+                };
+            };
+        };
+    };
+    create_house_api_v1_houses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HouseCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_narrative_sections_api_v1_narrative_sections_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrativeSectionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_narrative_sections_api_v1_narrative_sections_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NarrativeSectionsSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrativeSectionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_pupils_api_v1_pupils_get: {
+        parameters: {
+            query?: {
+                class_id?: string | null;
+                academic_session_id?: string | null;
+                search?: string | null;
+                include_inactive?: boolean;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilPageRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_pupil_api_v1_pupils_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PupilCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_enrollment_api_v1_pupils__pupil_id__enrollment_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnrollmentSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnrollmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_sessions_api_v1_sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicSessionRead"][];
+                };
+            };
+        };
+    };
+    create_session_api_v1_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicSessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicSessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_session_current_api_v1_sessions__session_id__current_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicSessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_checklist_api_v1_setup_checklist_get: {
+        parameters: {
+            query: {
+                term_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChecklistRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subjects_api_v1_subjects_get: {
+        parameters: {
+            query?: {
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubjectRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_subject_api_v1_subjects_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubjectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubjectRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_subject_api_v1_subjects__subject_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubjectUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubjectRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_terms_api_v1_terms_get: {
+        parameters: {
+            query?: {
+                academic_session_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_term_api_v1_terms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_term_api_v1_terms__term_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TermUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_assessment_periods_api_v1_terms__term_id__assessment_periods_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentPeriodRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_assessment_period_api_v1_terms__term_id__assessment_periods_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssessmentPeriodSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentPeriodRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    make_term_current_api_v1_terms__term_id__current_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TermRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_users_api_v1_users_get: {
+        parameters: {
+            query?: {
+                role?: components["schemas"]["UserRole"] | null;
+                include_inactive?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_user_api_v1_users_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedAccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_password_api_v1_users__user_id__reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedAccountRead"];
                 };
             };
             /** @description Validation Error */

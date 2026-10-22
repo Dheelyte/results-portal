@@ -5,6 +5,7 @@ in `authz/scope.py` (CLAUDE.md rule 4). This module only answers "who is
 calling", which is a prerequisite for that.
 """
 
+from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -87,3 +88,26 @@ def client_ip(request: Request) -> str | None:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else None
+
+
+@dataclass(frozen=True)
+class RequestContext:
+    """Who and where, for the audit log (§4.9).
+
+    Bundled into one dependency because every audited endpoint needs both and
+    threading two keyword arguments through each signature is how one of them
+    ends up missing.
+    """
+
+    ip_address: str | None
+    user_agent: str | None
+
+
+def request_context(request: Request) -> RequestContext:
+    return RequestContext(
+        ip_address=client_ip(request),
+        user_agent=(request.headers.get("user-agent") or None),
+    )
+
+
+Context = Annotated[RequestContext, Depends(request_context)]

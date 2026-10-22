@@ -289,12 +289,19 @@ results-portal/
 │   │   ├── schemas/
 │   │   ├── routers/
 │   │   ├── services/
+│   │   │   ├── academic.py      # sessions, terms, half terms, classes, houses
+│   │   │   ├── subjects.py      # subject tree, offerings, teacher assignment
+│   │   │   ├── marks.py         # the Marks Obtainable row
+│   │   │   ├── pupils.py        # the roll and enrolment
+│   │   │   ├── accounts.py      # accounts, resets, the guardian link
 │   │   │   ├── grading.py       # every formula and the grade bands
 │   │   │   ├── results.py       # entry, validation, class averages
-│   │   │   ├── narrative.py
+│   │   │   ├── narrative.py     # sections, authorship, phrase bank
+│   │   │   ├── setup.py         # the term readiness checklist
 │   │   │   ├── workflow.py
 │   │   │   ├── cumulative.py    # term and annual averages
 │   │   │   ├── reportcard.py    # assembles the full card payload
+│   │   │   ├── errors.py        # domain errors, mapped to status codes once
 │   │   │   └── audit.py
 │   │   ├── auth/
 │   │   ├── authz/
@@ -305,16 +312,22 @@ results-portal/
 │   └── tests/
 └── web/
     ├── app/
-    │   ├── (auth)/login/
+    │   ├── (auth)/
+    │   │   ├── login/
+    │   │   └── change-password/ # the must_change_password gate (§5.1)
     │   ├── (staff)/
-    │   │   ├── admin/
+    │   │   ├── admin/           # setup: checklist, calendar, classes,
+    │   │   │                    #   subjects, pupils, accounts, assessment
     │   │   ├── entry/           # score entry grid
     │   │   ├── narrative/       # narrative writing screen
     │   │   ├── class/           # class teacher progress view
     │   │   └── review/          # head teacher review
     │   └── (parent)/children/
     ├── components/
-    └── lib/api/                 # generated from the OpenAPI schema
+    └── lib/
+        ├── api/                 # generated from the OpenAPI schema
+        ├── auth.tsx             # the signed-in user, token in memory only
+        └── use-async.ts         # loading a resource, running an action
 ```
 
 ---
@@ -931,15 +944,21 @@ POST   /auth/login  /auth/refresh  /auth/logout  /auth/change-password
 
 # Admin — setup
 GET/POST   /sessions  /terms  /classes  /subjects  /houses
-GET/POST   /terms/{id}/assessment-periods
-PUT        /assessment-periods/{id}/marks-obtainable
+POST       /sessions/{id}/current                     # §2.3: set in the platform
+PATCH      /terms/{id}                                # dates, times_school_opened
+POST       /terms/{id}/current
+GET/POST   /terms/{id}/assessment-periods             # POST upserts on `half`
+GET/PUT    /assessment-periods/{id}/marks-obtainable
+PATCH      /subjects/{id}                             # §1.5: editable, reorderable
 GET/PUT    /classes/{id}/subjects
 PUT        /class-subjects/{id}/teacher
 PUT        /classes/{id}/class-teacher
+GET/PUT    /classes/{id}/narrative-assignments        # B1 / D15
 GET/POST   /pupils                                     # manual entry; see DECISIONS N8
+PUT        /pupils/{id}/enrollment                    # place, or move class
 GET/POST   /users           POST /users/{id}/reset-password
-POST       /guardians/{id}/children
-GET/POST   /grading-scales
+GET/POST   /guardians/{id}/children
+GET/POST   /grading-scales  POST /grading-scales/{id}/activate
 GET/PUT    /narrative-sections
 GET/POST   /comment-bank
 GET        /setup-checklist?term_id=
@@ -981,6 +1000,19 @@ POST   /my/children/{pupil_id}/reports/{term_id}/acknowledge
 an array of `{ pupil_id, ca_test_1..5, mid_term_test | exam }`, validates every
 row against `marks_obtainable`, and applies all or none. Return per-row errors
 keyed by `pupil_id` so the grid can highlight the offending cells.
+
+`POST /terms` creates the term **and both of its assessment periods**, because
+§1.1 states the two halves as a fact about the domain rather than an option
+(`docs/DECISIONS.md` D36). The seven verbs marked above that this section
+originally omitted are each justified in D37; none of them is new
+functionality, they are the missing halves of requirements stated elsewhere in
+this document.
+
+Every endpoint in the admin block is admin-only, declared in the route
+signature through `authz/dependencies.py` and asserted cell by cell against
+§5.2 in `tests/integration/test_setup_authz.py`. A structural test there fails
+if any `/api/v1` route outside `/auth` is ever mounted without a capability
+gate.
 
 ---
 
@@ -1205,8 +1237,8 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 | # | Question | Needed by |
 |---|---|---|
 | N1 | Which grading scale is current — the card's seven bands, or the six-band scale approved in September? | 9 (grade snapshot) |
-| N2 | Marks obtainable for CA Test 1–5, Mid Term Test and Exam. Does 40/60 survive as CA Total vs Exam? | 5 (setup) |
-| N3 | The *Total Weighted Average* formula, and how 1st/2nd Term Ave. and Annual Scores (Ave.) are derived. | 6 |
+| N2 | Marks obtainable for CA Test 1–5, Mid Term Test and Exam. Does 40/60 survive as CA Total vs Exam? | 5 (setup) — **reached, not blocking.** The screen and the table are built and nothing defaults; the school's own numbers are simply not in yet, so R1's validation has nothing real to check against. A photograph of a **filled-in** card would settle this, and probably N1 and N3 with it. |
+| N3 | The *Total Weighted Average* formula, how 1st/2nd Term Ave. and Annual Scores (Ave.) are derived, **and whether a period average is rounded before a grade band is read from it** — the card's own bands leave 39.5 in no band (`docs/DECISIONS.md` D43). | 6 |
 | N4 | Is *Position (In grades)* filled in, and in what form? | 9 |
 | N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
 | N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) |
@@ -1249,4 +1281,9 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A7 | Parents log in with email **or** phone, and parent password resets are admin-initiated rather than by email. | **Low.** Both paths exist in the schema. |
 | A8 | A digital acknowledgement by the parent replaces the physical signature and the returned card. | **Low** technically. The school may still want paper; that is their call, not a code change. |
 | A10 | Deployment is a single host running Docker Compose, with Caddy terminating TLS for one domain. No staging environment is modelled in the repository. | **Low.** A third compose overlay and a second Caddy site block. Taken in milestone 1; see `docs/DECISIONS.md` D8. |
+| A12 | A term's dates fall inside its session's, and each half term's window inside its term's. Enforced; see `docs/DECISIONS.md` D39. | **Low.** One guard each in `services/academic.py`. |
+| A13 | A sheet's Marks Obtainable row counts as configured once its terminal column (Mid Term Test or Exam) and at least one CA test have a maximum — not all five. | **Low.** One predicate in `services/marks.py`. Tied to N2: a definite answer replaces the judgement. |
+| A14 | A column maximum may not be lowered below a score already entered against it; the admin raises it or corrects the entries. | **Low.** One check in `services/marks.py`, and §4.4 still permits the change itself. |
+| A15 | Grade bands must cover every **whole** mark from 0 to 100 without overlapping. Fractional coverage is deliberately not claimed, pending N3. | **Low.** One function in `services/grading.py`, with a test that fails on purpose when N3 lands. |
+| A16 | The staff screens are client-rendered, because the session cookie is scoped to `api.<domain>` and the web server cannot read it. | **Low** for the setup screens. **Open** for §8.5's parent view, whose 150 KB server-rendered target this does not reach — three routes out, none foreclosed, in `docs/DECISIONS.md` D41. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

@@ -173,6 +173,14 @@ jobs:
         run: |
           curl --fail --silent --show-error http://localhost:8080/ | grep -q 'Results Portal'
 
+      # The sign-in form must be in the server-rendered HTML, not painted
+      # after JavaScript arrives. §8.5 assumes a 3G connection on a low-end
+      # Android device, and that assumption starts at the login screen.
+      - name: The sign-in form is server-rendered
+        run: |
+          curl --fail --silent --show-error http://localhost:8080/login \
+            | grep -q 'Email address or phone number'
+
       - name: GET /readyz returns 503 with the database down
         run: |
           docker compose stop postgres

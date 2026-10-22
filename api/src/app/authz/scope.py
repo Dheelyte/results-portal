@@ -22,15 +22,24 @@ from sqlalchemy import Select, select
 
 from app.models import (
     AcademicSession,
+    AssessmentPeriod,
     Class,
     ClassSubject,
     ClassTeacher,
+    CommentBank,
     Enrollment,
+    GradeBand,
+    GradingScale,
     GuardianPupil,
+    House,
+    MarksObtainable,
+    NarrativeSection,
     NarrativeSectionAssignment,
     PublicationState,
     Pupil,
+    Subject,
     TeachingAssignment,
+    Term,
     TermReport,
     User,
     UserRole,
@@ -230,3 +239,163 @@ def narrative_section_ids_assigned_to(
         NarrativeSectionAssignment.academic_session_id
         == _session_filter(user, academic_session_id),
     )
+
+
+# ---------------------------------------------------------------------------
+# Setup resources (milestone 5)
+# ---------------------------------------------------------------------------
+#
+# §5.2's first three rows give the whole setup surface to the admin and nothing
+# to anyone else. These resolvers are the visibility half of that: they filter
+# by `school_id`, and they return nothing at all to a teacher or a parent.
+#
+# Deliberately narrow. Milestone 6 widens the ones §7 requires a teacher to
+# read — `/my/assignments` needs subject names — and widening one of these on
+# purpose is a decision with a test, where starting wide would be an accident
+# nobody notices.
+
+
+def _school_wide_only(stmt: Select, user: User) -> Select:
+    """School rows for a school-wide role; nothing for anyone else."""
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+    return stmt.where(False)
+
+
+def scoped_academic_sessions(user: User) -> Select:
+    return _school_wide_only(
+        select(AcademicSession).where(AcademicSession.school_id == user.school_id), user
+    )
+
+
+def scoped_terms(user: User) -> Select:
+    return _school_wide_only(select(Term).where(Term.school_id == user.school_id), user)
+
+
+def scoped_assessment_periods(user: User) -> Select:
+    return _school_wide_only(
+        select(AssessmentPeriod).where(AssessmentPeriod.school_id == user.school_id), user
+    )
+
+
+def scoped_houses(user: User) -> Select:
+    return _school_wide_only(select(House).where(House.school_id == user.school_id), user)
+
+
+def scoped_subjects(user: User) -> Select:
+    return _school_wide_only(select(Subject).where(Subject.school_id == user.school_id), user)
+
+
+def scoped_grading_scales(user: User) -> Select:
+    return _school_wide_only(
+        select(GradingScale).where(GradingScale.school_id == user.school_id), user
+    )
+
+
+def scoped_grade_bands(user: User) -> Select:
+    """Bands reached through their scale.
+
+    `grade_bands` has no `school_id` of its own (§4.5) — it hangs off the
+    scale — so the tenant filter has to come through the join rather than from
+    a column on the row.
+    """
+    return _school_wide_only(
+        select(GradeBand)
+        .join(GradingScale, GradingScale.id == GradeBand.scale_id)
+        .where(GradingScale.school_id == user.school_id),
+        user,
+    )
+
+
+def scoped_narrative_sections(user: User) -> Select:
+    return _school_wide_only(
+        select(NarrativeSection).where(NarrativeSection.school_id == user.school_id), user
+    )
+
+
+def scoped_narrative_section_assignments(user: User) -> Select:
+    return _school_wide_only(
+        select(NarrativeSectionAssignment).where(
+            NarrativeSectionAssignment.school_id == user.school_id
+        ),
+        user,
+    )
+
+
+def scoped_comment_bank(user: User) -> Select:
+    return _school_wide_only(
+        select(CommentBank).where(CommentBank.school_id == user.school_id), user
+    )
+
+
+def scoped_marks_obtainable(user: User) -> Select:
+    return _school_wide_only(
+        select(MarksObtainable).where(MarksObtainable.school_id == user.school_id), user
+    )
+
+
+def scoped_enrollments(user: User) -> Select:
+    """Enrolments this user may see.
+
+    A teacher sees the enrolments of the classes they touch and a parent only
+    their own children's, because this is the table that says which class a
+    named child is in.
+    """
+    stmt = select(Enrollment).where(Enrollment.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(Enrollment.class_id.in_(class_ids_taught_by(user)))
+
+    if user.role is UserRole.PARENT:
+        return stmt.where(Enrollment.pupil_id.in_(pupil_ids_of_guardian(user)))
+
+    return stmt.where(False)  # pragma: no cover
+
+
+def scoped_teaching_assignments(user: User) -> Select:
+    """Teaching assignments this user may see.
+
+    A teacher sees their own. Who else teaches what is the admin's business,
+    and a staff directory of assignments is not something §5.2 grants.
+    """
+    stmt = select(TeachingAssignment).where(TeachingAssignment.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(TeachingAssignment.teacher_user_id == user.id)
+
+    return stmt.where(False)
+
+
+def scoped_class_teachers(user: User) -> Select:
+    stmt = select(ClassTeacher).where(ClassTeacher.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(ClassTeacher.teacher_user_id == user.id)
+
+    return stmt.where(False)
+
+
+def scoped_users(user: User) -> Select:
+    """Accounts this user may see.
+
+    `users` is the one tenant table the router scan exempts, because the auth
+    layer scopes it rather than a row filter. The admin surface still needs a
+    school-filtered query, and it belongs here with the others rather than
+    inline in a service.
+    """
+    stmt = select(User).where(User.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    # Everyone else sees exactly themselves, which /auth/me already serves.
+    return stmt.where(User.id == user.id)

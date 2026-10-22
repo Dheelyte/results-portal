@@ -6,6 +6,8 @@ comments, tokens, password hashes and pupil identity from reaching a log, and
 `audit_log.before` / `after` are as much a log as stdout is.
 """
 
+import datetime as dt
+import decimal
 import logging
 import uuid
 from typing import Any
@@ -104,3 +106,39 @@ async def record(
         },
     )
     return entry
+
+
+def snapshot(instance: object, fields: tuple[str, ...]) -> dict[str, Any]:
+    """A before/after payload built from named fields of a model instance.
+
+    Explicit field names rather than reflection over the mapper: a payload
+    assembled from "every column" would pick up `password_hash` the moment it
+    were pointed at a user, and `scrub` would then be the only thing standing
+    between a hash and the audit log. Naming the fields means the default is
+    to record nothing.
+
+    Values are coerced to JSON-safe forms — UUIDs, dates and decimals all
+    appear in this schema and none of them survive `jsonb` serialisation on
+    their own.
+    """
+    payload: dict[str, Any] = {}
+    for field in fields:
+        payload[field] = _jsonable(getattr(instance, field, None))
+    return payload
+
+
+def _jsonable(value: Any) -> Any:
+    if value is None or isinstance(value, bool | int | str):
+        return value
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, decimal.Decimal):
+        # str, not float: a score is numeric(5,2) and float would round it.
+        return str(value)
+    if isinstance(value, dt.date | dt.datetime):
+        return value.isoformat()
+    if isinstance(value, list | tuple):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    return str(value)

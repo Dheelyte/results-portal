@@ -738,3 +738,258 @@ it to a list.
 
 This does not revisit D26: cleanup is still between tests rather than a
 rolled-back transaction, because the auth rules commit on purpose.
+
+---
+
+# Milestone 5 — admin setup
+
+### D36 — Creating a term creates both of its assessment periods
+
+`POST /terms` inserts the term **and** a row for each half, with no dates.
+
+§1.1 states the two halves as a fact about the domain rather than an option:
+"each term has two assessment periods … this is the single most important
+structural fact about this system". Treating them as something an admin might
+forget to add allows a state where a teacher opens their class and has nowhere
+to enter scores — a state nothing else in the system would notice.
+
+`POST /terms/{id}/assessment-periods` is therefore an **upsert keyed on
+`half`**, not a plain insert: both rows already exist, so the only thing the
+call can mean is "these are the dates". It answers 201 if it had to create a
+row and 200 if it updated one, so the response is still honest.
+
+Cost to reverse: low. Deleting the two rows and making the POST a plain insert
+is a few lines, and nothing stores anything against an empty period.
+
+### D37 — Endpoints added beyond §7's list
+
+§7 was written before B1 was answered and before §1.5's editability
+requirement was reconciled with it. Six verbs were missing. Each is recorded
+here rather than quietly added, per rule 9.
+
+| Endpoint | Why it has to exist |
+|---|---|
+| `POST /sessions/{id}/current` | §2.3 requires the active session to be set in the platform, never derived from the clock. Something has to set it. |
+| `POST /terms/{id}/current` | The same, for the active term. |
+| `PATCH /terms/{id}` | `times_school_opened` is R9's denominator and is rarely known on the day a term is created. |
+| `PATCH /subjects/{id}` | §1.5: "the list must be admin-editable and the display order must be configurable". The card leaves blank rows for additions. |
+| `PUT /pupils/{id}/enrollment` | §7 assumed enrolment always happened with pupil creation. A roll typed in before the classes were settled needs placing, and pupils change class mid-year. |
+| `POST /grading-scales/{id}/activate` | Switching between versions is the point of versioning them (§4.5), and answering N1 means saying "use this one from now on". |
+| `GET/PUT /classes/{id}/narrative-assignments` | B1 as settled in D15 needs an admin surface. §7 predates that answer. |
+
+§7 has been amended to list them.
+
+### D38 — Exactly one current session and one current term, enforced in the service
+
+Promoting one demotes every other, in the same transaction.
+
+`scope.current_session_id` resolves the current session with `LIMIT 1`. Two
+current rows would not raise anything — they would silently pick one, and half
+the portal would scope itself to the wrong year. The same applies to the
+current term.
+
+**Why the service and not a partial unique index.** An index of the form
+`UNIQUE (school_id) WHERE is_current` would reject the intermediate state
+inside the promotion, where the old and new row are briefly both current.
+Doing it in one `UPDATE … WHERE id != :new` followed by the promotion avoids
+that without needing deferred constraints. Enforced by
+`test_only_one_session_is_ever_current` and its term counterpart.
+
+A belt-and-braces index remains available if the school ever edits rows
+outside the application. Not added: nothing writes to this database but the
+application, and rule 3 makes every schema change a migration.
+
+**Related:** making a session current also demotes any current term in another
+session, because two pointers that disagree scope the portal to neither. A
+term outside the current session cannot be made current at all — that is a
+409, so moving the school into another year stays a deliberate act.
+
+### D39 — Coherence rules on dates
+
+Three refusals, each because the alternative is a report card nobody can
+explain:
+
+- A session or term must start before it ends.
+- A term must fall inside its session.
+- A half term's window must fall inside its term, and a term's dates cannot be
+  narrowed so that they orphan a window already set.
+
+§4.2 states none of these. They are not new requirements, they are the
+arithmetic of the ones it does state, and without them the cumulative averages
+of R5 — "across the terms the pupil was present for" — have no reliable notion
+of which term a date belongs to.
+
+Cost to reverse: low. Each is one guard in `services/academic.py`.
+
+### D40 — The whole admin surface is audited, not only what §4.9 lists
+
+§4.9 requires an audit row for grading-scale and marks-obtainable changes,
+account creation and password resets. Every other setup mutation writes one
+too: sessions, terms, half terms, classes, houses, subjects, class subject
+lists, teacher assignments, pupils, enrolments, narrative sections and
+assignments, and phrase-bank entries.
+
+§4.9's list is a minimum. "Who changed the current term" is the first question
+asked when a class of results goes missing, and `audit_log` already exists —
+the marginal cost is one call per write.
+
+What those rows may **not** contain is unchanged: `services/audit.py` is still
+the only writer, `FORBIDDEN_KEYS` still scrubs, and the pupil payloads carry
+ids rather than names, because CLAUDE.md keeps a pupil's identity out of a log
+as firmly as it keeps a score out.
+
+### D41 — The admin screens are client-rendered, and §8.5 will need more than that
+
+§8 says "server components by default". These screens are client components,
+and not by preference.
+
+The session lives in an httpOnly refresh cookie scoped to `api.<domain>`
+(D13). The Next.js server runs on `<domain>` and cannot read that cookie, so
+it cannot render a signed-in page at all. The access token is held in memory
+and never in `localStorage`, where any successful XSS would read it.
+
+For the setup screens this costs nothing: they are interactive forms used by
+one administrator a few times a term.
+
+**It does not generalise to the parent view.** §8.5 asks for a server-rendered
+report card under **150 KB** of first load with no client-side fetching, and
+the shared JavaScript bundle alone is already ~105 KB. Before milestone 12 one
+of these has to happen:
+
+1. The web app holds its own httpOnly session cookie on `<domain>` and proxies
+   to the API server-side. The cleanest fit for §8.5, and it means a second
+   place that handles sessions.
+2. The report page is client-rendered and the 150 KB target is renegotiated
+   with the school. Honest, but it gives up a stated requirement on the one
+   page where a 3G connection was assumed.
+3. The parent's PDF link carries a signed token and the HTML page is thinner
+   than the PDF route — partial, and does not help the landing page.
+
+Flagged now rather than discovered in milestone 12. Nothing in this milestone
+forecloses any of the three.
+
+### D42 — Marks obtainable: what "configured" means, and what cannot be lowered
+
+**N2 is unanswered and nothing here invents an answer.** No column has a
+default anywhere in the code.
+
+Two judgements were needed to make the setup checklist able to say yes:
+
+**"Configured" means the sheet's terminal column plus at least one CA test.**
+Not all five CA tests: N2 is open, the school may use fewer than five in a
+given half, and demanding all five would block a term on a number nobody has.
+The terminal column — Mid Term Test on the first-half sheet, Exam on the
+second — is required, because without it the sheet's largest component is
+unvalidated.
+
+**A maximum cannot be lowered below a score already entered against it.** §4.4
+lets the school change these numbers and this does not stop that; it stops the
+one change that silently makes stored data invalid. Lowering Mid Term Test to
+20 when a teacher has entered 35 leaves a row that R1 would have rejected on
+entry and that prints on a card as it stands. The refusal reports **how many**
+entries exceed the new maximum and never the scores themselves.
+
+Cost to reverse: low. Both are single functions in `services/marks.py`.
+
+### D43 — Grade bands are checked over whole marks only, and the gap is real
+
+`validate_bands` refuses overlapping bands, bands outside 0–100, and any gap
+that leaves a **whole mark** unresolved.
+
+It does **not** cover fractions, and the card's own scale is why that matters:
+0–39, 40–49, 50–59 and so on leave 39.5 in no band, and `numeric(5,2)` with
+R1's one decimal place permits exactly that value.
+
+The resolution — whether a period average is rounded before banding, and to
+what — is part of the unanswered **N3**. Guessing it here would put a rounding
+rule in the one place nobody would look for it. So the limit is pinned by a
+test, `test_fractional_coverage_is_not_claimed`, which asserts the current
+behaviour and will fail deliberately when N3 is answered in milestone 9.
+
+### D44 — A subject with scores entered cannot be removed from a class
+
+`PUT /classes/{id}/subjects` refuses to drop an offering that has
+`result_entries` behind it, and says to retire the subject instead.
+
+R7's own direction is also guarded: an existing subject cannot be turned into
+a group heading while any class offers it, because a heading carries no scores
+and the existing ones would have nowhere to live.
+
+Deleting would either orphan scores or cascade them away. Retiring keeps the
+record, which is what §4.5's whole argument about reproducing a printed card
+depends on.
+
+### D45 — Test cleanup is ordered explicitly, not by autouse
+
+`tests/integration/conftest.py`'s `session` fixture now requests
+`clean_database` by name even though that fixture is autouse.
+
+Three tests failed intermittently in fixture setup with a bare
+`401 Incorrect username or password`. The cause was ordering: when the autouse
+wipe lost the race against the requested fixture chain, it ran **between** a
+user being committed and that user logging in. The symptom looked like an
+authentication bug and was nowhere near one.
+
+Naming the dependency makes the order a fact rather than a tendency. Cost to
+reverse: none; it is one parameter.
+
+### D46 — Known issue: the test suite runs against the development database
+
+`pytest` resolves `DATABASE_URL` from the same `.env` the application uses, and
+`clean_database` empties every table before each test. Running the suite
+locally therefore **destroys whatever is in the development database**.
+
+CI is unaffected — it runs its own `postgres` service container.
+
+Not fixed in this milestone, because the fix touches `docker-compose.yml`,
+`.env.example` and the CI workflow, and that is worth doing deliberately
+rather than in passing. The shape of it: a second database (`portal_test`)
+created by an init script, and a `TEST_DATABASE_URL` the test configuration
+prefers. Raised with the client rather than silently absorbed.
+
+### D47 — Never run `next build` inside the development container
+
+The dev `web` container keeps `.next` in a named volume shared with
+`next dev`. Running `next build` in it writes production artefacts into that
+directory, and the dev server then serves `MODULE_NOT_FOUND` from a
+half-production `.next` until the volume is emptied and the container
+restarted. Worse, the build itself fails there for an unrelated reason:
+`NODE_ENV=development` is set for the dev server, and `next build` under it
+mixes React's development and production runtimes, which surfaces as
+`Cannot read properties of null (reading 'useState')` during prerendering —
+nothing to do with the page it names.
+
+To verify a production build locally, build the image:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build web
+```
+
+That runs `next build` in the image builder, with no `.next` volume and
+`NODE_ENV` unset. It is also what CI does and what a deploy does, so it is the
+check that means something.
+
+If the dev server has already been poisoned:
+
+```bash
+docker compose exec web sh -c 'rm -rf .next/*'
+docker compose restart web
+```
+
+### D48 — The single-file `openapi.json` mount does not survive a host rewrite
+
+`docker-compose.yml` mounts `./api/openapi.json` into the web container so
+`npm run generate:api` works without mounting the whole `api/` tree. Rewriting
+that file from the host can leave the container's mount pointing at an
+unlinked inode, and `generate:api` then fails with
+`ENOENT /app/openapi.json` — the same class of problem as editing a
+single-file-mounted file with `sed -i` (D10).
+
+The fix is one command:
+
+```bash
+docker compose up -d --force-recreate web
+```
+
+CI is unaffected: its web job copies `../api/openapi.json` into place itself
+rather than relying on a mount.
