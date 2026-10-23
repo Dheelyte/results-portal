@@ -73,6 +73,9 @@ jobs:
           uv run alembic upgrade head
           uv run alembic current
 
+      # The suite creates and migrates its own database (portal_test, derived
+      # from DATABASE_URL) rather than using the one migrated above, so a test
+      # run can never empty a database anyone cares about — D46.
       - name: Test
         run: uv run pytest -q
 
@@ -88,7 +91,7 @@ jobs:
           }
 
   web:
-    name: Web — lint, typecheck, build
+    name: Web — lint, typecheck, test, build
     runs-on: ubuntu-latest
 
     defaults:
@@ -112,6 +115,12 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # Node's own test runner and its TypeScript support, so the grid's
+      # validation, draft recovery and autosave labels are tested without a
+      # test framework being added to the project (CLAUDE.md rule 7).
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build

@@ -5,6 +5,13 @@
 # --reload, no published database or application ports (Caddy is the only way
 # in), and Caddy provisions TLS for SITE_ADDRESS.
 #
+# The two images are named apart on purpose.  Without that, both files build
+# `results-portal-api` and `results-portal-web`, so verifying a production
+# build replaces the development image with one that has no source mount and
+# no --reload — and the next `docker compose up` starts it, which fails with
+# "Cannot find module /app/server.js" and no indication why
+# (docs/DECISIONS.md D52).
+#
 # Migrations remain an explicit deploy step (ARCHITECTURE.md §11):
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
 #     exec api alembic upgrade head
@@ -15,6 +22,7 @@ services:
     restart: always
 
   api:
+    image: results-portal-api-prod
     build:
       context: ./api
       target: prod
@@ -28,6 +36,7 @@ services:
     restart: always
 
   web:
+    image: results-portal-web-prod
     build:
       context: ./web
       target: prod

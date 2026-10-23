@@ -111,20 +111,27 @@ export function Notice({
   tone = "error",
   children,
 }: {
-  tone?: "error" | "success" | "info";
+  tone?: "error" | "success" | "info" | "warning";
   children: ReactNode;
 }) {
   if (!children) return null;
   const styles = {
     error: "border-[var(--danger)] text-[var(--danger)]",
     success: "border-[var(--success)] text-[var(--success)]",
+    warning: "border-[var(--warning)] text-[var(--warning)]",
     info: "border-[var(--border)] text-[var(--muted)]",
   }[tone];
 
+  // A div rather than a paragraph: a notice may carry its own buttons — the
+  // draft-recovery one in the score grid does — and a <p> may not contain
+  // them.
   return (
-    <p role={tone === "error" ? "alert" : "status"} className={`rounded-md border px-3 py-2 text-sm ${styles}`}>
+    <div
+      role={tone === "error" ? "alert" : "status"}
+      className={`rounded-md border px-3 py-2 text-sm ${styles}`}
+    >
       {children}
-    </p>
+    </div>
   );
 }
 

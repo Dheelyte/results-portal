@@ -9,14 +9,11 @@ Each test runs against its own throwaway database so a failure cannot leave
 the development database half-migrated.
 """
 
-import asyncio
 import uuid
-from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
-from alembic.config import Config
 from alembic.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from sqlalchemy import make_url, text
@@ -24,8 +21,8 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config import settings
 from app.models import Base
+from tests.alembic_support import alembic_config, head_revision, run_alembic
 
-API_ROOT = Path(__file__).resolve().parents[2]
 BASELINE = "0001_baseline"
 
 
@@ -48,28 +45,6 @@ async def empty_database() -> str:
             await connection.execute(text(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)'))
     finally:
         await admin.dispose()
-
-
-def alembic_config(url: str) -> Config:
-    config = Config(str(API_ROOT / "alembic.ini"))
-    config.set_main_option("script_location", str(API_ROOT / "alembic"))
-    config.set_main_option("sqlalchemy.url", url)
-    return config
-
-
-async def run_alembic(config: Config, action, revision: str) -> None:
-    """Run an Alembic command off the test's event loop.
-
-    alembic/env.py calls asyncio.run(), which refuses to nest inside a running
-    loop. A worker thread has no loop, so the command runs exactly as it does
-    from the command line.
-    """
-    await asyncio.to_thread(action, config, revision)
-
-
-def head_revision() -> str:
-    script = ScriptDirectory.from_config(alembic_config(settings.dsn))
-    return script.get_current_head()
 
 
 async def table_names(url: str) -> set[str]:
@@ -99,7 +74,7 @@ async def test_upgrade_head_applies_to_an_empty_database(empty_database: str) ->
 
     await run_alembic(alembic_config(empty_database), command.upgrade, "head")
 
-    assert await current_revision(empty_database) == head_revision()
+    assert await current_revision(empty_database) == head_revision(settings.dsn)
 
 
 async def test_the_baseline_applies_on_its_own(empty_database: str) -> None:
@@ -167,7 +142,7 @@ async def test_a_full_down_and_up_cycle_works(empty_database: str) -> None:
     await run_alembic(config, command.downgrade, "base")
     await run_alembic(config, command.upgrade, "head")
 
-    assert await current_revision(empty_database) == head_revision()
+    assert await current_revision(empty_database) == head_revision(settings.dsn)
 
 
 async def test_upgrade_is_idempotent(empty_database: str) -> None:
@@ -176,7 +151,7 @@ async def test_upgrade_is_idempotent(empty_database: str) -> None:
     await run_alembic(config, command.upgrade, "head")
     await run_alembic(config, command.upgrade, "head")
 
-    assert await current_revision(empty_database) == head_revision()
+    assert await current_revision(empty_database) == head_revision(settings.dsn)
 
 
 def test_the_chain_is_linear_and_rooted_at_the_baseline() -> None:

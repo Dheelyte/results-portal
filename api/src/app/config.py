@@ -9,6 +9,7 @@ from typing import Literal
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy import make_url
 
 # Refused outright in production.  Present only so development and the test
 # suite start without ceremony.
@@ -32,6 +33,11 @@ class Settings(BaseSettings):
     # Held as a SecretStr so the password never reaches a log line, a traceback
     # or a repr.  Call .get_secret_value() only where the DSN is actually used.
     database_url: SecretStr = SecretStr("postgresql+asyncpg://portal:portal@postgres:5432/portal")
+
+    # The suite never touches the application's database.  Derived from
+    # `database_url` by appending `_test` unless this is set explicitly, so
+    # `pytest` is safe with no configuration at all (docs/DECISIONS.md D46).
+    test_database_url: SecretStr | None = None
 
     api_v1_prefix: str = "/api/v1"
 
@@ -78,6 +84,21 @@ class Settings(BaseSettings):
     def dsn(self) -> str:
         """The database URL as a plain string, for the engine and Alembic."""
         return self.database_url.get_secret_value()
+
+    @property
+    def test_dsn(self) -> str:
+        """The database the test suite may destroy.
+
+        A separate database rather than a flag, because the suite's cleanup
+        fixture empties every table: pointed at the development database it
+        deletes the school's data between tests, which it did twice during
+        milestone 5 before this existed.
+        """
+        if self.test_database_url is not None:
+            return self.test_database_url.get_secret_value()
+
+        url = make_url(self.dsn)
+        return url.set(database=f"{url.database}_test").render_as_string(hide_password=False)
 
     @property
     def cookie_secure(self) -> bool:

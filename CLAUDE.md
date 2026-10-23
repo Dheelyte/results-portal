@@ -50,8 +50,9 @@ docker compose exec api alembic revision --autogenerate -m "..."
 docker compose exec api pytest                    # all tests
 docker compose exec api pytest tests/unit -q      # fast loop
 docker compose exec api python -m app.seed        # demo data
+docker compose exec api python -m app.recompute_averages --dry-run   # R3
 cd web && npm run dev                             # frontend
-cd web && npm run typecheck && npm run lint
+cd web && npm run typecheck && npm run lint && npm test
 npx playwright test                               # E2E
 ```
 

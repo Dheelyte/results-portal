@@ -63,6 +63,12 @@ class AuditAction(str):
     NARRATIVE_ASSIGNMENTS_SET = "narrative_assignments.set"
     COMMENT_BANK_ENTRY_CREATED = "comment_bank.created"
 
+    # Score entry (milestone 6). One row per save of one class-subject's
+    # sheet, carrying counts only — never a score (CLAUDE.md).
+    SCORES_SAVED = "result_entries.saved"
+    CLASS_TERM_STARTED = "class_term.started"
+    AVERAGES_RECOMPUTED = "result_entries.averages_recomputed"
+
 
 class AuditLog(Base):
     __tablename__ = "audit_log"

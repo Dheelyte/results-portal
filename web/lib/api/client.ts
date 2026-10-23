@@ -27,9 +27,18 @@ export const API_PREFIX = "/api/v1";
 export class ApiError extends Error {
   readonly status: number;
 
-  constructor(status: number, message: string) {
+  /**
+   * Per-row refusals from a bulk write, keyed by pupil id and then by column
+   * (§7, `services/errors.py` RowErrors). The score grid paints exactly those
+   * cells red; a single message would say that *something* was out of range
+   * without saying which.
+   */
+  readonly rows?: Record<string, Record<string, string>>;
+
+  constructor(status: number, message: string, rows?: ApiError["rows"]) {
     super(message);
     this.status = status;
+    this.rows = rows;
     this.name = "ApiError";
   }
 
@@ -66,15 +75,26 @@ function url(path: string, query?: RequestOptions["query"]): string {
  * `{detail: [{loc, msg, ...}]}`. Both reach a person, so both are flattened
  * into something readable rather than printed as JSON.
  */
-async function messageFrom(response: Response): Promise<string> {
+interface Failure {
+  message: string;
+  rows?: Record<string, Record<string, string>>;
+}
+
+async function failureFrom(response: Response): Promise<Failure> {
   let detail: unknown;
+  let rows: Failure["rows"];
   try {
-    detail = (await response.json())?.detail;
+    const body = await response.json();
+    detail = body?.detail;
+    // Present only on a bulk write that rejected individual rows.
+    if (body?.errors && typeof body.errors === "object") {
+      rows = body.errors as Failure["rows"];
+    }
   } catch {
     detail = undefined;
   }
 
-  if (typeof detail === "string") return detail;
+  if (typeof detail === "string") return { message: detail, rows };
 
   if (Array.isArray(detail)) {
     const parts = detail
@@ -84,12 +104,16 @@ async function messageFrom(response: Response): Promise<string> {
         return field ? `${String(field)}: ${message}` : message;
       })
       .filter(Boolean);
-    if (parts.length) return parts.join("; ");
+    if (parts.length) return { message: parts.join("; "), rows };
   }
 
-  if (response.status === 401) return "Your session has ended. Please sign in again.";
-  if (response.status >= 500) return "Something went wrong at our end. Please try again.";
-  return `Request failed (${response.status}).`;
+  if (response.status === 401) {
+    return { message: "Your session has ended. Please sign in again.", rows };
+  }
+  if (response.status >= 500) {
+    return { message: "Something went wrong at our end. Please try again.", rows };
+  }
+  return { message: `Request failed (${response.status}).`, rows };
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -109,7 +133,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, await messageFrom(response));
+    const failure = await failureFrom(response);
+    throw new ApiError(response.status, failure.message, failure.rows);
   }
 
   if (response.status === 204) return undefined as T;

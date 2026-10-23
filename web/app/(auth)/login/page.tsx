@@ -86,6 +86,16 @@ export default function LoginPage() {
 }
 
 /** Where each role's work lives. Only the admin surface exists so far. */
+/**
+ * Where each role's work actually is.
+ *
+ * The head teacher's review queue is milestone 9 and the parent portal is
+ * milestone 12; until those exist their accounts land on the public page,
+ * which is honest about there being nothing yet rather than showing them an
+ * empty shell.
+ */
 function destinationFor(role: string): string {
-  return role === "admin" ? "/admin" : "/";
+  if (role === "admin") return "/admin";
+  if (role === "teacher") return "/teacher";
+  return "/";
 }

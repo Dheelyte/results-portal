@@ -36,6 +36,16 @@ async def all_of(db: AsyncSession, stmt: Select) -> Sequence[Any]:
     return (await db.execute(stmt)).scalars().all()
 
 
+async def rows_of(db: AsyncSession, stmt: Select) -> Sequence[Any]:
+    """Every row of a multi-column select, as tuples.
+
+    Separate from `all_of` rather than a flag on it: `scalars()` silently
+    returns only the first column, so a select that grew a second one would
+    keep working and start lying.
+    """
+    return (await db.execute(stmt)).all()
+
+
 @contextlib.asynccontextmanager
 async def integrity_guard(db: AsyncSession, message: str) -> AsyncIterator[None]:
     """Turn a constraint violation into a `Conflict` with a readable message.

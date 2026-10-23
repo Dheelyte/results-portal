@@ -11,25 +11,26 @@ requirements approved in September described six without. The card's scale is
 seeded because it is what is printed, and the school's answer will arrive as a
 new scale here rather than as a migration.
 
-The formulas of R3, R5 and R6 will join this module when the school answers
-N3. Nothing in this milestone computes a grade: §12 puts grade resolution at
-approval, in milestone 9.
+R3's two period-average functions and R4's band lookup are at the foot of
+this module, both marked as placeholders where N3 leaves them one. R5 and R6
+join them when the cumulative columns are built (milestone 11).
 """
 
 import datetime as dt
 import decimal
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
-from app.models import AuditAction, GradeBand, GradingScale, User
+from app.models import AuditAction, GradeBand, GradingScale, TermHalf, User
 from app.services import audit
 from app.services.errors import Invalid
+from app.services.marks import COLUMNS_BY_HALF
 from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
@@ -291,3 +292,131 @@ async def _activate(
         ip_address=ip_address,
         user_agent=user_agent,
     )
+
+
+# ---------------------------------------------------------------------------
+# R3 — the period average.  ⚠ PLACEHOLDER: N3 is unanswered.
+# ---------------------------------------------------------------------------
+#
+# §6 R3 names two different figures: *Mid Term Ave.* on the first-half sheet
+# and *Total Weighted Average* on the second. Different names on the printed
+# card almost certainly mean different arithmetic, and the school has not yet
+# said what either one is — N3.
+#
+# So there are two functions below, as R3 instructs, and today they agree.
+# That agreement is the placeholder, not the design: when the answer arrives,
+# each has exactly one body to change and `python -m app.recompute_averages`
+# backfills every unapproved row. No other module does this arithmetic, and
+# nothing reads `period_average` and adjusts it afterwards.
+#
+# The placeholder is the pupil's marks as a percentage of the marks obtainable
+# for that sheet. Three properties make it the safest guess available:
+#
+#   * It is scale-free. Whatever the school's maxima turn out to be (N2), the
+#     result is 0-100, which is the range the grade bands describe.
+#   * It treats a blank cell as zero and returns nothing only when the whole
+#     row is blank — exactly what R2's generated CA Test Total column does. A
+#     half-entered row therefore reads low in both columns, consistently,
+#     rather than the average disagreeing with the total beside it.
+#   * A column the school left out of Marks Obtainable is not on the sheet, so
+#     it counts in neither the numerator nor the denominator.
+#
+# What it is NOT is weighted — nothing here can be, until "weighted" is
+# defined. If the school says the exam is worth 60% and the CA total 40%,
+# `total_weighted_average` is the one function that changes.
+
+Scores = Mapping[str, decimal.Decimal | None]
+
+# Two decimal places, because `result_entries.period_average` is numeric(5,2).
+AVERAGE_PLACES = decimal.Decimal("0.01")
+
+
+def _percentage_of_obtainable(
+    columns: Sequence[str], scores: Scores, maxima: Scores
+) -> decimal.Decimal | None:
+    """The shared placeholder body. See the note above before editing."""
+    applicable = [column for column in columns if maxima.get(column) is not None]
+
+    obtainable = sum(
+        (maxima[column] for column in applicable),
+        start=decimal.Decimal(0),
+    )
+    if obtainable <= 0:
+        return None
+
+    if all(scores.get(column) is None for column in applicable):
+        return None
+
+    earned = sum(
+        (scores.get(column) or decimal.Decimal(0) for column in applicable),
+        start=decimal.Decimal(0),
+    )
+
+    percentage = earned / obtainable * HIGHEST_SCORE
+    return percentage.quantize(AVERAGE_PLACES, rounding=decimal.ROUND_HALF_UP)
+
+
+def mid_term_average(scores: Scores, maxima: Scores) -> decimal.Decimal | None:
+    """*Mid Term Ave.* — the first-half sheet's figure. ⚠ PLACEHOLDER (N3)."""
+    return _percentage_of_obtainable(COLUMNS_BY_HALF[TermHalf.FIRST_HALF], scores, maxima)
+
+
+def total_weighted_average(scores: Scores, maxima: Scores) -> decimal.Decimal | None:
+    """*Total Weighted Average* — the second-half sheet's figure.
+
+    ⚠ PLACEHOLDER (N3), and the one most likely to be wrong: "weighted" is a
+    word the card uses and this function does not yet honour.
+    """
+    return _percentage_of_obtainable(COLUMNS_BY_HALF[TermHalf.SECOND_HALF], scores, maxima)
+
+
+def period_average(half: TermHalf, scores: Scores, maxima: Scores) -> decimal.Decimal | None:
+    """Whichever of the two figures this sheet prints.
+
+    The single entry point, so no caller chooses the formula by inspecting the
+    half itself.
+    """
+    if half is TermHalf.FIRST_HALF:
+        return mid_term_average(scores, maxima)
+    return total_weighted_average(scores, maxima)
+
+
+# ---------------------------------------------------------------------------
+# R4 — the grade
+# ---------------------------------------------------------------------------
+
+
+def banded_value(average: decimal.Decimal) -> decimal.Decimal:
+    """The number a band is looked up by.
+
+    The card's bands run 0-39, 40-49, 50-59 and so on — whole marks, with
+    nothing between them. A period average is numeric(5,2), so 39.50 falls in
+    no band at all (docs/DECISIONS.md D43).
+
+    This rounds half up to the nearest whole mark before the lookup, which is
+    an **assumption** (§14 A17): the second half of N3 asks the school whether
+    an average is rounded before a grade is read from it. It lives in one
+    named function so the answer is a one-line change, and
+    `test_grading_bands.py` pins the current behaviour so that change cannot
+    be made silently.
+    """
+    return average.quantize(decimal.Decimal(1), rounding=decimal.ROUND_HALF_UP)
+
+
+def band_for(average: decimal.Decimal | None, bands: Sequence[GradeBand]) -> GradeBand | None:
+    """The band an average falls in, or None.
+
+    None has two causes and both are legitimate: there is no average yet, or
+    the bands do not cover the rounded value. The second should be impossible
+    for a scale built through `create_scale`, which refuses gaps — but a scale
+    seeded or edited before that rule existed could have one, and a missing
+    grade is better than a wrong one.
+    """
+    if average is None:
+        return None
+
+    value = banded_value(average)
+    for band in bands:
+        if band.min_score <= value <= band.max_score:
+            return band
+    return None

@@ -933,7 +933,10 @@ authentication bug and was nowhere near one.
 Naming the dependency makes the order a fact rather than a tendency. Cost to
 reverse: none; it is one parameter.
 
-### D46 — Known issue: the test suite runs against the development database
+### D46 — The test suite runs against its own database
+
+**Raised as a known issue in milestone 5; fixed at the start of milestone 6.**
+The original entry follows, then what was done.
 
 `pytest` resolves `DATABASE_URL` from the same `.env` the application uses, and
 `clean_database` empties every table before each test. Running the suite
@@ -946,6 +949,25 @@ Not fixed in this milestone, because the fix touches `docker-compose.yml`,
 rather than in passing. The shape of it: a second database (`portal_test`)
 created by an init script, and a `TEST_DATABASE_URL` the test configuration
 prefers. Raised with the client rather than silently absorbed.
+
+**Fixed, 2026-10-23.** Close to that shape, with two changes that make it need
+no setup at all:
+
+- `Settings.test_dsn` **derives** the test database from `DATABASE_URL` by
+  appending `_test`. `TEST_DATABASE_URL` overrides it but nobody has to set
+  it, so a fresh checkout is safe before anyone has read this file.
+- `tests/conftest.py` — the first module pytest loads, and therefore the only
+  place this can happen — rewrites `DATABASE_URL` from it **before anything
+  imports `app.db`**, which builds its engine at import time. It then refuses
+  to start at all if the resolved database name does not end in `_test`.
+- A session fixture creates the database if it is absent and runs
+  `alembic upgrade head` on it, so the schema under test is the migration
+  chain's output rather than `metadata.create_all` — which would let a model
+  and its migration disagree without any test noticing (rule 3).
+
+No init script, because one only runs on a fresh `pgdata` volume and would
+have missed every existing checkout. Two tests guard it: one on the
+derivation, one asserting the live engine is on a `_test` database.
 
 ### D47 — Never run `next build` inside the development container
 
@@ -993,3 +1015,148 @@ docker compose up -d --force-recreate web
 
 CI is unaffected: its web job copies `../api/openapi.json` into place itself
 rather than relying on a mount.
+
+---
+
+## Milestone 6 — score entry
+
+### D49 — The grid renders the columns the server sends
+
+§8.1 describes two layouts: "five CA tests plus Mid Term Test, or five CA
+tests plus Exam". The obvious reading is two components, or one component with
+a conditional. Neither is what was built.
+
+`GET /class-subjects/{id}/entries` returns `columns` — the card's own column
+list for that half — and the grid renders exactly that. The browser never
+decides which half it is looking at.
+
+**Why.** `COLUMNS_BY_HALF` in `services/marks.py` already had to exist: R1
+validates against it and the Marks Obtainable screen is built from it. A
+second copy in TypeScript would be a business rule in a React component
+(rule 2) and the two would eventually disagree — most likely the day the
+school answers N2 and a column's maximum moves.
+
+A consequence worth knowing: a column added to a sheet later needs no
+frontend change beyond a label.
+
+### D50 — Reference data is readable by everyone in the school; only an admin may change it
+
+§5.2's first three rows give the calendar, the subject list, the grading
+scale, the narrative sections and the Marks Obtainable row to the **admin
+alone**, and milestone 5 implemented that as `_school_wide_only` in
+`authz/scope.py` — admin and head teacher see the rows, a teacher and a parent
+see nothing.
+
+Milestone 6 showed that to be too narrow. A teacher cannot enter a score
+without knowing which half's sheet is open, what each column is marked out of,
+and what grade an average earns. With those scopes closed, the grid 404s on
+its own sheet.
+
+So `authz/scope.py` now distinguishes two questions, which §5.2 conflates
+because it is a table about *verbs*:
+
+- **May this caller change it?** The admin alone. Enforced by the capability
+  gates in `authz/dependencies.py`, unchanged, and asserted endpoint by
+  endpoint in `test_setup_authz.py`.
+- **May this caller see it?** Everyone in the school, for
+  `academic_sessions`, `terms`, `assessment_periods`, `subjects`, `houses`,
+  `grading_scales`, `grade_bands`, `narrative_sections` and
+  `marks_obtainable` — via `_reference_data`.
+
+None of those tables holds a pupil, a score or a comment. Every one of them is
+printed on the card a parent is given. Widening sight of them reveals nothing
+about any child, and the write surface did not move.
+
+`users`, `enrollments` and `comment_bank` keep `_school_wide_only`: staff
+names and contact details, which class a child is in, and the phrase bank are
+not reference data.
+
+**Cost to reverse:** low. One function, nine call sites.
+
+### D51 — `GET /my/assignments` carries the term and its sheets, and defaults to the current term
+
+§7 lists `GET /my/assignments?term_id=` returning a list. Two problems with
+that as written, both discovered while building the grid:
+
+1. A teacher has no endpoint that tells them which term is current — §5.2 gives
+   `/terms` to the admin — so they could not supply `term_id`.
+2. Nor could they discover the two `assessment_period_id`s, without which
+   there is no sheet to open.
+
+So `term_id` is optional and defaults to the current term (§2.3 puts that
+setting in the platform), and the response is an object carrying the term, its
+assessment periods, and the assignments. A 409 explains it when no term is
+current, rather than an empty list implying there is no work.
+
+This is the same kind of gap D37 recorded in milestone 5: not new
+functionality, the missing half of a requirement stated elsewhere.
+
+### D52 — The production overlay names its images apart
+
+`docker-compose.prod.yml` sets `image: results-portal-api-prod` and
+`results-portal-web-prod`.
+
+Without that, both compose files build `results-portal-web`, so verifying a
+production build (which D47 says to do) overwrites the development image with
+one that has no source mount and no `--reload`. The next `docker compose up`
+then starts it and the container restart-loops on
+`Cannot find module '/app/server.js'`, with nothing to connect that to the
+build run earlier. It happened twice during milestone 6 before being fixed.
+
+### D53 — The frontend's pure logic is tested with Node's own runner
+
+§8.1's harder requirements — inline validation, draft recovery, the autosave
+indicator — are logic, and logic ships with its tests (rule 10). The project
+has no JavaScript test framework, and adding one needs permission (rule 7).
+
+Node 22 can run TypeScript directly (`--experimental-strip-types`) and has a
+test runner built in, so `npm test` runs 46 tests over `lib/scores.ts`,
+`lib/drafts.ts` and `autosaveLabel` with **nothing added to
+`package.json`'s dependencies**.
+
+What this buys: R1's browser mirror, the draft reconciliation (including
+storage that throws, which is what a locked-down Android WebView does), and
+every string in the save indicator.
+
+What it does not: anything that needs a DOM or a React renderer. The grid
+component itself, hydration, focus movement and `credentials: "include"` are
+**not covered by any automated test**, and §12 puts end-to-end at milestone
+13. Two consequences:
+
+- Logic that must be tested is kept out of the component. `lib/scores.ts`
+  exists for that reason as much as for rule 2.
+- `tsconfig.json` gains `allowImportingTsExtensions`, and the two intra-`lib`
+  imports under test are written `./scores.ts`, because Node's resolver needs
+  the extension at every hop.
+
+### D54 — R3's two averages agree today, and that agreement is the placeholder
+
+R3 names two figures — *Mid Term Ave.* on the first-half sheet, *Total
+Weighted Average* on the second — and says to "implement as two named
+functions in `services/grading.py` with the current best guess clearly marked
+as a placeholder". Both now exist and both compute the same thing: the pupil's
+marks as a percentage of the marks obtainable for that sheet.
+
+Different names on a printed card almost certainly mean different arithmetic,
+and `total_weighted_average` is the one most likely to be wrong — "weighted"
+is a word the card uses and that function does not yet honour. N3 is the
+question.
+
+The placeholder was chosen for three properties that survive whatever the
+answer is:
+
+- **Scale-free.** Whatever the maxima turn out to be (N2), the result is
+  0–100, which is the range the grade bands describe.
+- **Blank counts as zero, and an untouched row has no average at all** —
+  exactly what R2's generated `ca_test_total` column does. A half-entered row
+  reads low in both columns consistently, rather than the average disagreeing
+  with the total printed beside it.
+- **A column with no maximum is not on the sheet**, so it counts in neither
+  the numerator nor the denominator. A school using three CA tests is marked
+  out of three.
+
+`python -m app.recompute_averages` backfills when the answer arrives, and
+refuses to touch a row carrying a snapshotted `grade_letter` — a printed card
+must keep saying what was printed (§4.5, rule 6). It reports how many rows it
+skipped for that reason, so a formula change after an approval is visible
+rather than silent.

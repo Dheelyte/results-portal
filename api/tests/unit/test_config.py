@@ -134,3 +134,48 @@ def test_production_refuses_a_short_jwt_secret(monkeypatch: pytest.MonkeyPatch) 
 
     with pytest.raises(ValidationError, match="at least 32 bytes"):
         Settings(_env_file=None)
+
+
+# ---------------------------------------------------------------------------
+# The test database (docs/DECISIONS.md D46)
+# ---------------------------------------------------------------------------
+
+
+def test_the_test_database_is_the_application_one_with_a_suffix() -> None:
+    """Derived, not configured, so `pytest` is safe with no setup at all."""
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+asyncpg://portal:portal@postgres:5432/portal",
+    )
+
+    assert settings.test_dsn == "postgresql+asyncpg://portal:portal@postgres:5432/portal_test"
+    assert settings.dsn == "postgresql+asyncpg://portal:portal@postgres:5432/portal"
+
+
+def test_an_explicit_test_database_url_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TEST_DATABASE_URL", "postgresql+asyncpg://u:p@elsewhere:5432/scratch_test")
+
+    assert Settings(_env_file=None).test_dsn.endswith("/scratch_test")
+
+
+def test_the_test_dsn_keeps_the_password() -> None:
+    """`render_as_string` masks it by default, which would make the URL
+    unusable rather than merely ugly."""
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql+asyncpg://portal:s3cret@postgres:5432/portal",
+    )
+
+    assert "s3cret" in settings.test_dsn
+
+
+def test_this_suite_is_not_running_against_the_application_database() -> None:
+    """The guard in tests/conftest.py, asserted rather than assumed.
+
+    If the redirection there ever breaks, `clean_database` empties the
+    school's data instead of the suite's. That happened twice during
+    milestone 5, which is why this test exists.
+    """
+    from app.db import engine
+
+    assert (engine.url.database or "").endswith("_test"), engine.url.database

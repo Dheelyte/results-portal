@@ -51,3 +51,10 @@ def requires(action: Action) -> Callable[[User], Awaitable[User]]:
 AcademicStructureAdmin = Annotated[User, Depends(requires(Action.MANAGE_ACADEMIC_STRUCTURE))]
 UserAdmin = Annotated[User, Depends(requires(Action.MANAGE_USERS))]
 AssessmentConfigAdmin = Annotated[User, Depends(requires(Action.MANAGE_ASSESSMENT_CONFIG))]
+
+# §5.2's teaching rows. The capability is the role half of the question — a
+# head teacher and an admin are refused here, because neither enters scores.
+# *Which* class-subjects a teacher may write to is the other half, and
+# `authz/scope.py` answers it: a sheet outside their assignments is a 404,
+# never a 403, because a 403 would confirm it exists (CLAUDE.md rule 4).
+ScoreEntrant = Annotated[User, Depends(requires(Action.ENTER_SCORES))]

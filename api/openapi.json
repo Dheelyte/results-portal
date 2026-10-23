@@ -234,6 +234,59 @@
         "title": "AssessmentPeriodSave",
         "type": "object"
       },
+      "AssignmentRead": {
+        "description": "One line of a teacher's own list of sheets (\u00a77 /my/assignments).",
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "class_subject_id": {
+            "format": "uuid",
+            "title": "Class Subject Id",
+            "type": "string"
+          },
+          "entered_count": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Entered Count",
+            "type": "object"
+          },
+          "pupil_count": {
+            "title": "Pupil Count",
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_subject_id",
+          "class_id",
+          "class_name",
+          "subject_id",
+          "subject_name",
+          "pupil_count",
+          "state"
+        ],
+        "title": "AssignmentRead",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -522,6 +575,18 @@
         "title": "ClassTeacherSave",
         "type": "object"
       },
+      "ClassTermState": {
+        "description": "R14's state machine.\n\n    not_started -> in_progress -> submitted -> approved\n                        ^             |\n                        +-- returned <+\n\nAnything else is a 409.",
+        "enum": [
+          "not_started",
+          "in_progress",
+          "submitted",
+          "returned",
+          "approved"
+        ],
+        "title": "ClassTermState",
+        "type": "string"
+      },
       "CommentCreate": {
         "properties": {
           "scope": {
@@ -686,6 +751,326 @@
         "title": "EnrollmentSave",
         "type": "object"
       },
+      "EntriesSave": {
+        "additionalProperties": false,
+        "description": "A bulk upsert of one sheet. Applied all or none (\u00a77).",
+        "properties": {
+          "assessment_period_id": {
+            "format": "uuid",
+            "title": "Assessment Period Id",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/EntryRow"
+            },
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "assessment_period_id",
+          "rows"
+        ],
+        "title": "EntriesSave",
+        "type": "object"
+      },
+      "EntryRead": {
+        "description": "One line of the grid as rendered.",
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "ca_test_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test Total"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GradeRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "grade_letter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade Letter"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "period_average": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Average"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "EntryRead",
+        "type": "object"
+      },
+      "EntryRow": {
+        "additionalProperties": false,
+        "description": "One pupil's cells, as the grid submits them.",
+        "properties": {
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id"
+        ],
+        "title": "EntryRow",
+        "type": "object"
+      },
       "GradeBandRead": {
         "properties": {
           "id": {
@@ -777,6 +1162,25 @@
           "max_score"
         ],
         "title": "GradeBandWrite",
+        "type": "object"
+      },
+      "GradeRead": {
+        "description": "The grade shown during entry, resolved live from the active scale (R4).\n\nNot a snapshot. `grade_letter` on the row stays null until approval, and\nthis field disappears once it is set \u2014 at which point the snapshot is what\nthe card says and recomputing it is forbidden (CLAUDE.md rule 6).",
+        "properties": {
+          "letter": {
+            "title": "Letter",
+            "type": "string"
+          },
+          "remark": {
+            "title": "Remark",
+            "type": "string"
+          }
+        },
+        "required": [
+          "letter",
+          "remark"
+        ],
+        "title": "GradeRead",
         "type": "object"
       },
       "GradingScaleCreate": {
@@ -1228,6 +1632,95 @@
         "title": "MarksObtainableSave",
         "type": "object"
       },
+      "MaximaRead": {
+        "description": "The Marks Obtainable row, which \u00a78.1 pins to the top of the grid.",
+        "properties": {
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "is_class_override": {
+            "default": false,
+            "title": "Is Class Override",
+            "type": "boolean"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          }
+        },
+        "title": "MaximaRead",
+        "type": "object"
+      },
       "MessageResponse": {
         "properties": {
           "detail": {
@@ -1452,6 +1945,49 @@
           "sections"
         ],
         "title": "NarrativeSectionsSave",
+        "type": "object"
+      },
+      "PeriodSummary": {
+        "description": "One of the term's two sheets (\u00a71.1).",
+        "properties": {
+          "closes_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes On"
+          },
+          "half": {
+            "$ref": "#/components/schemas/TermHalf"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "opens_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opens On"
+          }
+        },
+        "required": [
+          "id",
+          "half"
+        ],
+        "title": "PeriodSummary",
         "type": "object"
       },
       "PupilCreate": {
@@ -1688,6 +2224,98 @@
           "is_active"
         ],
         "title": "PupilRead",
+        "type": "object"
+      },
+      "SheetRead": {
+        "description": "One class-subject's grid for one assessment period.",
+        "properties": {
+          "assessment_period_id": {
+            "format": "uuid",
+            "title": "Assessment Period Id",
+            "type": "string"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "class_subject_id": {
+            "format": "uuid",
+            "title": "Class Subject Id",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "half": {
+            "$ref": "#/components/schemas/TermHalf"
+          },
+          "maxima": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MaximaRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxima_configured": {
+            "title": "Maxima Configured",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/EntryRead"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_subject_id",
+          "class_id",
+          "class_name",
+          "subject_id",
+          "subject_name",
+          "assessment_period_id",
+          "term_id",
+          "half",
+          "columns",
+          "maxima_configured",
+          "state",
+          "editable"
+        ],
+        "title": "SheetRead",
         "type": "object"
       },
       "SubjectCreate": {
@@ -2077,6 +2705,66 @@
         "title": "TermRead",
         "type": "object"
       },
+      "TermSummary": {
+        "description": "Which term the teacher is working in.\n\nSent with the assignment list because \u00a75.2 gives the calendar to the admin\nalone: a teacher has no endpoint that would tell them which term is\ncurrent or what its two sheets are (docs/DECISIONS.md D51).",
+        "properties": {
+          "academic_session_name": {
+            "title": "Academic Session Name",
+            "type": "string"
+          },
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "academic_session_name"
+        ],
+        "title": "TermSummary",
+        "type": "object"
+      },
       "TermUpdate": {
         "description": "Every field optional; only what is sent is changed.",
         "properties": {
@@ -2337,6 +3025,33 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WorkloadRead": {
+        "description": "Everything the teacher's first screen needs, in one request.",
+        "properties": {
+          "assignments": {
+            "items": {
+              "$ref": "#/components/schemas/AssignmentRead"
+            },
+            "title": "Assignments",
+            "type": "array"
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodSummary"
+            },
+            "title": "Periods",
+            "type": "array"
+          },
+          "term": {
+            "$ref": "#/components/schemas/TermSummary"
+          }
+        },
+        "required": [
+          "term"
+        ],
+        "title": "WorkloadRead",
         "type": "object"
       }
     },
@@ -2677,6 +3392,124 @@
         "summary": "Rotate the session",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/class-subjects/{class_subject_id}/entries": {
+      "get": {
+        "description": "The grid: the class roll, the scores so far, and the column maxima.",
+        "operationId": "read_entries_api_v1_class_subjects__class_subject_id__entries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Subject Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which half's sheet.",
+            "in": "query",
+            "name": "assessment_period_id",
+            "required": true,
+            "schema": {
+              "description": "Which half's sheet.",
+              "format": "uuid",
+              "title": "Assessment Period Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SheetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Entries",
+        "tags": [
+          "teacher: score entry"
+        ]
+      },
+      "put": {
+        "description": "Save a set of score rows, applying all of them or none (\u00a77).\n\nReturns the whole sheet rather than an acknowledgement, so the grid's\ncomputed columns \u2014 CA Test Total, the period average and the grade \u2014 come\nback from the database that generated them instead of being guessed at in\nthe browser.",
+        "operationId": "save_entries_api_v1_class_subjects__class_subject_id__entries_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntriesSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SheetRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Entries",
+        "tags": [
+          "teacher: score entry"
         ]
       }
     },
@@ -3580,6 +4413,64 @@
         "summary": "Create a house",
         "tags": [
           "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/my/assignments": {
+      "get": {
+        "description": "Every sheet this teacher is responsible for, with its progress.\n\nCarries the term and its two assessment periods as well, because \u00a75.2\ngives the calendar to the admin alone and the grid cannot be opened\nwithout those ids (docs/DECISIONS.md D51).",
+        "operationId": "my_assignments_api_v1_my_assignments_get",
+        "parameters": [
+          {
+            "description": "Defaults to the current term, which \u00a72.3 sets in the platform.",
+            "in": "query",
+            "name": "term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to the current term, which \u00a72.3 sets in the platform.",
+              "title": "Term Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkloadRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Assignments",
+        "tags": [
+          "teacher: score entry"
         ]
       }
     },

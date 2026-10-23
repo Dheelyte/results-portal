@@ -51,3 +51,164 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ---------------------------------------------------------------------------
+   The score entry grid (ARCHITECTURE.md §8.1)
+
+   One DOM, two layouts. Above 640px this is a table with the Marks Obtainable
+   row pinned beneath the header; below it, each row becomes a card and every
+   cell carries its own label — because §8.1 is explicit: "Never ship a
+   horizontally scrolling eight-column table on a phone."
+
+   Rendering a second, hidden set of inputs for small screens would be the
+   obvious alternative and is worse: two inputs per cell means two refs, two
+   ids, and Enter moving focus to a field nobody can see.
+   --------------------------------------------------------------------------- */
+
+.score-grid .cell {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.score-grid .head {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.score-grid .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-grid .computed {
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.score-grid .score-input {
+  width: 100%;
+  min-width: 3.5rem;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--background);
+  color: var(--foreground);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-grid .score-input:disabled {
+  background: var(--surface);
+  color: var(--muted);
+}
+
+/* §8.1: "Validation inline and immediate — a red cell naming the maximum,
+   not a modal." */
+.score-grid .score-input.invalid {
+  border-color: var(--danger);
+  outline: 1px solid var(--danger);
+}
+
+.score-grid .score-error {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  color: var(--danger);
+}
+
+@media (min-width: 40rem) {
+  /* The header and the Marks Obtainable row stay in view while the teacher
+     scrolls down thirty pupils, which is the whole point of pinning it. */
+  .score-grid thead th,
+  .score-grid thead td {
+    position: sticky;
+    background: var(--background);
+    z-index: 2;
+  }
+
+  .score-grid thead tr:first-child th {
+    top: 0;
+  }
+
+  .score-grid thead tr.maxima th,
+  .score-grid thead tr.maxima td {
+    top: 2rem;
+    border-bottom: 2px solid var(--border);
+  }
+}
+
+@media (max-width: 39.99rem) {
+  /* One card per pupil. The table semantics stay in the markup — screen
+     readers still hear a table — while the visual layout stacks. */
+  .score-grid table,
+  .score-grid tbody,
+  .score-grid tr.card,
+  .score-grid tr.card > .cell {
+    display: block;
+    width: 100%;
+  }
+
+  /* The column headings and the pinned maxima row are the two things a card
+     layout cannot use: each cell names its own column and maximum instead. */
+  .score-grid thead {
+    display: none;
+  }
+
+  .score-grid tr.card {
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .score-grid tr.card > .cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .score-grid tr.card > .cell:last-child {
+    border-bottom: 0;
+  }
+
+  .score-grid tr.card > .name {
+    background: var(--surface-raised);
+    display: block;
+  }
+
+  .score-grid tr.card > .cell[data-label]::before {
+    content: attr(data-label);
+    flex: 1 1 auto;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+
+  .score-grid tr.card > .cell > .score-input {
+    flex: 0 0 5.5rem;
+    width: 5.5rem;
+    /* 16px: anything smaller makes iOS Safari zoom the page on focus, and a
+       zoomed grid is unusable for the next cell. */
+    font-size: 1rem;
+  }
+
+  /* The error sits under the field rather than beside it, so a long message
+     does not squeeze the input to nothing. */
+  .score-grid tr.card > .cell {
+    flex-wrap: wrap;
+  }
+
+  .score-grid tr.card > .cell > .score-error {
+    flex: 1 1 100%;
+    text-align: right;
+  }
+}

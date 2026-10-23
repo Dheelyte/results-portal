@@ -17,6 +17,7 @@ nothing wider.
 """
 
 import uuid
+from typing import Any
 
 from sqlalchemy import Select, select
 
@@ -26,6 +27,7 @@ from app.models import (
     Class,
     ClassSubject,
     ClassTeacher,
+    ClassTermStatus,
     CommentBank,
     Enrollment,
     GradeBand,
@@ -37,6 +39,7 @@ from app.models import (
     NarrativeSectionAssignment,
     PublicationState,
     Pupil,
+    ResultEntry,
     Subject,
     TeachingAssignment,
     Term,
@@ -262,34 +265,51 @@ def _school_wide_only(stmt: Select, user: User) -> Select:
     return stmt.where(False)
 
 
+def _reference_data(stmt: Select, user: User, school_column: Any) -> Select:
+    """Rows every member of the school may read, filtered to their school.
+
+    The distinction this draws is the one §5.2 is really about. Managing the
+    calendar, the subject list, the grading scale and the Marks Obtainable row
+    belongs to the admin alone — and the capability gates in
+    `authz/dependencies.py` enforce exactly that, so no teacher or parent can
+    reach a verb that changes any of it.
+
+    *Reading* them is a different question. A teacher cannot enter scores
+    without knowing which half's sheet is open and what each column is marked
+    out of; a parent's card prints the subject names, the grade key and the
+    Marks Obtainable row. None of these tables holds a pupil, a score or a
+    comment, so widening sight of them reveals nothing about any child.
+
+    Tables that do carry something personal — `users`, `enrollments`,
+    `comment_bank` — keep `_school_wide_only` (docs/DECISIONS.md D50).
+    """
+    return stmt.where(school_column == user.school_id)
+
+
 def scoped_academic_sessions(user: User) -> Select:
-    return _school_wide_only(
-        select(AcademicSession).where(AcademicSession.school_id == user.school_id), user
-    )
+    return _reference_data(select(AcademicSession), user, AcademicSession.school_id)
 
 
 def scoped_terms(user: User) -> Select:
-    return _school_wide_only(select(Term).where(Term.school_id == user.school_id), user)
+    return _reference_data(select(Term), user, Term.school_id)
 
 
 def scoped_assessment_periods(user: User) -> Select:
-    return _school_wide_only(
-        select(AssessmentPeriod).where(AssessmentPeriod.school_id == user.school_id), user
-    )
+    return _reference_data(select(AssessmentPeriod), user, AssessmentPeriod.school_id)
 
 
 def scoped_houses(user: User) -> Select:
-    return _school_wide_only(select(House).where(House.school_id == user.school_id), user)
+    """Printed on the card, so a parent sees it too."""
+    return _reference_data(select(House), user, House.school_id)
 
 
 def scoped_subjects(user: User) -> Select:
-    return _school_wide_only(select(Subject).where(Subject.school_id == user.school_id), user)
+    return _reference_data(select(Subject), user, Subject.school_id)
 
 
 def scoped_grading_scales(user: User) -> Select:
-    return _school_wide_only(
-        select(GradingScale).where(GradingScale.school_id == user.school_id), user
-    )
+    """The grade key, which the card prints at the foot of the sheet."""
+    return _reference_data(select(GradingScale), user, GradingScale.school_id)
 
 
 def scoped_grade_bands(user: User) -> Select:
@@ -299,18 +319,16 @@ def scoped_grade_bands(user: User) -> Select:
     scale — so the tenant filter has to come through the join rather than from
     a column on the row.
     """
-    return _school_wide_only(
-        select(GradeBand)
-        .join(GradingScale, GradingScale.id == GradeBand.scale_id)
-        .where(GradingScale.school_id == user.school_id),
+    return _reference_data(
+        select(GradeBand).join(GradingScale, GradingScale.id == GradeBand.scale_id),
         user,
+        GradingScale.school_id,
     )
 
 
 def scoped_narrative_sections(user: User) -> Select:
-    return _school_wide_only(
-        select(NarrativeSection).where(NarrativeSection.school_id == user.school_id), user
-    )
+    """The card's section labels, which a teacher writes into (§4.6)."""
+    return _reference_data(select(NarrativeSection), user, NarrativeSection.school_id)
 
 
 def scoped_narrative_section_assignments(user: User) -> Select:
@@ -329,9 +347,9 @@ def scoped_comment_bank(user: User) -> Select:
 
 
 def scoped_marks_obtainable(user: User) -> Select:
-    return _school_wide_only(
-        select(MarksObtainable).where(MarksObtainable.school_id == user.school_id), user
-    )
+    """R1 validates against this row and §8.1 pins it to the top of the grid,
+    so a teacher must be able to read it. Only an admin may set it."""
+    return _reference_data(select(MarksObtainable), user, MarksObtainable.school_id)
 
 
 def scoped_enrollments(user: User) -> Select:
@@ -380,6 +398,49 @@ def scoped_class_teachers(user: User) -> Select:
 
     if user.role is UserRole.TEACHER:
         return stmt.where(ClassTeacher.teacher_user_id == user.id)
+
+    return stmt.where(False)
+
+
+def scoped_result_entries(user: User, academic_session_id: uuid.UUID | None = None) -> Select:
+    """Score rows this user may see.
+
+    A teacher sees the rows of the class-subjects they are assigned to teach,
+    and no others — being class teacher of 4A does not reveal 4A Mathematics.
+    A parent reaches scores through their child's published report (§9), never
+    through this table, so the filter here is `false` rather than a join.
+    """
+    stmt = select(ResultEntry).where(ResultEntry.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(
+            ResultEntry.class_subject_id.in_(
+                scoped_class_subjects(user, academic_session_id).with_only_columns(ClassSubject.id)
+            )
+        )
+
+    return stmt.where(False)
+
+
+def scoped_class_term_status(user: User, academic_session_id: uuid.UUID | None = None) -> Select:
+    """Workflow state this user may see.
+
+    A teacher sees the state of any class they teach into, not only the one
+    they are class teacher of: a subject teacher needs to know the sheet has
+    been submitted, or the grid would offer them cells that will not save.
+    """
+    stmt = select(ClassTermStatus).where(ClassTermStatus.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(
+            ClassTermStatus.class_id.in_(class_ids_taught_by(user, academic_session_id))
+        )
 
     return stmt.where(False)
 

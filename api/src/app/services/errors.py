@@ -45,6 +45,25 @@ class Invalid(ServiceError):
     status_code = 422
 
 
+class RowErrors(ServiceError):
+    """A bulk write where individual rows broke a rule.
+
+    The score grid writes a whole class at once and applies all or none (§7).
+    A single message would tell the teacher that *something* is out of range
+    without saying which cell, so this carries the refusals keyed by pupil, in
+    the shape the grid needs to paint them red (§8.1).
+
+    The keys are pupil ids, which the caller already holds — it just sent
+    them. No name and no score appears in the payload.
+    """
+
+    status_code = 422
+
+    def __init__(self, message: str, errors: dict[str, dict[str, str]]) -> None:
+        super().__init__(message)
+        self.errors = errors
+
+
 class NotPermitted(ServiceError):
     """The caller's role does not permit this action at all.
 

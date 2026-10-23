@@ -109,6 +109,13 @@ def test_fractional_coverage_is_not_claimed() -> None:
     This test pins the current behaviour so that answering N3 is a deliberate
     change with a failing test, rather than a surprise discovered on results
     night.
+
+    Milestone 6 closed the gap at the *lookup* site rather than here:
+    `grading.banded_value` rounds half up before a band is read, so 39.5
+    resolves to a D (§14 A17, `test_period_average.py`). `validate_bands`
+    still makes no claim about fractional coverage, which is what this
+    asserts — the two are the same decision seen from opposite ends, and
+    answering N3 should move both.
     """
     bands = validate_bands(card_scale())
     fractional = Decimal("39.5")

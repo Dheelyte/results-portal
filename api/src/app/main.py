@@ -17,8 +17,17 @@ from app import __version__
 from app.config import settings
 from app.db import engine
 from app.logging import configure_logging
-from app.routers import academic, assessment, auth, health, people, setup, structure
-from app.services.errors import ServiceError
+from app.routers import (
+    academic,
+    assessment,
+    auth,
+    entry,
+    health,
+    people,
+    setup,
+    structure,
+)
+from app.services.errors import RowErrors, ServiceError
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -45,7 +54,13 @@ async def _service_error_handler(request: Request, exc: Exception) -> JSONRespon
     identity. `services/errors.py` is where that is documented and kept.
     """
     assert isinstance(exc, ServiceError)  # registered only for this type
-    return JSONResponse(status_code=exc.status_code, content={"detail": exc.message})
+
+    content: dict[str, object] = {"detail": exc.message}
+    if isinstance(exc, RowErrors):
+        # The grid needs to know which cell to paint red, not merely that
+        # something was out of range (§8.1).
+        content["errors"] = exc.errors
+    return JSONResponse(status_code=exc.status_code, content=content)
 
 
 def create_app() -> FastAPI:
@@ -90,6 +105,10 @@ def create_app() -> FastAPI:
     # parent.
     for admin_router in (academic, structure, people, assessment, setup):
         app.include_router(admin_router.router, prefix=settings.api_v1_prefix)
+
+    # §7's teacher block. Same two layers: the capability gate admits only a
+    # teacher, and `authz/scope.py` narrows that to their own class-subjects.
+    app.include_router(entry.router, prefix=settings.api_v1_prefix)
 
     return app
 

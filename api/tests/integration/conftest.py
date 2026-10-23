@@ -14,13 +14,16 @@ import uuid
 from collections.abc import AsyncIterator
 
 import pytest
+from alembic import command
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import make_url, text
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
+from app.config import settings
 from app.db import SessionLocal, engine
 from app.main import app
 from app.models import Base, School, User, UserRole
+from tests.alembic_support import alembic_config, run_alembic
 from tests.conftest import TEST_PASSWORD
 
 # Children before parents, derived from the model metadata rather than
@@ -29,8 +32,34 @@ from tests.conftest import TEST_PASSWORD
 DELETE_ORDER = tuple(table.name for table in reversed(Base.metadata.sorted_tables))
 
 
+@pytest.fixture(scope="session")
+async def migrated_database() -> None:
+    """Create the suite's database if it is absent, and bring it to head.
+
+    The suite owns this database outright (`tests/conftest.py` redirects to
+    it), so it can be built here rather than by hand. That also makes the
+    schema under test the migration chain's output rather than
+    `metadata.create_all`, which would let a model and its migration disagree
+    without any test noticing — CLAUDE.md rule 3.
+    """
+    url = make_url(settings.dsn)
+    admin = create_async_engine(url.set(database="postgres").render_as_string(hide_password=False))
+    try:
+        async with admin.connect() as connection:
+            await connection.execution_options(isolation_level="AUTOCOMMIT")
+            exists = await connection.scalar(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"), {"name": url.database}
+            )
+            if not exists:
+                await connection.execute(text(f'CREATE DATABASE "{url.database}"'))
+    finally:
+        await admin.dispose()
+
+    await run_alembic(alembic_config(settings.dsn), command.upgrade, "head")
+
+
 @pytest.fixture(autouse=True)
-async def clean_database() -> AsyncIterator[None]:
+async def clean_database(migrated_database: None) -> AsyncIterator[None]:
     """Empty every table before each test.
 
     DELETE rather than TRUNCATE, which is counter-intuitive but measured:
@@ -43,6 +72,9 @@ async def clean_database() -> AsyncIterator[None]:
     rules commit on purpose — a failed login must persist its attempt counter
     even though the request fails — and a harness that swallowed commits would
     hide exactly that behaviour (docs/DECISIONS.md D26).
+
+    This empties the suite's own database, never the application's — see the
+    redirection in `tests/conftest.py` (docs/DECISIONS.md D46).
     """
     async with engine.begin() as connection:
         for table in DELETE_ORDER:

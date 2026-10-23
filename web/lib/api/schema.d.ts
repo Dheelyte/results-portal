@@ -150,6 +150,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/class-subjects/{class_subject_id}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Entries
+         * @description The grid: the class roll, the scores so far, and the column maxima.
+         */
+        get: operations["read_entries_api_v1_class_subjects__class_subject_id__entries_get"];
+        /**
+         * Save Entries
+         * @description Save a set of score rows, applying all of them or none (§7).
+         *
+         *     Returns the whole sheet rather than an acknowledgement, so the grid's
+         *     computed columns — CA Test Total, the period average and the grade — come
+         *     back from the database that generated them instead of being guessed at in
+         *     the browser.
+         */
+        put: operations["save_entries_api_v1_class_subjects__class_subject_id__entries_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/class-subjects/{class_subject_id}/teacher": {
         parameters: {
             query?: never;
@@ -398,6 +427,30 @@ export interface paths {
         put?: never;
         /** Create a house */
         post: operations["create_house_api_v1_houses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Assignments
+         * @description Every sheet this teacher is responsible for, with its progress.
+         *
+         *     Carries the term and its two assessment periods as well, because §5.2
+         *     gives the calendar to the admin alone and the grid cannot be opened
+         *     without those ids (docs/DECISIONS.md D51).
+         */
+        get: operations["my_assignments_api_v1_my_assignments_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -882,6 +935,38 @@ export interface components {
             /** Opens On */
             opens_on?: string | null;
         };
+        /**
+         * AssignmentRead
+         * @description One line of a teacher's own list of sheets (§7 /my/assignments).
+         */
+        AssignmentRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /**
+             * Class Subject Id
+             * Format: uuid
+             */
+            class_subject_id: string;
+            /** Entered Count */
+            entered_count?: {
+                [key: string]: number;
+            };
+            /** Pupil Count */
+            pupil_count: number;
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -1035,6 +1120,18 @@ export interface components {
              */
             teacher_user_id: string;
         };
+        /**
+         * ClassTermState
+         * @description R14's state machine.
+         *
+         *         not_started -> in_progress -> submitted -> approved
+         *                             ^             |
+         *                             +-- returned <+
+         *
+         *     Anything else is a 409.
+         * @enum {string}
+         */
+        ClassTermState: "not_started" | "in_progress" | "submitted" | "returned" | "approved";
         /** CommentCreate */
         CommentCreate: {
             /**
@@ -1117,6 +1214,86 @@ export interface components {
             /** Joined On */
             joined_on?: string | null;
         };
+        /**
+         * EntriesSave
+         * @description A bulk upsert of one sheet. Applied all or none (§7).
+         */
+        EntriesSave: {
+            /**
+             * Assessment Period Id
+             * Format: uuid
+             */
+            assessment_period_id: string;
+            /** Rows */
+            rows: components["schemas"]["EntryRow"][];
+        };
+        /**
+         * EntryRead
+         * @description One line of the grid as rendered.
+         */
+        EntryRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** Ca Test 1 */
+            ca_test_1?: string | null;
+            /** Ca Test 2 */
+            ca_test_2?: string | null;
+            /** Ca Test 3 */
+            ca_test_3?: string | null;
+            /** Ca Test 4 */
+            ca_test_4?: string | null;
+            /** Ca Test 5 */
+            ca_test_5?: string | null;
+            /** Ca Test Total */
+            ca_test_total?: string | null;
+            /** Exam */
+            exam?: string | null;
+            /** First Name */
+            first_name: string;
+            grade?: components["schemas"]["GradeRead"] | null;
+            /** Grade Letter */
+            grade_letter?: string | null;
+            /** Last Name */
+            last_name: string;
+            /** Mid Term Test */
+            mid_term_test?: string | null;
+            /** Middle Name */
+            middle_name?: string | null;
+            /** Period Average */
+            period_average?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * EntryRow
+         * @description One pupil's cells, as the grid submits them.
+         */
+        EntryRow: {
+            /** Ca Test 1 */
+            ca_test_1?: number | string | null;
+            /** Ca Test 2 */
+            ca_test_2?: number | string | null;
+            /** Ca Test 3 */
+            ca_test_3?: number | string | null;
+            /** Ca Test 4 */
+            ca_test_4?: number | string | null;
+            /** Ca Test 5 */
+            ca_test_5?: number | string | null;
+            /** Exam */
+            exam?: number | string | null;
+            /** Mid Term Test */
+            mid_term_test?: number | string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+        };
         /** GradeBandRead */
         GradeBandRead: {
             /**
@@ -1143,6 +1320,20 @@ export interface components {
             max_score: number | string;
             /** Min Score */
             min_score: number | string;
+            /** Remark */
+            remark: string;
+        };
+        /**
+         * GradeRead
+         * @description The grade shown during entry, resolved live from the active scale (R4).
+         *
+         *     Not a snapshot. `grade_letter` on the row stays null until approval, and
+         *     this field disappears once it is set — at which point the snapshot is what
+         *     the card says and recomputing it is forbidden (CLAUDE.md rule 6).
+         */
+        GradeRead: {
+            /** Letter */
+            letter: string;
             /** Remark */
             remark: string;
         };
@@ -1311,6 +1502,31 @@ export interface components {
              */
             mid_term_test?: number | string | null;
         };
+        /**
+         * MaximaRead
+         * @description The Marks Obtainable row, which §8.1 pins to the top of the grid.
+         */
+        MaximaRead: {
+            /** Ca Test 1 */
+            ca_test_1?: string | null;
+            /** Ca Test 2 */
+            ca_test_2?: string | null;
+            /** Ca Test 3 */
+            ca_test_3?: string | null;
+            /** Ca Test 4 */
+            ca_test_4?: string | null;
+            /** Ca Test 5 */
+            ca_test_5?: string | null;
+            /** Exam */
+            exam?: string | null;
+            /**
+             * Is Class Override
+             * @default false
+             */
+            is_class_override: boolean;
+            /** Mid Term Test */
+            mid_term_test?: string | null;
+        };
         /** MessageResponse */
         MessageResponse: {
             /** Detail */
@@ -1404,6 +1620,22 @@ export interface components {
             /** Sections */
             sections: components["schemas"]["NarrativeSectionSave"][];
         };
+        /**
+         * PeriodSummary
+         * @description One of the term's two sheets (§1.1).
+         */
+        PeriodSummary: {
+            /** Closes On */
+            closes_on?: string | null;
+            half: components["schemas"]["TermHalf"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Opens On */
+            opens_on?: string | null;
+        };
         /** PupilCreate */
         PupilCreate: {
             /**
@@ -1476,6 +1708,52 @@ export interface components {
             middle_name: string | null;
             /** Sex */
             sex: string | null;
+        };
+        /**
+         * SheetRead
+         * @description One class-subject's grid for one assessment period.
+         */
+        SheetRead: {
+            /**
+             * Assessment Period Id
+             * Format: uuid
+             */
+            assessment_period_id: string;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /**
+             * Class Subject Id
+             * Format: uuid
+             */
+            class_subject_id: string;
+            /** Columns */
+            columns: string[];
+            /** Editable */
+            editable: boolean;
+            half: components["schemas"]["TermHalf"];
+            maxima?: components["schemas"]["MaximaRead"] | null;
+            /** Maxima Configured */
+            maxima_configured: boolean;
+            /** Rows */
+            rows?: components["schemas"]["EntryRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
         };
         /** SubjectCreate */
         SubjectCreate: {
@@ -1651,6 +1929,31 @@ export interface components {
             times_school_opened: number | null;
         };
         /**
+         * TermSummary
+         * @description Which term the teacher is working in.
+         *
+         *     Sent with the assignment list because §5.2 gives the calendar to the admin
+         *     alone: a teacher has no endpoint that would tell them which term is
+         *     current or what its two sheets are (docs/DECISIONS.md D51).
+         */
+        TermSummary: {
+            /** Academic Session Name */
+            academic_session_name: string;
+            /** Ends On */
+            ends_on?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /** Starts On */
+            starts_on?: string | null;
+            /** Times School Opened */
+            times_school_opened?: number | null;
+        };
+        /**
          * TermUpdate
          * @description Every field optional; only what is sent is changed.
          */
@@ -1756,6 +2059,17 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WorkloadRead
+         * @description Everything the teacher's first screen needs, in one request.
+         */
+        WorkloadRead: {
+            /** Assignments */
+            assignments?: components["schemas"]["AssignmentRead"][];
+            /** Periods */
+            periods?: components["schemas"]["PeriodSummary"][];
+            term: components["schemas"]["TermSummary"];
         };
     };
     responses: never;
@@ -1967,6 +2281,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_entries_api_v1_class_subjects__class_subject_id__entries_get: {
+        parameters: {
+            query: {
+                /** @description Which half's sheet. */
+                assessment_period_id: string;
+            };
+            header?: never;
+            path: {
+                class_subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_entries_api_v1_class_subjects__class_subject_id__entries_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntriesSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetRead"];
                 };
             };
             /** @description Validation Error */
@@ -2506,6 +2889,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HouseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_assignments_api_v1_my_assignments_get: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the current term, which §2.3 sets in the platform. */
+                term_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkloadRead"];
                 };
             };
             /** @description Validation Error */
