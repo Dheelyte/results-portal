@@ -59,6 +59,7 @@ logger = logging.getLogger(__name__)
 # type with `period_average`, which needs two — so this is a rule rather than
 # a constraint, and it belongs here with the other half of R1.
 SCORE_DECIMAL_PLACES = 1
+SCORE_STEP = decimal.Decimal("0.1")
 
 
 @dataclass(frozen=True)
@@ -348,10 +349,16 @@ def _validate(
                 )
             elif value < 0:
                 row_errors[column] = "A score cannot be negative."
-            elif -value.as_tuple().exponent > SCORE_DECIMAL_PLACES:
+            elif value != value.quantize(SCORE_STEP):
                 # R1: "One decimal place." The column is numeric(5,2) because
                 # `period_average` shares the type, but a mark of 7.25 is a
                 # typing slip rather than a score the school awards.
+                #
+                # The test is on the **value**, not its representation. "8.00"
+                # carries two decimal digits and is still the whole number
+                # eight — and it is exactly what this API returns for a column
+                # maximum, so refusing it would mean refusing a figure the
+                # server itself had just handed out.
                 row_errors[column] = "A score may have at most one decimal place."
             elif value > maximum:
                 # Naming the maximum is R1's own requirement: the teacher needs

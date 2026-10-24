@@ -73,7 +73,13 @@ CLASSWORK_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ),
 ]
 
-TEACHER_ONLY_ENDPOINTS = ENTRY_ENDPOINTS + CLASSWORK_ENDPOINTS
+# §8.3's progress page and R10's gate.
+SUBMISSION_ENDPOINTS: list[tuple[str, str, dict | None]] = [
+    ("GET", f"/classes/{ANY_ID}/progress?term_id={ANY_ID}", None),
+    ("POST", f"/classes/{ANY_ID}/submit?term_id={ANY_ID}", None),
+]
+
+TEACHER_ONLY_ENDPOINTS = ENTRY_ENDPOINTS + CLASSWORK_ENDPOINTS + SUBMISSION_ENDPOINTS
 
 # Read by everyone who writes about a pupil; never by a parent (D55).
 STAFF_ENDPOINTS: list[tuple[str, str, dict | None]] = [

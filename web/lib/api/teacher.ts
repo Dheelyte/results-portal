@@ -31,6 +31,10 @@ export type ClassComments = Schemas["ClassCommentsRead"];
 export type CommentRow = Schemas["PupilCommentRead"];
 export type Phrase = Schemas["PhraseRead"];
 export type ClassSummary = Schemas["ClassSummary"];
+export type Progress = Schemas["ProgressRead"];
+export type SheetProgress = Schemas["SheetProgressRead"];
+export type PupilProgress = Schemas["PupilProgressRead"];
+export type OutstandingItem = Schemas["OutstandingItem"];
 
 export function teacherApi(token: string) {
   return {
@@ -115,6 +119,23 @@ export function teacherApi(token: string) {
         token,
         query: { term_id: termId },
         body: { rows },
+      }),
+
+    /* --- §8.3's progress page and R10's gate ------------------------- */
+
+    progress: (classId: string, termId: string, signal?: AbortSignal) =>
+      request<Progress>(`/classes/${classId}/progress`, {
+        token,
+        signal,
+        query: { term_id: termId },
+      }),
+
+    /** 422 with `outstanding` when R10 refuses; 403 if not the class teacher. */
+    submitClass: (classId: string, termId: string) =>
+      request<Progress>(`/classes/${classId}/submit`, {
+        method: "POST",
+        token,
+        query: { term_id: termId },
       }),
 
     comments: (classId: string, termId: string, signal?: AbortSignal) =>

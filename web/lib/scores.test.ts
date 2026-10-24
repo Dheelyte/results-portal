@@ -40,8 +40,18 @@ describe("cellError", () => {
     assert.equal(cellError("60.5", "60.00"), "Out of 60.");
   });
 
-  it("refuses two decimal places (R1)", () => {
+  it("refuses two significant decimal places (R1)", () => {
     assert.equal(cellError("7.25", "8"), "One decimal place.");
+    assert.equal(cellError("7.99", "8"), "One decimal place.");
+  });
+
+  it("accepts trailing zeros, because the value is what R1 bounds", () => {
+    // "8.00" is how the API returns a column maximum. A teacher who types
+    // the maximum, or a client that echoes it back, must not be refused for
+    // the way the number is written.
+    assert.equal(cellError("8.00", "8.00"), null);
+    assert.equal(cellError("7.50", "8"), null);
+    assert.equal(cellError("0.00", "8"), null);
   });
 
   it("refuses anything that is not a number", () => {

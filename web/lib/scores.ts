@@ -59,7 +59,11 @@ export function cellError(raw: string, maximum: string | number | null | undefin
   const value = Number(text);
   if (!Number.isFinite(value)) return "Enter a number.";
 
-  const decimals = text.split(".")[1] ?? "";
+  // R1's "one decimal place" is about the value, not how it is written.
+  // "8.00" has two decimal digits and is still the whole number eight — and
+  // it is exactly the form the API returns a column maximum in, so refusing
+  // it would mean refusing a figure the server had just handed out.
+  const decimals = (text.split(".")[1] ?? "").replace(/0+$/, "");
   if (decimals.length > 1) return "One decimal place.";
 
   if (maximum === null || maximum === undefined || maximum === "") {

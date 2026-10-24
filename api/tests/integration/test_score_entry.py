@@ -509,6 +509,29 @@ async def test_a_score_with_two_decimal_places_is_refused(
     assert "one decimal place" in response.json()["errors"][ada]["ca_test_1"]
 
 
+async def test_a_maximum_echoed_back_is_accepted(client, teacher_headers, world, sheets) -> None:
+    """The API returns maxima as "10.00", so it must accept "10.00".
+
+    R1 bounds the value, not its representation. Refusing a figure the server
+    had just handed out would break any client that offered "full marks" as a
+    shortcut — and it broke a walkthrough script before it was fixed.
+    """
+    sheet = (await read_sheet(client, teacher_headers, world.maths_4a.id, sheets.first.id)).json()
+    maximum = sheet["maxima"]["ca_test_1"]
+    assert maximum == "10.00"
+
+    response = await save(
+        client,
+        teacher_headers,
+        world.maths_4a.id,
+        sheets.first.id,
+        [{"pupil_id": str(world.pupils["ada"].id), "ca_test_1": maximum}],
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["rows"][0]["ca_test_1"] == "10.00"
+
+
 async def test_one_decimal_place_is_accepted(client, teacher_headers, world, sheets) -> None:
     response = await save(
         client,

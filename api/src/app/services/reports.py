@@ -36,7 +36,7 @@ from app.models import (
 )
 from app.services import audit, results, workflow
 from app.services.errors import NotPermitted, RowErrors
-from app.services.support import all_of, one_or_404
+from app.services.support import all_of, has_text, one_or_404
 
 logger = logging.getLogger(__name__)
 
@@ -231,7 +231,7 @@ async def has_comment(
             TermReport.id.in_(scope.scoped_term_reports(actor).with_only_columns(TermReport.id)),
             TermReport.term_id == term_id,
             TermReport.pupil_id == pupil_id,
-            func.btrim(func.coalesce(TermReport.class_teacher_comment, "")) != "",
+            has_text(TermReport.class_teacher_comment),
         )
     )
     return bool(found)

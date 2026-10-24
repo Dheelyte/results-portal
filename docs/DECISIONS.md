@@ -1362,3 +1362,111 @@ What to do about it, roughly in order of preference:
    somebody who can weigh it.
 
 Raised as an open item rather than tuned silently.
+
+---
+
+## Milestone 8 — the submission gate
+
+### D62 — One payload for the page and the refusal
+
+`GET /classes/{id}/progress` returns an object with `ready`, `outstanding`,
+every subject's state and every pupil's four tasks. `POST /submit` returns the
+same object on success — and R10's 422 carries the same `outstanding` list,
+key for key.
+
+That identity is deliberate and it is tested
+(`test_a_missing_score_blocks_and_names_the_pupil` compares the two). §8.3
+disables the Send button on `ready` and lists `outstanding` beneath it, so if
+the two were computed separately the screen could say "ready" while the server
+refused, or list one set of gaps while refusing for another. A teacher who hit
+that would have no way to proceed and no way to understand why.
+
+The cost is a small piece of discipline in `services/submission.py`: every
+outstanding item is built through `_item`, which fills **every** key including
+the inapplicable ones, so the dict the 422 carries is byte-identical to the
+one `OutstandingItem` validates. Without that the two differ by the keys
+Pydantic adds as `null`, which is exactly the kind of difference a client
+trips over once and nobody can reproduce.
+
+### D63 — The list says whose job each item is
+
+R10 asks for "a structured list of what is missing, by subject, by pupil and
+by section". Each item carries a `kind`, and §8.3 renders it as an owner:
+
+| kind | Who clears it |
+|---|---|
+| `term`, `class`, `sheet` | the administrator |
+| `scores` | the subject teacher named in `teacher` |
+| `pupil` | the class teacher reading the page |
+
+This is the part that stops the support call. "Mathematics — First Half Term:
+1 of 2 pupils incomplete / Okafor, Emeka / Mr Other" tells a class teacher
+that the hold-up is not theirs and exactly whom to ask. A list that said only
+"scores missing" would send them hunting through eight subjects.
+
+`scores` items name up to three pupils and then "and N more", so a
+thirty-pupil gap is a line rather than a wall.
+
+### D64 — A class teacher sees every subject's progress, including other teachers'
+
+§8.3 requires "every subject with its state and owner", which `scope.scoped_class_subjects`
+cannot supply — it narrows a teacher to what they personally teach, which is
+right for the score grid and wrong here.
+
+`scope.subjects_offered_to(user, class_id)` is the wider resolver, and the
+authorization moves to the **class**: the service checks the class is in
+`scoped_classes` once, then lists all of its offerings filtered by
+`school_id`. What crosses the boundary is counts and ownership, never a score
+— `columns_filled` looks only at whether each cell is null.
+
+The same widening applies to `_entered`, which reads score rows for the whole
+class for the same reason and with the same restraint.
+
+Reading the page needs the `SUBMIT_CLASS` capability, so it is teachers only;
+the head teacher gets `/classes/{id}/review` in milestone 9, as §7 lays out.
+Pressing the button needs `policy.can_submit_class` on top, and the page
+reports the answer as `may_submit` rather than hiding itself — a subject
+teacher looking at a stuck class should be able to see that their own sheet is
+what is holding it up.
+
+### D65 — R14 is a table, not a chain of ifs
+
+`workflow.LEGAL_PREDECESSORS` maps each target state to the states it may be
+reached from, and `workflow.transition` is one function taking the target.
+Milestone 8 uses it for submit; milestone 9 uses the same function for return
+and approve.
+
+Two things fall out of it. R14's diagram is checkable against the code — a
+unit test walks every arrow in the specification and every move that is not an
+arrow. And a state added later cannot be transitioned to by accident, because
+a target missing from the table raises at the call site rather than silently
+permitting everything.
+
+One entry is deliberately looser than the diagram: `not_started -> submitted`
+is permitted, and R10 refuses it. A class nobody has touched is missing
+everything, and a 422 that lists what is missing is more use than a 409 that
+can only say the move was illegal.
+
+### D66 — Two bugs found by walking the real stack
+
+Both were invisible to the suite as written, and both came out of driving the
+API the way a client does.
+
+**"8.00" was rejected as a score.** R1 says one decimal place, and the check
+read the Decimal's exponent — so `8.00`, the exact whole number eight, was
+refused for carrying two decimal digits. That is precisely the form the API
+returns a column maximum in, so any client that offered "full marks" as a
+shortcut, or echoed a maximum back, got a 422 it could not explain. The test
+is now on the **value** (`value == value.quantize(Decimal("0.1"))`), and the
+browser's mirror strips trailing zeros before counting. Both have tests
+naming the round trip.
+
+**A body of newlines counted as written.** R8 and R10 asked Postgres
+`btrim(coalesce(body, '')) != ''`, and `btrim` strips **spaces only** — so
+`"\n\n"` survived it and a pupil with a newline in one section was reported
+complete. Not reachable through the API, which `rstrip`s a passage before
+storing it, so a whitespace-only body always becomes `""`; it was reachable by
+any other writer, and R10 reads rows it did not write. Now one helper,
+`support.has_text`, with the full whitespace set, used by R8's check, R10's
+gate and the comment check — three copies of a whitespace list being three
+chances to disagree about what counts as written.

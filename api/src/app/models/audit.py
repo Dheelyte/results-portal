@@ -77,6 +77,11 @@ class AuditAction(str):
     GROWTH_SAVED = "growth_records.saved"
     CLASS_TEACHER_COMMENTS_SAVED = "term_reports.class_teacher_comments_saved"
 
+    # R14's transitions (milestone 8 submits; 9 returns and approves).
+    CLASS_SUBMITTED = "class_term.submitted"
+    CLASS_RETURNED = "class_term.returned"
+    CLASS_APPROVED = "class_term.approved"
+
 
 class AuditLog(Base):
     __tablename__ = "audit_log"

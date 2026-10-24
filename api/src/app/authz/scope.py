@@ -510,6 +510,30 @@ def scoped_result_entries(user: User, academic_session_id: uuid.UUID | None = No
     return stmt.where(False)
 
 
+def subjects_offered_to(
+    user: User, class_id: uuid.UUID, academic_session_id: uuid.UUID | None = None
+) -> Select:
+    """Every class-subject of one class, filtered only by school.
+
+    Deliberately wider than `scoped_class_subjects`, which narrows a teacher
+    to what they personally teach. §8.3 requires the opposite for the progress
+    page: "every subject with its state and owner", because a class teacher
+    cannot chase a missing sheet they cannot see, and R10 refuses submission
+    until every subject is complete.
+
+    The authorization is on the **class**, not the subject: the caller must
+    already have that class through `scoped_classes`, which this does not
+    check — the service does, once, before calling here. What this returns is
+    counts and ownership, never a score.
+    """
+    stmt = select(ClassSubject).where(
+        ClassSubject.school_id == user.school_id, ClassSubject.class_id == class_id
+    )
+    if academic_session_id is not None:
+        stmt = stmt.where(ClassSubject.academic_session_id == academic_session_id)
+    return stmt
+
+
 def scoped_class_term_status(user: User, academic_session_id: uuid.UUID | None = None) -> Select:
     """Workflow state this user may see.
 

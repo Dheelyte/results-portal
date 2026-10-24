@@ -64,6 +64,28 @@ class RowErrors(ServiceError):
         self.errors = errors
 
 
+class Blocked(ServiceError):
+    """A request refused because prerequisites are outstanding.
+
+    R10's submission gate is the case this exists for, and §6 is explicit
+    about why a plain message will not do: "Return a structured list of what
+    is missing, by subject, by pupil and by section. 'Cannot submit' with no
+    explanation generates support calls every term."
+
+    `outstanding` carries that list in the shape the screen renders. It names
+    subjects, sections and pupils, because a class teacher being told what to
+    go and do needs to know which child — this is the one place a pupil's name
+    legitimately travels in a refusal, and it travels to the teacher who
+    already has the register in front of them.
+    """
+
+    status_code = 422
+
+    def __init__(self, message: str, outstanding: list[dict[str, object]]) -> None:
+        super().__init__(message)
+        self.outstanding = outstanding
+
+
 class NotPermitted(ServiceError):
     """The caller's role does not permit this action at all.
 

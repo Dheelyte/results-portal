@@ -43,7 +43,7 @@ from app.models import (
 )
 from app.services import academic, audit, results, workflow
 from app.services.errors import Invalid, NotFound, RowErrors
-from app.services.support import all_of, integrity_guard, one_or_404, rows_of
+from app.services.support import all_of, has_text, integrity_guard, one_or_404, rows_of
 
 logger = logging.getLogger(__name__)
 
@@ -504,7 +504,7 @@ async def class_narrative(
                 ),
                 NarrativeEntry.term_id == term.id,
                 NarrativeEntry.section_id.in_(section_ids),
-                func.btrim(func.coalesce(NarrativeEntry.body, "")) != "",
+                has_text(NarrativeEntry.body),
             )
             .group_by(NarrativeEntry.pupil_id),
         )
@@ -760,7 +760,7 @@ async def narrative_is_complete(
             ),
             NarrativeEntry.term_id == term_id,
             NarrativeEntry.pupil_id == pupil_id,
-            func.btrim(func.coalesce(NarrativeEntry.body, "")) != "",
+            has_text(NarrativeEntry.body),
         )
     )
     return (written or 0) >= total

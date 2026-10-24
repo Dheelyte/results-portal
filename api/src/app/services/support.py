@@ -8,7 +8,7 @@ import contextlib
 from collections.abc import AsyncIterator, Sequence
 from typing import Any, TypeVar
 
-from sqlalchemy import Select
+from sqlalchemy import Select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,6 +44,22 @@ async def rows_of(db: AsyncSession, stmt: Select) -> Sequence[Any]:
     keep working and start lying.
     """
     return (await db.execute(stmt)).all()
+
+
+# Every character Postgres's `btrim` does **not** strip by default. It trims
+# spaces only, so a body of "\n\n" survives it and counts as written — which
+# is how a narrative passage containing one stray newline passed R8.
+WHITESPACE = " \t\n\r\f\v"
+
+
+def has_text(column: Any) -> Any:
+    """SQL for "this text column holds something a person wrote".
+
+    One definition, used by R8's completeness check, R10's gate and the class
+    teacher's comment check. Three copies of a whitespace list is three
+    chances for them to disagree about what counts as written.
+    """
+    return func.btrim(func.coalesce(column, ""), WHITESPACE) != ""
 
 
 @contextlib.asynccontextmanager

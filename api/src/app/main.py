@@ -27,8 +27,9 @@ from app.routers import (
     people,
     setup,
     structure,
+    submission,
 )
-from app.services.errors import RowErrors, ServiceError
+from app.services.errors import Blocked, RowErrors, ServiceError
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -61,6 +62,9 @@ async def _service_error_handler(request: Request, exc: Exception) -> JSONRespon
         # The grid needs to know which cell to paint red, not merely that
         # something was out of range (§8.1).
         content["errors"] = exc.errors
+    if isinstance(exc, Blocked):
+        # R10: what is still missing, by subject, by pupil and by section.
+        content["outstanding"] = exc.outstanding
     return JSONResponse(status_code=exc.status_code, content=content)
 
 
@@ -111,6 +115,7 @@ def create_app() -> FastAPI:
     # teacher, and `authz/scope.py` narrows that to their own class-subjects.
     app.include_router(entry.router, prefix=settings.api_v1_prefix)
     app.include_router(classwork.router, prefix=settings.api_v1_prefix)
+    app.include_router(submission.router, prefix=settings.api_v1_prefix)
 
     return app
 

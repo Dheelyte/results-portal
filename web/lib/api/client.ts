@@ -35,10 +35,23 @@ export class ApiError extends Error {
    */
   readonly rows?: Record<string, Record<string, string>>;
 
-  constructor(status: number, message: string, rows?: ApiError["rows"]) {
+  /**
+   * What is still outstanding, from R10's submission gate
+   * (`services/errors.py` Blocked). The same shape `GET /progress` returns,
+   * so the screen renders one list whichever way it arrived.
+   */
+  readonly outstanding?: unknown[];
+
+  constructor(
+    status: number,
+    message: string,
+    rows?: ApiError["rows"],
+    outstanding?: unknown[],
+  ) {
     super(message);
     this.status = status;
     this.rows = rows;
+    this.outstanding = outstanding;
     this.name = "ApiError";
   }
 
@@ -78,11 +91,13 @@ function url(path: string, query?: RequestOptions["query"]): string {
 interface Failure {
   message: string;
   rows?: Record<string, Record<string, string>>;
+  outstanding?: unknown[];
 }
 
 async function failureFrom(response: Response): Promise<Failure> {
   let detail: unknown;
   let rows: Failure["rows"];
+  let outstanding: unknown[] | undefined;
   try {
     const body = await response.json();
     detail = body?.detail;
@@ -90,11 +105,13 @@ async function failureFrom(response: Response): Promise<Failure> {
     if (body?.errors && typeof body.errors === "object") {
       rows = body.errors as Failure["rows"];
     }
+    // Present only on R10's refusal.
+    if (Array.isArray(body?.outstanding)) outstanding = body.outstanding;
   } catch {
     detail = undefined;
   }
 
-  if (typeof detail === "string") return { message: detail, rows };
+  if (typeof detail === "string") return { message: detail, rows, outstanding };
 
   if (Array.isArray(detail)) {
     const parts = detail
@@ -104,16 +121,16 @@ async function failureFrom(response: Response): Promise<Failure> {
         return field ? `${String(field)}: ${message}` : message;
       })
       .filter(Boolean);
-    if (parts.length) return { message: parts.join("; "), rows };
+    if (parts.length) return { message: parts.join("; "), rows, outstanding };
   }
 
   if (response.status === 401) {
-    return { message: "Your session has ended. Please sign in again.", rows };
+    return { message: "Your session has ended. Please sign in again.", rows, outstanding };
   }
   if (response.status >= 500) {
-    return { message: "Something went wrong at our end. Please try again.", rows };
+    return { message: "Something went wrong at our end. Please try again.", rows, outstanding };
   }
-  return { message: `Request failed (${response.status}).`, rows };
+  return { message: `Request failed (${response.status}).`, rows, outstanding };
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -134,7 +151,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (!response.ok) {
     const failure = await failureFrom(response);
-    throw new ApiError(response.status, failure.message, failure.rows);
+    throw new ApiError(response.status, failure.message, failure.rows, failure.outstanding);
   }
 
   if (response.status === 204) return undefined as T;

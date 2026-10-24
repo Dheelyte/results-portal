@@ -356,6 +356,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Progress
+         * @description What is done and what is left, for the whole class.
+         *
+         *     Readable by any teacher the class is in scope for — a subject teacher
+         *     needs to see that their sheet is the one holding the class up — while only
+         *     the class teacher may submit, which `may_submit` reports.
+         */
+        get: operations["read_progress_api_v1_classes__class_id__progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/subjects": {
         parameters: {
             query?: never;
@@ -376,6 +400,29 @@ export interface paths {
          */
         put: operations["set_class_subjects_api_v1_classes__class_id__subjects_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Class
+         * @description Send the class to the head teacher, if R10 passes.
+         *
+         *     422 with the outstanding list if not, 409 if the class has already gone,
+         *     403 if the caller is not its class teacher.
+         */
+        post: operations["submit_class_api_v1_classes__class_id__submit_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1988,6 +2035,31 @@ export interface components {
             sections: components["schemas"]["NarrativeSectionSave"][];
         };
         /**
+         * OutstandingItem
+         * @description One thing still to be done, in the shape §8.3 lists beneath the button.
+         *
+         *     `kind` lets the screen group them — a missing Marks Obtainable row is the
+         *     administrator's job, a missing score is a colleague's, a missing comment
+         *     is the reader's own — and §6 R10 is explicit that a bare "cannot submit"
+         *     is not good enough.
+         */
+        OutstandingItem: {
+            /** Class Subject Id */
+            class_subject_id?: string | null;
+            /** Detail */
+            detail?: string | null;
+            /** Kind */
+            kind: string;
+            /** Pupil Id */
+            pupil_id?: string | null;
+            /** Subject Id */
+            subject_id?: string | null;
+            /** Teacher */
+            teacher?: string | null;
+            /** What */
+            what: string;
+        };
+        /**
          * PassageRead
          * @description One section of one pupil's narrative.
          */
@@ -2057,6 +2129,39 @@ export interface components {
             scope: string;
             /** Text */
             text: string;
+        };
+        /**
+         * ProgressRead
+         * @description §8.3's page. Also the body of R10's 422, so the two cannot disagree.
+         */
+        ProgressRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** May Submit */
+            may_submit: boolean;
+            /** Outstanding */
+            outstanding?: components["schemas"]["OutstandingItem"][];
+            /** Pupils */
+            pupils?: components["schemas"]["PupilProgressRead"][];
+            /** Ready */
+            ready: boolean;
+            /** Return Note */
+            return_note?: string | null;
+            /** Sheets */
+            sheets?: components["schemas"]["SheetProgressRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Times School Opened */
+            times_school_opened?: number | null;
         };
         /** PupilCommentRead */
         PupilCommentRead: {
@@ -2173,6 +2278,35 @@ export interface components {
             /** Total */
             total: number;
         };
+        /**
+         * PupilProgressRead
+         * @description One pupil's four class-teacher tasks.
+         */
+        PupilProgressRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** Has Attendance */
+            has_attendance: boolean;
+            /** Has Comment */
+            has_comment: boolean;
+            /** Has Growth */
+            has_growth: boolean;
+            /** Is Complete */
+            is_complete: boolean;
+            /** Missing Sections */
+            missing_sections?: string[];
+            /** Name */
+            name: string;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Sections Total */
+            sections_total: number;
+            /** Sections Written */
+            sections_written: number;
+        };
         /** PupilRead */
         PupilRead: {
             /** Admission Number */
@@ -2217,6 +2351,43 @@ export interface components {
             section_id: string;
             /** Writable */
             writable: boolean;
+        };
+        /**
+         * SheetProgressRead
+         * @description One class-subject on one of the term's two sheets.
+         */
+        SheetProgressRead: {
+            /** Assessment Period Id */
+            assessment_period_id?: string | null;
+            /**
+             * Class Subject Id
+             * Format: uuid
+             */
+            class_subject_id: string;
+            /** Columns */
+            columns?: string[];
+            /** Complete */
+            complete: number;
+            half: components["schemas"]["TermHalf"];
+            /** Is Complete */
+            is_complete: boolean;
+            /** Missing Pupil Count */
+            missing_pupil_count: number;
+            /** Missing Pupils */
+            missing_pupils?: string[];
+            /** Not Configured */
+            not_configured: boolean;
+            /** Roll */
+            roll: number;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
+            /** Teacher Name */
+            teacher_name?: string | null;
         };
         /**
          * SheetRead
@@ -3326,6 +3497,40 @@ export interface operations {
             };
         };
     };
+    read_progress_api_v1_classes__class_id__progress_get: {
+        parameters: {
+            query: {
+                /** @description Which term's progress. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_class_subjects_api_v1_classes__class_id__subjects_get: {
         parameters: {
             query?: {
@@ -3381,6 +3586,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClassSubjectRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_class_api_v1_classes__class_id__submit_post: {
+        parameters: {
+            query: {
+                /** @description Which term's progress. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressRead"];
                 };
             };
             /** @description Validation Error */

@@ -2588,6 +2588,83 @@
         "title": "NarrativeSectionsSave",
         "type": "object"
       },
+      "OutstandingItem": {
+        "description": "One thing still to be done, in the shape \u00a78.3 lists beneath the button.\n\n`kind` lets the screen group them \u2014 a missing Marks Obtainable row is the\nadministrator's job, a missing score is a colleague's, a missing comment\nis the reader's own \u2014 and \u00a76 R10 is explicit that a bare \"cannot submit\"\nis not good enough.",
+        "properties": {
+          "class_subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Subject Id"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "pupil_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pupil Id"
+          },
+          "subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject Id"
+          },
+          "teacher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teacher"
+          },
+          "what": {
+            "title": "What",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "what"
+        ],
+        "title": "OutstandingItem",
+        "type": "object"
+      },
       "PassageRead": {
         "description": "One section of one pupil's narrative.",
         "properties": {
@@ -2756,6 +2833,89 @@
           "text"
         ],
         "title": "PhraseRead",
+        "type": "object"
+      },
+      "ProgressRead": {
+        "description": "\u00a78.3's page. Also the body of R10's 422, so the two cannot disagree.",
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "may_submit": {
+            "title": "May Submit",
+            "type": "boolean"
+          },
+          "outstanding": {
+            "items": {
+              "$ref": "#/components/schemas/OutstandingItem"
+            },
+            "title": "Outstanding",
+            "type": "array"
+          },
+          "pupils": {
+            "items": {
+              "$ref": "#/components/schemas/PupilProgressRead"
+            },
+            "title": "Pupils",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "return_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Note"
+          },
+          "sheets": {
+            "items": {
+              "$ref": "#/components/schemas/SheetProgressRead"
+            },
+            "title": "Sheets",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "state",
+          "ready",
+          "may_submit"
+        ],
+        "title": "ProgressRead",
         "type": "object"
       },
       "PupilCommentRead": {
@@ -3079,6 +3239,68 @@
         "title": "PupilPageRead",
         "type": "object"
       },
+      "PupilProgressRead": {
+        "description": "One pupil's four class-teacher tasks.",
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "has_attendance": {
+            "title": "Has Attendance",
+            "type": "boolean"
+          },
+          "has_comment": {
+            "title": "Has Comment",
+            "type": "boolean"
+          },
+          "has_growth": {
+            "title": "Has Growth",
+            "type": "boolean"
+          },
+          "is_complete": {
+            "title": "Is Complete",
+            "type": "boolean"
+          },
+          "missing_sections": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Sections",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "sections_total": {
+            "title": "Sections Total",
+            "type": "integer"
+          },
+          "sections_written": {
+            "title": "Sections Written",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "name",
+          "admission_number",
+          "sections_written",
+          "sections_total",
+          "has_comment",
+          "has_attendance",
+          "has_growth",
+          "is_complete"
+        ],
+        "title": "PupilProgressRead",
+        "type": "object"
+      },
       "PupilRead": {
         "properties": {
           "admission_number": {
@@ -3207,6 +3429,98 @@
           "writable"
         ],
         "title": "SectionHeadingRead",
+        "type": "object"
+      },
+      "SheetProgressRead": {
+        "description": "One class-subject on one of the term's two sheets.",
+        "properties": {
+          "assessment_period_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Period Id"
+          },
+          "class_subject_id": {
+            "format": "uuid",
+            "title": "Class Subject Id",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "complete": {
+            "title": "Complete",
+            "type": "integer"
+          },
+          "half": {
+            "$ref": "#/components/schemas/TermHalf"
+          },
+          "is_complete": {
+            "title": "Is Complete",
+            "type": "boolean"
+          },
+          "missing_pupil_count": {
+            "title": "Missing Pupil Count",
+            "type": "integer"
+          },
+          "missing_pupils": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Pupils",
+            "type": "array"
+          },
+          "not_configured": {
+            "title": "Not Configured",
+            "type": "boolean"
+          },
+          "roll": {
+            "title": "Roll",
+            "type": "integer"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          },
+          "teacher_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Teacher Name"
+          }
+        },
+        "required": [
+          "class_subject_id",
+          "subject_id",
+          "subject_name",
+          "half",
+          "complete",
+          "roll",
+          "is_complete",
+          "missing_pupil_count",
+          "not_configured"
+        ],
+        "title": "SheetProgressRead",
         "type": "object"
       },
       "SheetRead": {
@@ -5294,6 +5608,67 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/progress": {
+      "get": {
+        "description": "What is done and what is left, for the whole class.\n\nReadable by any teacher the class is in scope for \u2014 a subject teacher\nneeds to see that their sheet is the one holding the class up \u2014 while only\nthe class teacher may submit, which `may_submit` reports.",
+        "operationId": "read_progress_api_v1_classes__class_id__progress_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's progress.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's progress.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Progress",
+        "tags": [
+          "teacher: progress and submission"
+        ]
+      }
+    },
     "/api/v1/classes/{class_id}/subjects": {
       "get": {
         "operationId": "list_class_subjects_api_v1_classes__class_id__subjects_get",
@@ -5421,6 +5796,67 @@
         "summary": "Set a class's subject list",
         "tags": [
           "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/submit": {
+      "post": {
+        "description": "Send the class to the head teacher, if R10 passes.\n\n422 with the outstanding list if not, 409 if the class has already gone,\n403 if the caller is not its class teacher.",
+        "operationId": "submit_class_api_v1_classes__class_id__submit_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's progress.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's progress.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit Class",
+        "tags": [
+          "teacher: progress and submission"
         ]
       }
     },

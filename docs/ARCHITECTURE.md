@@ -299,6 +299,7 @@ results-portal/
 │   │   │   ├── narrative.py     # sections, authorship, phrase bank, the passages
 │   │   │   ├── wellbeing.py     # attendance (R9) and growth
 │   │   │   ├── reports.py       # the term report's own fields
+│   │   │   ├── submission.py    # R10's gate and §8.3's progress page
 │   │   │   ├── setup.py         # the term readiness checklist
 │   │   │   ├── workflow.py       # R14's state machine
 │   │   │   ├── cumulative.py    # term and annual averages
@@ -331,7 +332,8 @@ results-portal/
     │   ├── ui.tsx
     │   ├── score-grid.tsx       # §8.1, both layouts from one DOM
     │   ├── narrative-form.tsx   # §8.2, sixteen sections and the phrase bank
-    │   └── class-records.tsx    # §4.7 attendance and growth, §1.6 comment
+    │   ├── class-records.tsx    # §4.7 attendance and growth, §1.6 comment
+    │   └── class-progress.tsx   # §8.3, and R10's Send button
     └── lib/
         ├── api/                 # generated from the OpenAPI schema
         ├── auth.tsx             # the signed-in user, token in memory only
@@ -1027,6 +1029,14 @@ The response is the whole sheet, not an acknowledgement — `ca_test_total`
 from the database that produced them rather than being recomputed in the
 browser.
 
+`GET /classes/{id}/progress` and `POST /classes/{id}/submit` return the **same
+object**, and R10's 422 carries it too, down to the key order. §8.3 disables
+the Send button on `ready` and lists `outstanding` beneath it, so the reason
+the button is dark and the reason a submission was refused cannot become two
+different stories. Three refusals, each a different status: **403** the caller
+is not the class teacher, **409** the class has already gone (R14), **422**
+something is outstanding, with the list.
+
 `GET /my/assignments` takes **no** `term_id` by default — it resolves the
 current term, because §5.2 gives `/terms` to the admin alone and a teacher has
 no way to look one up — and returns `{ term, periods, assignments }` rather
@@ -1353,4 +1363,6 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A20 | A narrative passage is capped at 2000 characters and the class teacher's comment at 1000. | **Low.** One constant in `services/narrative.py` and one in `services/reports.py`. The card's real capacity is a §9 question, so these are a guard against a paste accident rather than a layout decision. |
 | A21 | Height is between 0.3 m and 2.5 m and weight between 5 kg and 150 kg. | **Low.** Four bounds in `services/wellbeing.py`. Deliberately wide: they exist to catch centimetres typed into the metres column, not to tell a school what a child may weigh. |
 | A22 | The narrative is grouped on screen the way §1.4 groups it on the card — the seven curriculum areas under one heading, then B–J with none — using `narrative_sections.group_label`. | **Low.** It is already data; the screen renders whatever grouping the rows carry. |
+| A23 | A class-subject is **complete** for a sheet when every pupil has a score in every column the school has set a maximum for. A pupil who missed a test is marked 0, as on paper. | **Low.** One predicate, `submission.columns_filled`. The weaker reading — "has a period average" — would let a half-entered row through, which is what R10 exists to prevent (R2 coalesces a blank to zero, so such a row still prints a figure). |
+| A24 | Submission fills `term_reports.no_in_class` with the roll size, and guarantees a `term_reports` row for every pupil. | **Low.** One loop in `services/submission.py`. §4.8 does not say who sets `no_in_class`; submission is when the roll is final, and publication (R12) and the head teacher's remark both need the rows to exist. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

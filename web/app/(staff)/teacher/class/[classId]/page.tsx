@@ -5,23 +5,26 @@
  *
  * §8.3 describes one page per class: every subject with its state and owner,
  * then the class teacher's own work — narrative, attendance, growth,
- * comments. The subject half needs R10's progress query, which is milestone
- * 8; this is the class teacher's half, which is what milestone 7 builds.
+ * comments — with **Send to head teacher** disabled until R10 passes and the
+ * outstanding items listed beneath it. All of that is here; the Progress tab
+ * holds the subjects and the button, the other three hold the work.
  *
- * Four tabs rather than four pages: these are four columns of the same roll,
- * and a teacher filling them in moves between them constantly.
+ * Tabs rather than separate pages: these are columns of the same roll, and a
+ * teacher filling them in moves between them constantly.
  */
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
-import { ClassComments, ClassGrowth, ClassAttendance } from "@/components/class-records";
+import { ClassProgress } from "@/components/class-progress";
+import { ClassAttendance, ClassComments, ClassGrowth } from "@/components/class-records";
 import { Badge, Notice, Panel, Spinner } from "@/components/ui";
 import { useTeacherApi } from "@/lib/api/use-teacher";
 import { TERM_LABELS, pupilName } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
 
 const TABS = [
+  { key: "progress", label: "Progress" },
   { key: "narrative", label: "Narrative" },
   { key: "attendance", label: "Attendance" },
   { key: "growth", label: "Height & weight" },
@@ -35,7 +38,9 @@ export default function ClassPage() {
   const router = useRouter();
   const { classId } = useParams<{ classId: string }>();
   const search = useSearchParams();
-  const tab = (search.get("tab") ?? "narrative") as TabKey;
+  // Progress first: it is the page that says what is left to do, and §8.3
+  // puts the Send button on it.
+  const tab = (search.get("tab") ?? "progress") as TabKey;
 
   const workload = useResource((signal) => api!.workload(undefined, signal), [api], {
     enabled: Boolean(api),
@@ -88,6 +93,10 @@ export default function ClassPage() {
           </button>
         ))}
       </nav>
+
+      {tab === "progress" ? (
+        <ClassProgress api={api} classId={classId} termId={termId} />
+      ) : null}
 
       {tab === "narrative" ? (
         <Panel

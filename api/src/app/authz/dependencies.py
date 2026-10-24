@@ -73,3 +73,11 @@ WellbeingRecorder = Annotated[User, Depends(requires(Action.RECORD_ATTENDANCE_AN
 # Reading the phrase bank, which every member of staff does and no parent does
 # (§4.6, §8.2, docs/DECISIONS.md D55). Editing it stays `AssessmentConfigAdmin`.
 CommentBankReader = Annotated[User, Depends(requires(Action.USE_COMMENT_BANK))]
+
+# §5.2's "Submit class for review — own class". The capability covers reading
+# the progress page as well as pressing the button: §8.3 shows every subject's
+# state, which a subject teacher needs in order to see that theirs is the one
+# holding the class up. *Who may press it* is the narrower question, and
+# `policy.can_submit_class` answers it — the page reports the answer as
+# `may_submit` rather than hiding the page.
+ClassSubmitter = Annotated[User, Depends(requires(Action.SUBMIT_CLASS))]
