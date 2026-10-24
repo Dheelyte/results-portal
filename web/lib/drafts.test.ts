@@ -15,6 +15,8 @@ import { beforeEach, describe, it } from "node:test";
 
 import { clearDraft, countCells, readDraft, unreconciled, writeDraft } from "./drafts.ts";
 
+// The score grid's pair. The narrative screen passes a pupil and a term
+// instead; the store does not care which, and that is the point.
 const CS = "class-subject-1";
 const P1 = "period-1";
 const P2 = "period-2";
@@ -112,14 +114,14 @@ describe("when storage is unavailable", () => {
 
   it("survives rubbish in the key", () => {
     const store = stubStorage();
-    store.set(`sshms.scores.v1.${CS}.${P1}`, "not json");
+    store.set(`sshms.draft.v1.${CS}.${P1}`, "not json");
 
     assert.equal(readDraft(CS, P1), null);
   });
 
   it("survives a stored value of the wrong shape", () => {
     const store = stubStorage();
-    store.set(`sshms.scores.v1.${CS}.${P1}`, JSON.stringify({ values: "nope" }));
+    store.set(`sshms.draft.v1.${CS}.${P1}`, JSON.stringify({ values: "nope" }));
 
     assert.equal(readDraft(CS, P1), null);
   });

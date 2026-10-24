@@ -221,6 +221,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Attendance */
+        get: operations["read_attendance_api_v1_classes__class_id__attendance_get"];
+        /**
+         * Save Attendance
+         * @description R9: present + absent must equal the times the school opened.
+         */
+        put: operations["save_attendance_api_v1_classes__class_id__attendance_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/class-teacher": {
         parameters: {
             query?: never;
@@ -238,6 +259,62 @@ export interface paths {
          *     class.
          */
         put: operations["set_class_teacher_api_v1_classes__class_id__class_teacher_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Comments */
+        get: operations["read_comments_api_v1_classes__class_id__comments_get"];
+        /** Save Comments */
+        put: operations["save_comments_api_v1_classes__class_id__comments_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/growth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Growth */
+        get: operations["read_growth_api_v1_classes__class_id__growth_get"];
+        /** Save Growth */
+        put: operations["save_growth_api_v1_classes__class_id__growth_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/narrative": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Class Narrative
+         * @description The class list with each pupil's progress — §8.2's "12 of 30".
+         */
+        get: operations["read_class_narrative_api_v1_classes__class_id__narrative_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -487,6 +564,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/phrases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Phrases
+         * @description The active phrases, optionally for one section only.
+         *
+         *     A separate path from the admin's `GET /comment-bank` rather than a widened
+         *     gate on it: this one returns only the active entries, takes no part in
+         *     managing them, and is the one §8.2's phrase-bank button calls
+         *     (docs/DECISIONS.md D55).
+         */
+        get: operations["read_phrases_api_v1_phrases_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pupils": {
         parameters: {
             query?: never;
@@ -525,6 +627,30 @@ export interface paths {
          *     and pupils do change class mid-year (docs/DECISIONS.md D37).
          */
         put: operations["set_enrollment_api_v1_pupils__pupil_id__enrollment_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pupils/{pupil_id}/narrative": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Pupil Narrative
+         * @description One pupil, all sixteen sections — the page §8.2 describes.
+         */
+        get: operations["read_pupil_narrative_api_v1_pupils__pupil_id__narrative_get"];
+        /**
+         * Save Pupil Narrative
+         * @description Save a set of passages for one pupil, applying all of them or none.
+         */
+        put: operations["save_pupil_narrative_api_v1_pupils__pupil_id__narrative_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -967,6 +1093,50 @@ export interface components {
             /** Subject Name */
             subject_name: string;
         };
+        /** AttendanceRead */
+        AttendanceRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Times Absent */
+            times_absent?: number | null;
+            /** Times Late */
+            times_late?: number | null;
+            /** Times Present */
+            times_present?: number | null;
+        };
+        /** AttendanceSave */
+        AttendanceSave: {
+            /** Rows */
+            rows: components["schemas"]["AttendanceSaveRow"][];
+        };
+        /** AttendanceSaveRow */
+        AttendanceSaveRow: {
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Times Absent */
+            times_absent: number;
+            /**
+             * Times Late
+             * @default 0
+             */
+            times_late: number;
+            /** Times Present */
+            times_present: number;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -1019,6 +1189,53 @@ export interface components {
             /** Term Label */
             term_label: string;
         };
+        /** ClassAttendanceRead */
+        ClassAttendanceRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Editable */
+            editable: boolean;
+            /** Rows */
+            rows?: components["schemas"]["AttendanceRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Times School Opened */
+            times_school_opened?: number | null;
+        };
+        /** ClassCommentsRead */
+        ClassCommentsRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Editable */
+            editable: boolean;
+            /** Rows */
+            rows?: components["schemas"]["PupilCommentRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+        };
+        /** ClassCommentsSave */
+        ClassCommentsSave: {
+            /** Rows */
+            rows: components["schemas"]["CommentSaveRow"][];
+        };
         /** ClassCreate */
         ClassCreate: {
             /**
@@ -1031,6 +1248,55 @@ export interface components {
              * @description As the school names it, e.g. Primary 4.
              */
             name: string;
+        };
+        /** ClassGrowthRead */
+        ClassGrowthRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Editable */
+            editable: boolean;
+            /** Rows */
+            rows?: components["schemas"]["GrowthRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+        };
+        /**
+         * ClassNarrativeRead
+         * @description §8.2's progress indicator: "12 of 30 pupils complete".
+         */
+        ClassNarrativeRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Complete Pupils */
+            complete_pupils: number;
+            /** Editable */
+            editable: boolean;
+            /** Pupils */
+            pupils?: components["schemas"]["NarrativeProgressRead"][];
+            /** Roll Size */
+            roll_size: number;
+            /** Sections */
+            sections?: components["schemas"]["SectionHeadingRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
         };
         /** ClassRead */
         ClassRead: {
@@ -1086,6 +1352,19 @@ export interface components {
              * @description Replaces the class's current list. Group headings are rejected (R7).
              */
             subject_ids: string[];
+        };
+        /**
+         * ClassSummary
+         * @description A class this caller is class teacher of.
+         */
+        ClassSummary: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
         };
         /** ClassTeacherRead */
         ClassTeacherRead: {
@@ -1155,6 +1434,16 @@ export interface components {
             scope: string;
             /** Text */
             text: string;
+        };
+        /** CommentSaveRow */
+        CommentSaveRow: {
+            /** Comment */
+            comment?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
         };
         /**
          * CreatedAccountRead
@@ -1382,6 +1671,51 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** GrowthRead */
+        GrowthRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** First Name */
+            first_name: string;
+            /** Height End M */
+            height_end_m?: string | null;
+            /** Height Start M */
+            height_start_m?: string | null;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Weight End Kg */
+            weight_end_kg?: string | null;
+            /** Weight Start Kg */
+            weight_start_kg?: string | null;
+        };
+        /** GrowthSave */
+        GrowthSave: {
+            /** Rows */
+            rows: components["schemas"]["GrowthSaveRow"][];
+        };
+        /** GrowthSaveRow */
+        GrowthSaveRow: {
+            /** Height End M */
+            height_end_m?: number | string | null;
+            /** Height Start M */
+            height_start_m?: number | string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Weight End Kg */
+            weight_end_kg?: number | string | null;
+            /** Weight Start Kg */
+            weight_start_kg?: number | string | null;
+        };
         /** GuardianChild */
         GuardianChild: {
             /**
@@ -1580,6 +1914,39 @@ export interface components {
             /** Assignments */
             assignments: components["schemas"]["NarrativeAssignment"][];
         };
+        /**
+         * NarrativeProgressRead
+         * @description One line of the class list.
+         */
+        NarrativeProgressRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** First Name */
+            first_name: string;
+            /** Is Complete */
+            is_complete: boolean;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Total */
+            total: number;
+            /** Written */
+            written: number;
+        };
+        /**
+         * NarrativeSave
+         * @description A set of passages for one pupil. Applied all or none.
+         */
+        NarrativeSave: {
+            /** Passages */
+            passages: components["schemas"]["PassageSave"][];
+        };
         /** NarrativeSectionRead */
         NarrativeSectionRead: {
             /** Code */
@@ -1621,6 +1988,46 @@ export interface components {
             sections: components["schemas"]["NarrativeSectionSave"][];
         };
         /**
+         * PassageRead
+         * @description One section of one pupil's narrative.
+         */
+        PassageRead: {
+            /** Body */
+            body?: string | null;
+            /** Code */
+            code: string;
+            /** Display Order */
+            display_order: number;
+            /** Group Label */
+            group_label?: string | null;
+            /** Is Complete */
+            is_complete: boolean;
+            /** Label */
+            label: string;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Writable */
+            writable: boolean;
+        };
+        /**
+         * PassageSave
+         * @description One section's text, as the narrative screen submits it.
+         */
+        PassageSave: {
+            /** Body */
+            body?: string | null;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+        };
+        /**
          * PeriodSummary
          * @description One of the term's two sheets (§1.1).
          */
@@ -1635,6 +2042,39 @@ export interface components {
             id: string;
             /** Opens On */
             opens_on?: string | null;
+        };
+        /**
+         * PhraseRead
+         * @description One entry from the phrase bank (§4.6, §8.2).
+         */
+        PhraseRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Scope */
+            scope: string;
+            /** Text */
+            text: string;
+        };
+        /** PupilCommentRead */
+        PupilCommentRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** Comment */
+            comment?: string | null;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
         };
         /** PupilCreate */
         PupilCreate: {
@@ -1670,6 +2110,54 @@ export interface components {
              * @description As the card records it.
              */
             sex?: ("M" | "F") | null;
+        };
+        /**
+         * PupilNarrativeRead
+         * @description One pupil's page, with §8.2's previous/next navigation.
+         */
+        PupilNarrativeRead: {
+            /** Admission Number */
+            admission_number: string;
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Complete Count */
+            complete_count: number;
+            /** Editable */
+            editable: boolean;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /** Next Pupil Id */
+            next_pupil_id?: string | null;
+            /** Passages */
+            passages?: components["schemas"]["PassageRead"][];
+            /** Position */
+            position: number;
+            /** Previous Pupil Id */
+            previous_pupil_id?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Roll Size */
+            roll_size: number;
+            /** Section Count */
+            section_count: number;
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
         };
         /**
          * PupilPageRead
@@ -1708,6 +2196,27 @@ export interface components {
             middle_name: string | null;
             /** Sex */
             sex: string | null;
+        };
+        /**
+         * SectionHeadingRead
+         * @description A section as the class list shows it, without any pupil's text.
+         */
+        SectionHeadingRead: {
+            /** Code */
+            code: string;
+            /** Display Order */
+            display_order: number;
+            /** Group Label */
+            group_label?: string | null;
+            /** Label */
+            label: string;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+            /** Writable */
+            writable: boolean;
         };
         /**
          * SheetRead
@@ -2067,6 +2576,8 @@ export interface components {
         WorkloadRead: {
             /** Assignments */
             assignments?: components["schemas"]["AssignmentRead"][];
+            /** Class Teacher Of */
+            class_teacher_of?: components["schemas"]["ClassSummary"][];
             /** Periods */
             periods?: components["schemas"]["PeriodSummary"][];
             term: components["schemas"]["TermSummary"];
@@ -2462,6 +2973,78 @@ export interface operations {
             };
         };
     };
+    read_attendance_api_v1_classes__class_id__attendance_get: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassAttendanceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_attendance_api_v1_classes__class_id__attendance_put: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttendanceSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassAttendanceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     set_class_teacher_api_v1_classes__class_id__class_teacher_put: {
         parameters: {
             query?: never;
@@ -2484,6 +3067,184 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClassTeacherRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_comments_api_v1_classes__class_id__comments_get: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassCommentsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_comments_api_v1_classes__class_id__comments_put: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassCommentsSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassCommentsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_growth_api_v1_classes__class_id__growth_get: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassGrowthRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_growth_api_v1_classes__class_id__growth_put: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrowthSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassGrowthRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_class_narrative_api_v1_classes__class_id__narrative_get: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassNarrativeRead"];
                 };
             };
             /** @description Validation Error */
@@ -2998,6 +3759,38 @@ export interface operations {
             };
         };
     };
+    read_phrases_api_v1_phrases_get: {
+        parameters: {
+            query?: {
+                /** @description A narrative section code, or 'class_teacher' | 'head_teacher'. */
+                scope?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhraseRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_pupils_api_v1_pupils_get: {
         parameters: {
             query?: {
@@ -3089,6 +3882,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnrollmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_pupil_narrative_api_v1_pupils__pupil_id__narrative_get: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilNarrativeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_pupil_narrative_api_v1_pupils__pupil_id__narrative_put: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NarrativeSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilNarrativeRead"];
                 };
             };
             /** @description Validation Error */

@@ -24,6 +24,7 @@ from sqlalchemy import Select, select
 from app.models import (
     AcademicSession,
     AssessmentPeriod,
+    AttendanceRecord,
     Class,
     ClassSubject,
     ClassTeacher,
@@ -32,9 +33,11 @@ from app.models import (
     Enrollment,
     GradeBand,
     GradingScale,
+    GrowthRecord,
     GuardianPupil,
     House,
     MarksObtainable,
+    NarrativeEntry,
     NarrativeSection,
     NarrativeSectionAssignment,
     PublicationState,
@@ -341,9 +344,23 @@ def scoped_narrative_section_assignments(user: User) -> Select:
 
 
 def scoped_comment_bank(user: User) -> Select:
-    return _school_wide_only(
-        select(CommentBank).where(CommentBank.school_id == user.school_id), user
-    )
+    """The phrase bank, readable by every member of staff.
+
+    Milestone 6's D50 left this with `_school_wide_only`, on the grounds that
+    a phrase bank is not reference data. Milestone 7 showed that to be wrong
+    in practice: §8.2 puts a phrase-bank button beside every one of the
+    sixteen sections, and §4.6 calls the bank "core, not optional" precisely
+    because one teacher writes 480 passages a term. A teacher who cannot read
+    it cannot use it.
+
+    Parents are still excluded — the phrases are staff drafting material, and
+    a parent reads only the finished passage on a published report
+    (docs/DECISIONS.md D55).
+    """
+    stmt = select(CommentBank).where(CommentBank.school_id == user.school_id)
+    if user.role is UserRole.PARENT:
+        return stmt.where(False)
+    return stmt
 
 
 def scoped_marks_obtainable(user: User) -> Select:
@@ -398,6 +415,74 @@ def scoped_class_teachers(user: User) -> Select:
 
     if user.role is UserRole.TEACHER:
         return stmt.where(ClassTeacher.teacher_user_id == user.id)
+
+    return stmt.where(False)
+
+
+def scoped_narrative_entries(user: User, academic_session_id: uuid.UUID | None = None) -> Select:
+    """Written passages this user may see.
+
+    A teacher sees the narrative of every pupil in a class they teach into,
+    not only the sections they write. That is deliberate: §8.2 lets a teacher
+    copy a section from the previous pupil, and a specialist writing one
+    curriculum area needs to see what the class teacher wrote about the same
+    child to avoid contradicting it.
+
+    Note what this does **not** grant. Seeing a passage and being allowed to
+    write it are different questions, and `policy.writable_narrative_sections`
+    answers the second one per section (D15).
+    """
+    stmt = select(NarrativeEntry).where(NarrativeEntry.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(
+            NarrativeEntry.pupil_id.in_(
+                scoped_pupils(user, academic_session_id).with_only_columns(Pupil.id)
+            )
+        )
+
+    # A parent reads the narrative off the published report (§9), never here.
+    return stmt.where(False)
+
+
+def scoped_attendance(user: User, academic_session_id: uuid.UUID | None = None) -> Select:
+    """Attendance rows this user may see.
+
+    Scoped through the pupil rather than through `class_teachers`: a subject
+    teacher may read a class's attendance, and only the class teacher may
+    write it (§5.2, `policy.can_record_attendance_and_growth`).
+    """
+    stmt = select(AttendanceRecord).where(AttendanceRecord.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(
+            AttendanceRecord.pupil_id.in_(
+                scoped_pupils(user, academic_session_id).with_only_columns(Pupil.id)
+            )
+        )
+
+    return stmt.where(False)
+
+
+def scoped_growth(user: User, academic_session_id: uuid.UUID | None = None) -> Select:
+    """Height and weight rows this user may see (§4.7)."""
+    stmt = select(GrowthRecord).where(GrowthRecord.school_id == user.school_id)
+
+    if user.role in SCHOOL_WIDE_ROLES:
+        return stmt
+
+    if user.role is UserRole.TEACHER:
+        return stmt.where(
+            GrowthRecord.pupil_id.in_(
+                scoped_pupils(user, academic_session_id).with_only_columns(Pupil.id)
+            )
+        )
 
     return stmt.where(False)
 

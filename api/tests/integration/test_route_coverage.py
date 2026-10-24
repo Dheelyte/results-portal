@@ -1,7 +1,7 @@
 """Structural guards over the whole API surface.
 
 These are the tests that cannot go stale. The behavioural tables in
-`test_setup_authz.py` and `test_entry_authz.py` only cover the endpoints
+`test_setup_authz.py` and `test_teacher_authz.py` only cover the endpoints
 somebody remembered to list; these two make forgetting fail:
 
 - every `/api/v1` route outside `/auth` declares a capability gate
@@ -16,15 +16,28 @@ import pytest
 from fastapi.routing import APIRoute
 
 from tests.integration.routes import capability_gated, guarded_routes, normalise
-from tests.integration.test_entry_authz import ENTRY_ENDPOINTS
 from tests.integration.test_setup_authz import SETUP_ENDPOINTS
+from tests.integration.test_teacher_authz import (
+    STAFF_ENDPOINTS,
+    TEACHER_ONLY_ENDPOINTS,
+)
 
-TABLED = SETUP_ENDPOINTS + ENTRY_ENDPOINTS
+TABLED = SETUP_ENDPOINTS + TEACHER_ONLY_ENDPOINTS + STAFF_ENDPOINTS
 
 
 def test_there_are_routes_to_check() -> None:
-    """Guards against the scan passing because it found nothing."""
-    assert len(guarded_routes()) >= len(TABLED)
+    """Guards against the scan passing because it found nothing.
+
+    Counts distinct paths, not table rows: a table may list one endpoint twice
+    to exercise two query strings, which it should be free to do.
+    """
+    tabled_paths = {normalise(path) for _, path, _ in TABLED}
+    scanned_paths = {normalise(path) for path, _ in guarded_routes()}
+
+    assert scanned_paths >= tabled_paths
+    # A floor, not a count: it only has to fail if the scan ever finds
+    # nothing, so it is well below the real number and needs no maintenance.
+    assert len(scanned_paths) >= 25
 
 
 @pytest.mark.parametrize(

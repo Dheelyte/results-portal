@@ -36,6 +36,10 @@ EXPECTED_ROLE_GRANTS: dict[Action, set[UserRole]] = {
     Action.VIEW_OWN_CHILDREN_REPORTS: {UserRole.PARENT},
     Action.ACKNOWLEDGE_REPORT: {UserRole.PARENT},
     Action.VIEW_AUDIT_LOG: {UserRole.ADMIN, UserRole.HEAD_TEACHER},
+    # Not a row of §5.2 as printed. The table's "comment bank — admin" is
+    # about managing it; §4.6 and §8.2 require every member of staff to read
+    # it, and no parent ever does (docs/DECISIONS.md D55).
+    Action.USE_COMMENT_BANK: {UserRole.ADMIN, UserRole.HEAD_TEACHER, UserRole.TEACHER},
 }
 
 
@@ -55,7 +59,7 @@ def make_user(role: UserRole, *, is_active: bool = True) -> User:
 @pytest.mark.parametrize("action", list(Action))
 @pytest.mark.parametrize("role", list(UserRole))
 def test_every_cell_of_the_matrix(action: Action, role: UserRole) -> None:
-    """4 roles x 14 actions = 56 assertions, one per cell."""
+    """One assertion per cell: every role against every action."""
     expected = role in EXPECTED_ROLE_GRANTS[action]
 
     assert policy.can(make_user(role), action) is expected, (

@@ -172,9 +172,20 @@ class AssignmentRead(BaseModel):
     state: ClassTermState
 
 
+class ClassSummary(BaseModel):
+    """A class this caller is class teacher of."""
+
+    class_id: uuid.UUID
+    class_name: str
+
+
 class WorkloadRead(BaseModel):
     """Everything the teacher's first screen needs, in one request."""
 
     term: TermSummary
     periods: list[PeriodSummary] = Field(default_factory=list)
     assignments: list[AssignmentRead] = Field(default_factory=list)
+    # The narrative, attendance, growth and the comment belong to the class
+    # teacher of a class rather than to a subject (§5.2), so they are listed
+    # separately from the sheets above.
+    class_teacher_of: list[ClassSummary] = Field(default_factory=list)

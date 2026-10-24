@@ -5,6 +5,7 @@ import pytest
 from app.auth.password import (
     generate_temporary_password,
     hash_password,
+    hasher_for,
     needs_rehash,
     verify_password,
 )
@@ -70,3 +71,50 @@ def test_temporary_passwords_are_unique_and_long_enough() -> None:
 def test_a_dangerously_short_temporary_password_is_refused() -> None:
     with pytest.raises(ValueError):
         generate_temporary_password(length=4)
+
+
+# ---------------------------------------------------------------------------
+# The test-only cost profile (docs/DECISIONS.md D61)
+# ---------------------------------------------------------------------------
+
+
+def test_only_the_test_environment_gets_the_cheap_profile() -> None:
+    """The guard that keeps the weakening where it belongs.
+
+    The suite runs under `APP_ENV=test` with deliberately feeble Argon2
+    parameters, because several hundred logins at the production cost of
+    725 ms each is four minutes of hashing and nothing else. If that profile
+    ever reached development — let alone production — every stored password
+    would be cheap to attack, and nothing else in the system would notice.
+    """
+    for app_env in ("development", "production", "", "testing", "TEST"):
+        hasher = hasher_for(app_env)
+
+        assert hasher.time_cost >= 3, app_env
+        # RFC 9106's low-memory profile: 64 MiB, in KiB.
+        assert hasher.memory_cost >= 65536, app_env
+        assert hasher.parallelism >= 4, app_env
+
+
+def test_the_test_profile_is_the_one_in_use_here() -> None:
+    """Otherwise this file's own speed would be a mystery."""
+    hasher = hasher_for("test")
+
+    assert hasher.memory_cost < 65536
+    assert hasher.time_cost < 3
+
+
+def test_a_hash_records_the_parameters_it_was_made_with() -> None:
+    """Which is why the switch is safe to make at all.
+
+    An Argon2 hash embeds its own cost parameters, so a password hashed under
+    one profile still verifies under another. `needs_rehash` then migrates it
+    on the owner's next login.
+    """
+    cheap = hasher_for("test")
+    strong = hasher_for("production")
+
+    stored = cheap.hash(PASSWORD)
+
+    assert strong.verify(stored, PASSWORD) is True
+    assert strong.check_needs_rehash(stored) is True

@@ -58,3 +58,18 @@ AssessmentConfigAdmin = Annotated[User, Depends(requires(Action.MANAGE_ASSESSMEN
 # `authz/scope.py` answers it: a sheet outside their assignments is a 404,
 # never a 403, because a 403 would confirm it exists (CLAUDE.md rule 4).
 ScoreEntrant = Annotated[User, Depends(requires(Action.ENTER_SCORES))]
+
+# Both of §5.2's narrative rows. Which *sections* this caller may write for a
+# given class is the other half, and `policy.writable_narrative_sections`
+# answers it per section — a specialist writing one curriculum area and the
+# class teacher writing the rest both arrive here (D15).
+NarrativeWriter = Annotated[User, Depends(requires(Action.WRITE_NARRATIVE))]
+
+# §5.2: "Attendance, growth records — own class", and only as class teacher. A
+# subject teacher who happens to teach the class does not record its
+# attendance; `policy.can_record_attendance_and_growth` enforces that half.
+WellbeingRecorder = Annotated[User, Depends(requires(Action.RECORD_ATTENDANCE_AND_GROWTH))]
+
+# Reading the phrase bank, which every member of staff does and no parent does
+# (§4.6, §8.2, docs/DECISIONS.md D55). Editing it stays `AssessmentConfigAdmin`.
+CommentBankReader = Annotated[User, Depends(requires(Action.USE_COMMENT_BANK))]

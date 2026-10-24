@@ -296,7 +296,9 @@ results-portal/
 │   │   │   ├── accounts.py      # accounts, resets, the guardian link
 │   │   │   ├── grading.py       # every formula and the grade bands
 │   │   │   ├── results.py       # score entry: R1, R7, the sheet, the bulk save
-│   │   │   ├── narrative.py     # sections, authorship, phrase bank
+│   │   │   ├── narrative.py     # sections, authorship, phrase bank, the passages
+│   │   │   ├── wellbeing.py     # attendance (R9) and growth
+│   │   │   ├── reports.py       # the term report's own fields
 │   │   │   ├── setup.py         # the term readiness checklist
 │   │   │   ├── workflow.py       # R14's state machine
 │   │   │   ├── cumulative.py    # term and annual averages
@@ -319,19 +321,24 @@ results-portal/
     │   ├── (staff)/
     │   │   ├── admin/           # setup: checklist, calendar, classes,
     │   │   │                    #   subjects, pupils, accounts, assessment
-    │   │   ├── teacher/         # my classes, and [classSubjectId]: the grid
+    │   │   ├── teacher/         # my classes, [classSubjectId]: the grid,
+    │   │   │                    #   narrative/[pupilId], class/[classId]
     │   │   ├── narrative/       # narrative writing screen
     │   │   ├── class/           # class teacher progress view
     │   │   └── review/          # head teacher review
     │   └── (parent)/children/
     ├── components/
     │   ├── ui.tsx
-    │   └── score-grid.tsx       # §8.1, both layouts from one DOM
+    │   ├── score-grid.tsx       # §8.1, both layouts from one DOM
+    │   ├── narrative-form.tsx   # §8.2, sixteen sections and the phrase bank
+    │   └── class-records.tsx    # §4.7 attendance and growth, §1.6 comment
     └── lib/
         ├── api/                 # generated from the OpenAPI schema
         ├── auth.tsx             # the signed-in user, token in memory only
         ├── scores.ts            # R1's browser mirror, kept out of the component
         ├── scores.test.ts       # `npm test` — Node's own runner, no framework
+        ├── attendance.ts        # R9's browser mirror
+        ├── attendance.test.ts
         ├── drafts.ts            # localStorage drafts, keyed by sheet
         ├── use-autosave.ts      # every 20s and on blur; retry vs reject
         └── use-async.ts         # loading a resource, running an action
@@ -1040,11 +1047,25 @@ originally omitted are each justified in D37; none of them is new
 functionality, they are the missing halves of requirements stated elsewhere in
 this document.
 
+`PUT /pupils/{id}/narrative` takes `{ passages: [{ section_id, body }] }` and
+applies all or none, with per-section refusals keyed by `section_id`. A section
+assigned to another teacher for that class is refused **by name** — D15 splits
+authorship, so "something was refused" would leave the teacher guessing which
+of sixteen textareas was the problem. An omitted section is left alone and an
+explicit `null` clears it, exactly as the score grid's columns behave.
+
+Attendance, growth and the class teacher's comment each gained the **GET** that
+§7 omitted, because no screen can edit what it cannot read; `GET` for one
+pupil's narrative likewise. `GET /phrases?scope=` is new: §8.2 puts a
+phrase-bank button beside every section, and §5.2's comment-bank row is about
+*managing* the bank, not reading it (`docs/DECISIONS.md` D55, D57).
+
 Every endpoint in the admin block is admin-only, declared in the route
 signature through `authz/dependencies.py` and asserted cell by cell against
-§5.2 in `tests/integration/test_setup_authz.py`. A structural test there fails
-if any `/api/v1` route outside `/auth` is ever mounted without a capability
-gate.
+§5.2 in `tests/integration/test_setup_authz.py`; the teacher block is asserted
+the same way in `test_teacher_authz.py`. A structural test in
+`test_route_coverage.py` fails if any `/api/v1` route outside `/auth` is ever
+mounted without a capability gate, or without a row in one of those tables.
 
 ---
 
@@ -1274,7 +1295,7 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 | N4 | Is *Position (In grades)* filled in, and in what form? | 9 |
 | N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
 | N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) |
-| N7 | All sixteen narrative sections, or a reduced set? | 7 |
+| N7 | All sixteen narrative sections, or a reduced set? | 7 — **reached, not blocking.** All sixteen are built and `is_active` retires any of them without a migration, so a reduced set is a row edit rather than a change. Still worth asking before launch: §8.2 says so, and sixteen passages × thirty pupils is the single largest demand this system makes of one person. |
 | N9 | Teacher devices and connectivity — school Wi-Fi, or personal phones on mobile data at home? | 6 (offline behaviour) — **reached, not blocking.** §8.1's own answer is built: autosave every 20s and on blur, `localStorage` drafts reconciled on reload, and a failed save retried rather than lost. The open part is whether to go further — a service worker and a true offline queue — which only matters if teachers work where there is no signal at all. |
 
 `docs/CARD-FINDINGS.md` holds the photographic evidence behind N1–N7.
@@ -1293,6 +1314,14 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
   Protection Act applies; the school will need a privacy notice and HSD a
   processing agreement with them. Get this checked by someone qualified — it is
   not covered by anything in this document.
+
+- **Login cost on the real host.** A password verification costs **725 ms** in
+  the development container (4 cores, Argon2id at RFC 9106's low-memory
+  profile), which is about 1.4 logins per second at saturation. §0 puts peak
+  at "a few hundred parents on the evening results are released". Measure it on
+  the production box before launch; `docs/DECISIONS.md` D61 sets out the
+  options, and lowering the cost of a password hash is the school's decision,
+  not the code's.
 
 ---
 
@@ -1321,4 +1350,7 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A17 | A period average is **rounded half up to the nearest whole mark** before a grade band is read from it, so 39.5 is a D and 39.49 is an E. | **Low.** One named function, `grading.banded_value`, and `test_period_average.py` pins the current behaviour so answering N3 means changing a test on purpose. |
 | A18 | A score may carry **at most one decimal place** (R1's own wording). The column is `numeric(5,2)` because `period_average` shares the type, so this is a service rule rather than a constraint. | **Low.** One check in `services/results.py` and its mirror in `web/lib/scores.ts`. |
 | A19 | A teacher may see the school's reference data — calendar, subjects, grading scale, Marks Obtainable, narrative sections — while only an admin may change it. See `docs/DECISIONS.md` D50. | **Low.** One function in `authz/scope.py`, nine call sites. The write surface does not move either way. |
+| A20 | A narrative passage is capped at 2000 characters and the class teacher's comment at 1000. | **Low.** One constant in `services/narrative.py` and one in `services/reports.py`. The card's real capacity is a §9 question, so these are a guard against a paste accident rather than a layout decision. |
+| A21 | Height is between 0.3 m and 2.5 m and weight between 5 kg and 150 kg. | **Low.** Four bounds in `services/wellbeing.py`. Deliberately wide: they exist to catch centimetres typed into the metres column, not to tell a school what a child may weigh. |
+| A22 | The narrative is grouped on screen the way §1.4 groups it on the card — the seven curriculum areas under one heading, then B–J with none — using `narrative_sections.group_label`. | **Low.** It is already data; the screen renders whatever grouping the rows carry. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

@@ -22,6 +22,7 @@ from app.authz.dependencies import ScoreEntrant
 from app.models import ResultEntry
 from app.schemas.results import (
     AssignmentRead,
+    ClassSummary,
     EntriesSave,
     EntryRead,
     GradeRead,
@@ -122,6 +123,10 @@ async def my_assignments(
             for period in work.periods
         ],
         assignments=[AssignmentRead(**vars(assignment)) for assignment in work.assignments],
+        class_teacher_of=[
+            ClassSummary(class_id=klass.id, class_name=klass.name)
+            for klass in work.class_teacher_of
+        ],
     )
 
 

@@ -21,6 +21,17 @@ from sqlalchemy import make_url
 from app import config
 
 os.environ["DATABASE_URL"] = config.settings.test_dsn
+
+# The suite declares itself as the test environment, which does two things:
+# `Settings.test_dsn` above is already resolved, and `auth/password.py` picks
+# its cheap Argon2 profile. Several hundred logins at the production cost of
+# 725 ms each is four minutes of hashing and nothing else
+# (docs/DECISIONS.md D61).
+#
+# `test` is not `production`, so nothing else changes: the only other branch
+# on this setting is `is_production`, which governs the OpenAPI routes and the
+# Secure cookie flag, and both behave as they do in development.
+os.environ["APP_ENV"] = "test"
 config.get_settings.cache_clear()
 config.settings = config.get_settings()
 

@@ -969,6 +969,26 @@ No init script, because one only runs on a fresh `pgdata` volume and would
 have missed every existing checkout. Two tests guard it: one on the
 derivation, one asserting the live engine is on a `_test` database.
 
+**One database, so one run at a time.** `clean_database` empties every table
+between tests, so two `pytest` processes against the same checkout fight: the
+second one's wipe blocks on the first one's locks, or fails with a foreign-key
+violation naming a table it has already emptied. A killed run can leave a
+connection *idle in transaction* holding the same locks, which looks identical.
+
+To check, and to clear a stale one:
+
+```bash
+docker compose exec postgres psql -U portal -d portal_test \
+  -c "select pid, state, query from pg_stat_activity where datname = 'portal_test'"
+docker compose exec postgres psql -U portal -d portal_test \
+  -c "select pg_terminate_backend(pid) from pg_stat_activity
+      where datname = 'portal_test' and state = 'idle in transaction'"
+```
+
+Not worth solving with a database per worker: the suite is single-process by
+design (one session-scoped event loop, D-note in `pyproject.toml`), and
+`TEST_DATABASE_URL` is there for anyone who genuinely needs a second one.
+
 ### D47 — Never run `next build` inside the development container
 
 The dev `web` container keeps `.next` in a named volume shared with
@@ -1160,3 +1180,185 @@ refuses to touch a row carrying a snapshotted `grade_letter` — a printed card
 must keep saying what was printed (§4.5, rule 6). It reports how many rows it
 skipped for that reason, so a formula change after an approval is visible
 rather than silent.
+
+---
+
+## Milestone 7 — the narrative, attendance and growth
+
+### D55 — Reading the phrase bank is a separate action from managing it
+
+§5.2's third row reads "Grading scale, marks obtainable, narrative sections,
+comment bank — **admin** ✅", with a dash in every other column. Taken
+literally, a class teacher may not read the phrase bank.
+
+That cannot be right. §4.6: "A class of 30 needs **480 written passages per
+term** from one class teacher. Without a strong phrase bank this feature will
+not be used as intended. Treat the comment bank as core, not optional." §8.2
+puts a phrase-bank button beside every one of the sixteen sections. The row is
+about *managing* the bank — adding, retiring, editing — which stays with the
+admin alone.
+
+So `policy.Action` gained `USE_COMMENT_BANK`, granted to the admin, the head
+teacher (who has `head_teacher`-scoped phrases for the remark in milestone 9)
+and the teacher, and denied to parents. `GET /phrases` is its own endpoint
+rather than a widened gate on the admin's `GET /comment-bank`: it returns only
+the **active** entries and takes no part in managing them.
+
+This also corrects **D50**, which said `comment_bank` would keep
+`_school_wide_only` on the grounds that a phrase bank is not reference data.
+That was wrong in practice and the entry is left standing rather than edited,
+because the reasoning is worth keeping visible: the test of "reference data"
+is not whether the table sounds like configuration, it is whether a user needs
+to read it to do the job the matrix gives them.
+
+### D56 — `services/wellbeing.py` and `services/reports.py`
+
+§4.7 says to enforce R9 "in `services/results.py` **and** with a trigger", and
+§3's tree lists no module for attendance or for the report's own fields.
+
+R9 is not in `results.py`. That module is the score sheet — R1 through R4, R7,
+the bulk upsert — and attendance is a different page of the card, written by a
+different person (the class teacher, not whoever teaches the subject), on a
+different screen. Two modules instead:
+
+- **`services/wellbeing.py`** — attendance and growth. §4.7's own title.
+- **`services/reports.py`** — the fields that hang off `term_reports` and
+  belong to no subject and no section. The class teacher's comment now; the
+  head teacher's remark, `position_text` and the promotion decision when
+  milestone 9 arrives, rather than each landing wherever its endpoint was
+  built.
+
+The rules still live in `services/` (rule 2) and the trigger still backs R9.
+Only the file names differ from §3, which §3 now records.
+
+**Why the service check is not redundant with the trigger.** A trigger can
+only raise. It cannot say *which* of thirty pupils is wrong or which field,
+and §8.3 needs exactly that to show the teacher where to look.
+
+### D57 — Each PUT got the GET §7 omitted
+
+§7 lists `PUT /classes/{id}/attendance`, `/growth` and `/comments`, and no GET
+for any of them; nor a GET for one pupil's narrative. No screen can edit what
+it cannot read, so each has its matching GET.
+
+Same family as D37 and D51: not new functionality, the missing half of a
+requirement stated elsewhere in the document. §7 now records them.
+
+### D58 — A subject teacher may read a class's records but not write them
+
+§5.2 reads "Attendance, growth records — **own class**", in the class-teacher
+column only. Milestone 7's first draft enforced the *scope* (the class must be
+one the teacher touches) but not the *relationship*, which left a subject
+teacher of 4A able to write 4A's attendance.
+
+It was found by tightening a test that had been written too loosely — it
+asserted the request was refused (`status_code in (403, 404, 422)`) without
+saying how. Replacing that with the exact status and message is what exposed
+the hole, which is the argument for never writing the loose form: it passes
+against the bug.
+
+Both halves now hold, and they answer differently on purpose:
+
+- **Reading** is open to any teacher the class is in scope for. A specialist
+  needs to see whose records are still missing, and the page is how they see
+  it.
+- **Writing** requires being class teacher of that class — a **403**, not a
+  404, because the class is already visible to the caller. There is nothing
+  left to conceal, and naming the missing relationship ("only the class
+  teacher records this") is more use than pretending the class does not exist.
+
+The same split already applied to the narrative through
+`policy.writable_narrative_sections`, which is where the pattern came from.
+
+### D59 — `writable_narrative_sections` answers D15 sixteen times at once
+
+`policy.can_write_narrative` answers "may this teacher write that section",
+one section at a time. The narrative screen needs all sixteen answers to
+render one page, and sixteen round trips to paint a page is absurd on the 3G
+connection §8.5 assumes.
+
+`policy.writable_narrative_sections` returns the whole set, using the same two
+rules in the same order: a section assigned to this user, they write; every
+section with no assignment at all falls to the class teacher. A section
+assigned to *somebody else* is writable by neither the class teacher nor
+anyone but that person — which is the entire point of the assignment, and is
+asserted from both sides in `test_narrative_writing.py`.
+
+The two functions must agree. They are deliberately written to look alike, and
+the integration tests exercise the set-returning one through the endpoint that
+uses it.
+
+### D60 — Sections the teacher does not own are shown read-only, not hidden
+
+A class teacher opening a pupil's page sees all sixteen sections, with the
+specialist's rendered read-only rather than omitted.
+
+Hiding them would be tidier and worse. The class teacher needs to see that
+the section exists and is somebody's job — R8 counts it towards "complete",
+so a blank they cannot see would make a pupil permanently incomplete for no
+visible reason. And a specialist writing one curriculum area needs to read
+what the class teacher said about the same child, to avoid contradicting it.
+
+Reading and writing are separate questions throughout this milestone, and
+this is the visible consequence.
+
+### D61 — Argon2 costs 725 ms per login on this hardware, and the suite cannot pay it
+
+Measured in the development container, 4 cores, with argon2-cffi's defaults
+(RFC 9106 low-memory: Argon2id, time_cost 3, memory_cost 64 MiB,
+parallelism 4):
+
+```
+argon2 verify: 725 ms
+argon2 hash:  1503 ms
+```
+
+Two consequences, and they are different problems.
+
+**The suite.** It performs several hundred logins — every authorization test
+signs in through the real endpoint on purpose, so the 403 it asserts is the
+one a browser would get. At 725 ms each that was four minutes of Argon2 and
+nothing else, and it tripled the suite's runtime between milestones 6 and 7
+as the authorization tables grew.
+
+Fixed by giving `APP_ENV=test` a deliberately feeble profile
+(`time_cost=1, memory_cost=8KiB, parallelism=1`) in `auth/password.py`, chosen
+in one function, `hasher_for`. `tests/conftest.py` sets `APP_ENV=test`
+alongside the database redirection; `test` is not `production`, so the only
+other branch on that setting — `is_production`, governing the OpenAPI routes
+and the Secure cookie flag — behaves exactly as in development.
+
+Measured on `test_teacher_authz.py`, which is almost nothing but logins:
+**119.3s before, 18.6s after** — 74 tests either way. Argon2 no longer appears
+in the suite's slowest durations at all; the migration tests do, and those are
+slow because each one creates and drops a database.
+
+`test_password.py` asserts that **every other** value of `APP_ENV`, including
+unknown ones and the empty string, gets the strong profile. Without that test
+this change would be a loaded gun. An Argon2 hash embeds its own parameters,
+so a hash made under either profile verifies under the other and
+`needs_rehash` migrates it on the owner's next login — which is also asserted.
+
+**The capacity question, which is for the school.** 725 ms of CPU per login,
+with parallelism 4 on 4 cores, is roughly 1.4 logins per second at
+saturation. §0 puts peak concurrency at "a few hundred parents on the evening
+results are released". Three hundred parents signing in over two minutes is
+2.5 logins per second — above that ceiling, so the queue grows and some
+parents see a slow login or a timeout.
+
+This is **not** fixed here, because lowering the cost of a password hash is a
+security decision and it belongs with the school and with whoever hosts it.
+What to do about it, roughly in order of preference:
+
+1. **Measure on the real host first.** This container is not the production
+   box, and the figure may be much better or much worse.
+2. **Fewer logins.** The 30-day refresh token already means a parent signs in
+   once a month, not once a visit (§5.1). Most of results night should be
+   refreshes, which are cheap. Worth confirming against the real pattern.
+3. **More cores**, which is the honest fix if the figure holds: Argon2's
+   parallelism means the cost is CPU, and this is a single-host deployment by
+   design (§0).
+4. **Lower `memory_cost`** last, and only with the figure in front of
+   somebody who can weigh it.
+
+Raised as an open item rather than tuned silently.

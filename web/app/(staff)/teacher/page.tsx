@@ -48,6 +48,7 @@ export default function TeacherHomePage() {
   if (!workload.data) return null;
 
   const { term, assignments } = workload.data;
+  const myClasses = workload.data.class_teacher_of ?? [];
 
   return (
     <>
@@ -57,9 +58,28 @@ export default function TeacherHomePage() {
         </h1>
         <p className="text-sm text-[var(--muted)]">
           {assignments?.length ?? 0} subject{assignments?.length === 1 ? "" : "s"} to enter.
-          Scores are saved as you type.
+          Everything is saved as you type.
         </p>
       </div>
+
+      {myClasses.length > 0 ? (
+        <Panel
+          title="My classes"
+          description="The written assessment, attendance, height and weight, and your comment"
+        >
+          <div className="flex flex-wrap gap-2">
+            {myClasses.map((klass) => (
+              <Link
+                key={klass.class_id}
+                href={`/teacher/class/${klass.class_id}`}
+                className="rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-raised)]"
+              >
+                {klass.class_name}
+              </Link>
+            ))}
+          </div>
+        </Panel>
+      ) : null}
 
       {periods.length === 0 ? (
         <Notice tone="warning">

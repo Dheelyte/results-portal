@@ -21,6 +21,7 @@ from app.routers import (
     academic,
     assessment,
     auth,
+    classwork,
     entry,
     health,
     people,
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     # §7's teacher block. Same two layers: the capability gate admits only a
     # teacher, and `authz/scope.py` narrows that to their own class-subjects.
     app.include_router(entry.router, prefix=settings.api_v1_prefix)
+    app.include_router(classwork.router, prefix=settings.api_v1_prefix)
 
     return app
 

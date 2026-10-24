@@ -22,6 +22,7 @@ from app.authz import scope
 from app.models import (
     ClassSubject,
     ClassTeacher,
+    NarrativeSection,
     NarrativeSectionAssignment,
     TeachingAssignment,
     User,
@@ -55,6 +56,16 @@ class Action(enum.StrEnum):
     VIEW_OWN_CHILDREN_REPORTS = "view_own_children_reports"
     ACKNOWLEDGE_REPORT = "acknowledge_report"
 
+    # Shared by everyone who writes about a pupil
+    #
+    # §5.2's third row gives the comment bank to the admin, and that row is
+    # about *managing* it. §4.6 and §8.2 require a class teacher to **use** it:
+    # "treat the comment bank as core, not optional", with a phrase-bank button
+    # beside every one of the sixteen sections. Reading the phrases and editing
+    # them are different actions, so they are two entries here
+    # (docs/DECISIONS.md D55).
+    USE_COMMENT_BANK = "use_comment_bank"
+
     # Audit
     VIEW_AUDIT_LOG = "view_audit_log"
 
@@ -71,6 +82,7 @@ ROLE_ACTIONS: dict[UserRole, frozenset[Action]] = {
             Action.MANAGE_ASSESSMENT_CONFIG,
             Action.PUBLISH,
             Action.EDIT_AFTER_PUBLICATION,
+            Action.USE_COMMENT_BANK,
             Action.VIEW_AUDIT_LOG,
         }
     ),
@@ -78,6 +90,8 @@ ROLE_ACTIONS: dict[UserRole, frozenset[Action]] = {
         {
             Action.REVIEW_CLASS,
             Action.SET_HEAD_TEACHER_REMARK,
+            # The bank carries 'head_teacher'-scoped phrases for the remark.
+            Action.USE_COMMENT_BANK,
             # Read-only; the admin's is the full surface.
             Action.VIEW_AUDIT_LOG,
         }
@@ -88,6 +102,7 @@ ROLE_ACTIONS: dict[UserRole, frozenset[Action]] = {
             Action.WRITE_NARRATIVE,
             Action.RECORD_ATTENDANCE_AND_GROWTH,
             Action.SUBMIT_CLASS,
+            Action.USE_COMMENT_BANK,
         }
     ),
     UserRole.PARENT: frozenset(
@@ -276,6 +291,80 @@ async def can_acknowledge_report(db: AsyncSession, user: User, term_report_id: u
 
     visible = scope.scoped_term_reports(user).subquery()
     return bool(await db.scalar(select(exists().where(visible.c.id == term_report_id))))
+
+
+async def writable_narrative_sections(
+    db: AsyncSession,
+    user: User,
+    class_id: uuid.UUID,
+    academic_session_id: uuid.UUID | None = None,
+) -> set[uuid.UUID]:
+    """Every section of one class this user may write (B1, D15).
+
+    `can_write_narrative` answers the same question one section at a time, and
+    the narrative screen needs all sixteen answers at once — sixteen round
+    trips to render one page would be absurd. The two must agree, so this is
+    the same two rules in the same order:
+
+    - a section assigned to this user, they write;
+    - every section with no assignment falls to the class teacher.
+
+    A section assigned to *somebody else* is writable by neither the class
+    teacher nor anyone but that person, which is the whole point of the
+    assignment.
+    """
+    if not can(user, Action.WRITE_NARRATIVE):
+        return set()
+
+    session_id = (
+        academic_session_id
+        if academic_session_id is not None
+        else scope.current_session_id(user.school_id)
+    )
+
+    mine = set(
+        (
+            await db.execute(
+                scope.narrative_section_ids_assigned_to(user, class_id, academic_session_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    if not await is_class_teacher_of(db, user, class_id, academic_session_id):
+        return mine
+
+    assigned_to_anyone = set(
+        (
+            await db.execute(
+                select(NarrativeSectionAssignment.section_id).where(
+                    NarrativeSectionAssignment.school_id == user.school_id,
+                    NarrativeSectionAssignment.class_id == class_id,
+                    NarrativeSectionAssignment.academic_session_id == session_id,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    unassigned = (
+        set(
+            (
+                await db.execute(
+                    scope.scoped_narrative_sections(user)
+                    .where(NarrativeSection.is_active.is_(True))
+                    .with_only_columns(NarrativeSection.id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        - assigned_to_anyone
+    )
+
+    return mine | unassigned
 
 
 async def teaches_any_class_subject(db: AsyncSession, user: User) -> bool:

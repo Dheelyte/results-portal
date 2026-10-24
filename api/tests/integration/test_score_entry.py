@@ -750,6 +750,32 @@ async def test_the_workload_names_the_term_and_both_sheets(
     assert [period["half"] for period in body["periods"]] == ["first_half", "second_half"]
 
 
+async def test_the_workload_names_the_classes_this_teacher_leads(
+    client, teacher_headers, world, sheets
+) -> None:
+    """The narrative, attendance, growth and the comment belong to the class
+    teacher of a class, not to a subject. Without this list a class teacher
+    has no route to that work at all."""
+    body = (
+        await client.get(
+            f"{API}/my/assignments", params={"term_id": str(world.term.id)}, headers=teacher_headers
+        )
+    ).json()
+
+    # Teacher A leads 4A and teaches French in 5B, which is not the same job.
+    assert [klass["class_name"] for klass in body["class_teacher_of"]] == ["Primary 4"]
+
+
+async def test_a_subject_teacher_leads_no_class(client, headers_for, world, sheets) -> None:
+    """The specialist teaches Computer in both classes and leads neither."""
+    headers = await headers_for(world.specialist)
+
+    body = (await client.get(f"{API}/my/assignments", headers=headers)).json()
+
+    assert body["class_teacher_of"] == []
+    assert len(body["assignments"]) == 2
+
+
 async def test_the_current_term_is_the_default(client, teacher_headers, world, sheets) -> None:
     """§2.3 sets the current term in the platform; a teacher should not have
     to know its id to start work."""

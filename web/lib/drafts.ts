@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Score drafts in `localStorage` (ARCHITECTURE.md §8.1).
+ * Unsaved work in `localStorage` (ARCHITECTURE.md §8.1, §8.2).
  *
  * "Draft persistence to localStorage, keyed by class-subject and period, so a
  * dropped connection loses nothing. Reconcile on reload and say what was
@@ -39,13 +39,14 @@ export interface Draft {
   at: string;
 }
 
-function key(classSubjectId: string, periodId: string): string {
-  return `sshms.scores.${VERSION}.${classSubjectId}.${periodId}`;
+/** `scope` and `item` are the two ids that identify one screen's work. */
+function key(scope: string, item: string): string {
+  return `sshms.draft.${VERSION}.${scope}.${item}`;
 }
 
-export function readDraft(classSubjectId: string, periodId: string): Draft | null {
+export function readDraft(scope: string, item: string): Draft | null {
   try {
-    const raw = window.localStorage.getItem(key(classSubjectId, periodId));
+    const raw = window.localStorage.getItem(key(scope, item));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Draft;
     if (!parsed || typeof parsed !== "object" || typeof parsed.values !== "object") return null;
@@ -55,18 +56,14 @@ export function readDraft(classSubjectId: string, periodId: string): Draft | nul
   }
 }
 
-export function writeDraft(
-  classSubjectId: string,
-  periodId: string,
-  values: Draft["values"],
-): void {
+export function writeDraft(scope: string, item: string, values: Draft["values"]): void {
   try {
     if (Object.keys(values).length === 0) {
-      clearDraft(classSubjectId, periodId);
+      clearDraft(scope, item);
       return;
     }
     window.localStorage.setItem(
-      key(classSubjectId, periodId),
+      key(scope, item),
       JSON.stringify({ values, at: new Date().toISOString() } satisfies Draft),
     );
   } catch {
@@ -74,9 +71,9 @@ export function writeDraft(
   }
 }
 
-export function clearDraft(classSubjectId: string, periodId: string): void {
+export function clearDraft(scope: string, item: string): void {
   try {
-    window.localStorage.removeItem(key(classSubjectId, periodId));
+    window.localStorage.removeItem(key(scope, item));
   } catch {
     // Nothing to do, and nothing worth telling the teacher about.
   }

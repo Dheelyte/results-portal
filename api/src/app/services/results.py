@@ -113,6 +113,12 @@ class Workload:
     academic_session_name: str
     periods: list[AssessmentPeriod]
     assignments: list["Assignment"]
+    # The classes this caller is class teacher of. A separate list because it
+    # is a different job: §5.2 gives the narrative, attendance, growth and the
+    # class teacher's comment to the class teacher of a class, whatever
+    # subjects they happen to teach in it. Without this a class teacher has no
+    # way to find that work at all.
+    class_teacher_of: list[Class]
 
 
 @dataclass(frozen=True)
@@ -156,13 +162,17 @@ async def _period_and_term(
     return period, term
 
 
-async def _pupils_of(
+async def pupils_of(
     db: AsyncSession, actor: User, *, class_id: uuid.UUID, academic_session_id: uuid.UUID
 ) -> Sequence[Pupil]:
     """The class roll, in the order the card lists it.
 
     Surname first, which is how the school's own sheets are ordered, so a
     teacher reading from paper does not have to hunt up and down the screen.
+
+    Public because the narrative screen walks the same roll in the same order
+    (§8.2's previous/next pupil). Two orderings of one class would have the
+    teacher hunting for the pupil they just left.
     """
     visible = scope.scoped_pupils(actor, academic_session_id).with_only_columns(Pupil.id)
     return await all_of(
@@ -218,7 +228,7 @@ async def load_sheet(
         db, actor, assessment_period_id=period.id, class_id=klass.id
     )
 
-    pupils = await _pupils_of(
+    pupils = await pupils_of(
         db,
         actor,
         class_id=klass.id,
@@ -543,6 +553,16 @@ async def my_work(db: AsyncSession, actor: User, *, term_id: uuid.UUID | None = 
     )
     periods = {period.half: period for period in ordered_periods}
 
+    my_classes = await all_of(
+        db,
+        select(Class)
+        .where(
+            Class.id.in_(scope.class_ids_where_class_teacher(actor, term.academic_session_id)),
+            Class.school_id == actor.school_id,
+        )
+        .order_by(Class.level_order, Class.name),
+    )
+
     roll = await _roll_sizes(db, actor, academic_session_id=term.academic_session_id)
     counts = await _entry_counts(db, actor, periods=periods)
 
@@ -569,6 +589,7 @@ async def my_work(db: AsyncSession, actor: User, *, term_id: uuid.UUID | None = 
         academic_session_name=academic_session.name,
         periods=ordered_periods,
         assignments=assignments,
+        class_teacher_of=list(my_classes),
     )
 
 

@@ -69,6 +69,14 @@ class AuditAction(str):
     CLASS_TERM_STARTED = "class_term.started"
     AVERAGES_RECOMPUTED = "result_entries.averages_recomputed"
 
+    # The narrative, attendance, growth and the class teacher's comment
+    # (milestone 7). Counts and section codes only — a passage is a comment
+    # about a named child.
+    NARRATIVE_SAVED = "narrative_entries.saved"
+    ATTENDANCE_SAVED = "attendance_records.saved"
+    GROWTH_SAVED = "growth_records.saved"
+    CLASS_TEACHER_COMMENTS_SAVED = "term_reports.class_teacher_comments_saved"
+
 
 class AuditLog(Base):
     __tablename__ = "audit_log"

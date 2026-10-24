@@ -287,6 +287,134 @@
         "title": "AssignmentRead",
         "type": "object"
       },
+      "AttendanceRead": {
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "times_absent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Absent"
+          },
+          "times_late": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Late"
+          },
+          "times_present": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Present"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "AttendanceRead",
+        "type": "object"
+      },
+      "AttendanceSave": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AttendanceSaveRow"
+            },
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "AttendanceSave",
+        "type": "object"
+      },
+      "AttendanceSaveRow": {
+        "additionalProperties": false,
+        "properties": {
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "times_absent": {
+            "maximum": 400.0,
+            "minimum": 0.0,
+            "title": "Times Absent",
+            "type": "integer"
+          },
+          "times_late": {
+            "default": 0,
+            "maximum": 400.0,
+            "minimum": 0.0,
+            "title": "Times Late",
+            "type": "integer"
+          },
+          "times_present": {
+            "maximum": 400.0,
+            "minimum": 0.0,
+            "title": "Times Present",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "times_present",
+          "times_absent"
+        ],
+        "title": "AttendanceSaveRow",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -395,6 +523,118 @@
         "title": "ChecklistRead",
         "type": "object"
       },
+      "ClassAttendanceRead": {
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/AttendanceRead"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "state",
+          "editable"
+        ],
+        "title": "ClassAttendanceRead",
+        "type": "object"
+      },
+      "ClassCommentsRead": {
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PupilCommentRead"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "state",
+          "editable"
+        ],
+        "title": "ClassCommentsRead",
+        "type": "object"
+      },
+      "ClassCommentsSave": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CommentSaveRow"
+            },
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "ClassCommentsSave",
+        "type": "object"
+      },
       "ClassCreate": {
         "properties": {
           "level_order": {
@@ -417,6 +657,106 @@
           "level_order"
         ],
         "title": "ClassCreate",
+        "type": "object"
+      },
+      "ClassGrowthRead": {
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrowthRead"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "state",
+          "editable"
+        ],
+        "title": "ClassGrowthRead",
+        "type": "object"
+      },
+      "ClassNarrativeRead": {
+        "description": "\u00a78.2's progress indicator: \"12 of 30 pupils complete\".",
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "complete_pupils": {
+            "title": "Complete Pupils",
+            "type": "integer"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "pupils": {
+            "items": {
+              "$ref": "#/components/schemas/NarrativeProgressRead"
+            },
+            "title": "Pupils",
+            "type": "array"
+          },
+          "roll_size": {
+            "title": "Roll Size",
+            "type": "integer"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SectionHeadingRead"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "complete_pupils",
+          "roll_size",
+          "state",
+          "editable"
+        ],
+        "title": "ClassNarrativeRead",
         "type": "object"
       },
       "ClassRead": {
@@ -515,6 +855,26 @@
           "subject_ids"
         ],
         "title": "ClassSubjectsSave",
+        "type": "object"
+      },
+      "ClassSummary": {
+        "description": "A class this caller is class teacher of.",
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name"
+        ],
+        "title": "ClassSummary",
         "type": "object"
       },
       "ClassTeacherRead": {
@@ -637,6 +997,33 @@
           "is_active"
         ],
         "title": "CommentRead",
+        "type": "object"
+      },
+      "CommentSaveRow": {
+        "additionalProperties": false,
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id"
+        ],
+        "title": "CommentSaveRow",
         "type": "object"
       },
       "CreatedAccountRead": {
@@ -1266,6 +1653,184 @@
         "title": "GradingScaleRead",
         "type": "object"
       },
+      "GrowthRead": {
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "height_end_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height End M"
+          },
+          "height_start_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Start M"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "weight_end_kg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight End Kg"
+          },
+          "weight_start_kg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Start Kg"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "GrowthRead",
+        "type": "object"
+      },
+      "GrowthSave": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/GrowthSaveRow"
+            },
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "GrowthSave",
+        "type": "object"
+      },
+      "GrowthSaveRow": {
+        "additionalProperties": false,
+        "properties": {
+          "height_end_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height End M"
+          },
+          "height_start_m": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Start M"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "weight_end_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight End Kg"
+          },
+          "weight_start_kg": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Start Kg"
+          }
+        },
+        "required": [
+          "pupil_id"
+        ],
+        "title": "GrowthSaveRow",
+        "type": "object"
+      },
       "GuardianChild": {
         "properties": {
           "is_primary": {
@@ -1828,6 +2393,82 @@
         "title": "NarrativeAssignmentsSave",
         "type": "object"
       },
+      "NarrativeProgressRead": {
+        "description": "One line of the class list.",
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "is_complete": {
+            "title": "Is Complete",
+            "type": "boolean"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "written": {
+            "title": "Written",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name",
+          "written",
+          "total",
+          "is_complete"
+        ],
+        "title": "NarrativeProgressRead",
+        "type": "object"
+      },
+      "NarrativeSave": {
+        "additionalProperties": false,
+        "description": "A set of passages for one pupil. Applied all or none.",
+        "properties": {
+          "passages": {
+            "items": {
+              "$ref": "#/components/schemas/PassageSave"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "title": "Passages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passages"
+        ],
+        "title": "NarrativeSave",
+        "type": "object"
+      },
       "NarrativeSectionRead": {
         "properties": {
           "code": {
@@ -1947,6 +2588,108 @@
         "title": "NarrativeSectionsSave",
         "type": "object"
       },
+      "PassageRead": {
+        "description": "One section of one pupil's narrative.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Label"
+          },
+          "is_complete": {
+            "title": "Is Complete",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "writable": {
+            "title": "Writable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "section_id",
+          "code",
+          "label",
+          "display_order",
+          "writable",
+          "is_complete"
+        ],
+        "title": "PassageRead",
+        "type": "object"
+      },
+      "PassageSave": {
+        "additionalProperties": false,
+        "description": "One section's text, as the narrative screen submits it.",
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id"
+        ],
+        "title": "PassageSave",
+        "type": "object"
+      },
       "PeriodSummary": {
         "description": "One of the term's two sheets (\u00a71.1).",
         "properties": {
@@ -1988,6 +2731,82 @@
           "half"
         ],
         "title": "PeriodSummary",
+        "type": "object"
+      },
+      "PhraseRead": {
+        "description": "One entry from the phrase bank (\u00a74.6, \u00a78.2).",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "scope": {
+            "title": "Scope",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "scope",
+          "text"
+        ],
+        "title": "PhraseRead",
+        "type": "object"
+      },
+      "PupilCommentRead": {
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "PupilCommentRead",
         "type": "object"
       },
       "PupilCreate": {
@@ -2110,6 +2929,124 @@
         "title": "PupilCreate",
         "type": "object"
       },
+      "PupilNarrativeRead": {
+        "description": "One pupil's page, with \u00a78.2's previous/next navigation.",
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "complete_count": {
+            "title": "Complete Count",
+            "type": "integer"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "next_pupil_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Pupil Id"
+          },
+          "passages": {
+            "items": {
+              "$ref": "#/components/schemas/PassageRead"
+            },
+            "title": "Passages",
+            "type": "array"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "previous_pupil_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Pupil Id"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "roll_size": {
+            "title": "Roll Size",
+            "type": "integer"
+          },
+          "section_count": {
+            "title": "Section Count",
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name",
+          "class_id",
+          "class_name",
+          "term_id",
+          "complete_count",
+          "section_count",
+          "state",
+          "editable",
+          "position",
+          "roll_size"
+        ],
+        "title": "PupilNarrativeRead",
+        "type": "object"
+      },
       "PupilPageRead": {
         "description": "A page of the roll. Paged because the school has roughly 500 pupils.",
         "properties": {
@@ -2224,6 +3161,52 @@
           "is_active"
         ],
         "title": "PupilRead",
+        "type": "object"
+      },
+      "SectionHeadingRead": {
+        "description": "A section as the class list shows it, without any pupil's text.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Label"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          },
+          "writable": {
+            "title": "Writable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "section_id",
+          "code",
+          "label",
+          "display_order",
+          "writable"
+        ],
+        "title": "SectionHeadingRead",
         "type": "object"
       },
       "SheetRead": {
@@ -3037,6 +4020,13 @@
             "title": "Assignments",
             "type": "array"
           },
+          "class_teacher_of": {
+            "items": {
+              "$ref": "#/components/schemas/ClassSummary"
+            },
+            "title": "Class Teacher Of",
+            "type": "array"
+          },
           "periods": {
             "items": {
               "$ref": "#/components/schemas/PeriodSummary"
@@ -3668,6 +4658,135 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/attendance": {
+      "get": {
+        "operationId": "read_attendance_api_v1_classes__class_id__attendance_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassAttendanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Attendance",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      },
+      "put": {
+        "description": "R9: present + absent must equal the times the school opened.",
+        "operationId": "save_attendance_api_v1_classes__class_id__attendance_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttendanceSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassAttendanceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Attendance",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      }
+    },
     "/api/v1/classes/{class_id}/class-teacher": {
       "put": {
         "description": "The most consequential assignment in setup.\n\n\u00a75.2 hands this person the narrative sections, attendance, growth, the\nclass teacher's comment and the submission gate for every pupil in the\nclass.",
@@ -3724,6 +4843,323 @@
         "summary": "Assign a class teacher",
         "tags": [
           "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/comments": {
+      "get": {
+        "operationId": "read_comments_api_v1_classes__class_id__comments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassCommentsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Comments",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      },
+      "put": {
+        "operationId": "save_comments_api_v1_classes__class_id__comments_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassCommentsSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassCommentsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Comments",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/growth": {
+      "get": {
+        "operationId": "read_growth_api_v1_classes__class_id__growth_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassGrowthRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Growth",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      },
+      "put": {
+        "operationId": "save_growth_api_v1_classes__class_id__growth_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GrowthSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassGrowthRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Growth",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/narrative": {
+      "get": {
+        "description": "The class list with each pupil's progress \u2014 \u00a78.2's \"12 of 30\".",
+        "operationId": "read_class_narrative_api_v1_classes__class_id__narrative_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassNarrativeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Class Narrative",
+        "tags": [
+          "teacher: narrative and class records"
         ]
       }
     },
@@ -4576,6 +6012,67 @@
         ]
       }
     },
+    "/api/v1/phrases": {
+      "get": {
+        "description": "The active phrases, optionally for one section only.\n\nA separate path from the admin's `GET /comment-bank` rather than a widened\ngate on it: this one returns only the active entries, takes no part in\nmanaging them, and is the one \u00a78.2's phrase-bank button calls\n(docs/DECISIONS.md D55).",
+        "operationId": "read_phrases_api_v1_phrases_get",
+        "parameters": [
+          {
+            "description": "A narrative section code, or 'class_teacher' | 'head_teacher'.",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "A narrative section code, or 'class_teacher' | 'head_teacher'.",
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PhraseRead"
+                  },
+                  "title": "Response Read Phrases Api V1 Phrases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Phrases",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      }
+    },
     "/api/v1/pupils": {
       "get": {
         "description": "A page of the roll, filterable by class and searchable by name or number.",
@@ -4799,6 +6296,136 @@
         "summary": "Place a pupil in a class",
         "tags": [
           "admin: people"
+        ]
+      }
+    },
+    "/api/v1/pupils/{pupil_id}/narrative": {
+      "get": {
+        "description": "One pupil, all sixteen sections \u2014 the page \u00a78.2 describes.",
+        "operationId": "read_pupil_narrative_api_v1_pupils__pupil_id__narrative_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilNarrativeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Pupil Narrative",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      },
+      "put": {
+        "description": "Save a set of passages for one pupil, applying all of them or none.",
+        "operationId": "save_pupil_narrative_api_v1_pupils__pupil_id__narrative_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NarrativeSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilNarrativeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Pupil Narrative",
+        "tags": [
+          "teacher: narrative and class records"
         ]
       }
     },
