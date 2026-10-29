@@ -221,6 +221,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Class
+         * @description Approve the class, freezing every grade against the active scale.
+         *
+         *     §12's criterion for this milestone. The snapshot comes back in the
+         *     response rather than being left implicit: this is the one irreversible
+         *     step in the workflow, and the head teacher should be able to see that it
+         *     wrote what it says it wrote.
+         */
+        post: operations["approve_class_api_v1_classes__class_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/attendance": {
         parameters: {
             query?: never;
@@ -372,6 +397,66 @@ export interface paths {
          *     the class teacher may submit, which `may_submit` reports.
          */
         get: operations["read_progress_api_v1_classes__class_id__progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/remarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Remarks
+         * @description The remark, the position text and — in third term — the promotion.
+         */
+        put: operations["save_remarks_api_v1_classes__class_id__remarks_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/return": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Return Class
+         * @description Send the class back with a note, which is required (R10's lesson).
+         */
+        post: operations["return_class_api_v1_classes__class_id__return_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Class Review
+         * @description Every pupil's card as the parent will see it (§8.4).
+         */
+        get: operations["read_class_review_api_v1_classes__class_id__review_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -698,6 +783,26 @@ export interface paths {
          * @description Save a set of passages for one pupil, applying all of them or none.
          */
         put: operations["save_pupil_narrative_api_v1_pupils__pupil_id__narrative_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/review/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Queue
+         * @description Classes submitted for review, longest-waiting first.
+         */
+        get: operations["read_queue_api_v1_review_queue_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1082,6 +1187,11 @@ export interface components {
             phone: string | null;
             role: components["schemas"]["UserRole"];
         };
+        /** ApprovalRead */
+        ApprovalRead: {
+            review: components["schemas"]["ClassReviewRead"];
+            snapshot: components["schemas"]["SnapshotRead"];
+        };
         /** AssessmentPeriodRead */
         AssessmentPeriodRead: {
             /** Closes On */
@@ -1183,6 +1293,121 @@ export interface components {
             times_late: number;
             /** Times Present */
             times_present: number;
+        };
+        /**
+         * CardAttendance
+         * @description The card's attendance block. Named apart from `classwork.AttendanceRead`
+         *     on purpose: that one is a row a teacher edits and carries the pupil's
+         *     name; this is what the card prints.
+         */
+        CardAttendance: {
+            /** Times Absent */
+            times_absent?: number | null;
+            /** Times Late */
+            times_late?: number | null;
+            /** Times Present */
+            times_present?: number | null;
+            /** Times School Opened */
+            times_school_opened?: number | null;
+        };
+        /** CardGrowth */
+        CardGrowth: {
+            /** Height End M */
+            height_end_m?: string | null;
+            /** Height Start M */
+            height_start_m?: string | null;
+            /** Weight End Kg */
+            weight_end_kg?: string | null;
+            /** Weight Start Kg */
+            weight_start_kg?: string | null;
+        };
+        /**
+         * CardHalf
+         * @description One pupil's figures for one subject on one sheet.
+         */
+        CardHalf: {
+            /** Ca Test 1 */
+            ca_test_1?: string | null;
+            /** Ca Test 2 */
+            ca_test_2?: string | null;
+            /** Ca Test 3 */
+            ca_test_3?: string | null;
+            /** Ca Test 4 */
+            ca_test_4?: string | null;
+            /** Ca Test 5 */
+            ca_test_5?: string | null;
+            /** Ca Test Total */
+            ca_test_total?: string | null;
+            /** Exam */
+            exam?: string | null;
+            /** Grade Letter */
+            grade_letter?: string | null;
+            /** Grade Remark */
+            grade_remark?: string | null;
+            /**
+             * Is Snapshot
+             * @default false
+             */
+            is_snapshot: boolean;
+            /** Mid Term Test */
+            mid_term_test?: string | null;
+            /** Period Average */
+            period_average?: string | null;
+        };
+        /** CardPassage */
+        CardPassage: {
+            /** Body */
+            body?: string | null;
+            /** Code */
+            code: string;
+            /** Group Label */
+            group_label?: string | null;
+            /** Label */
+            label: string;
+            /**
+             * Section Id
+             * Format: uuid
+             */
+            section_id: string;
+        };
+        /**
+         * CardRead
+         * @description One pupil's card as the parent will see it, plus the review fields.
+         */
+        CardRead: {
+            /** Admission Number */
+            admission_number: string;
+            attendance?: components["schemas"]["CardAttendance"] | null;
+            /** Class Teacher Comment */
+            class_teacher_comment?: string | null;
+            /** First Name */
+            first_name: string;
+            growth?: components["schemas"]["CardGrowth"] | null;
+            /** Head Teacher Remark */
+            head_teacher_remark?: string | null;
+            /** House Name */
+            house_name?: string | null;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /** Narrative */
+            narrative?: components["schemas"]["CardPassage"][];
+            /** No In Class */
+            no_in_class?: number | null;
+            /** Overall Percentage */
+            overall_percentage?: string | null;
+            /** Position Text */
+            position_text?: string | null;
+            /** Promotion Decision */
+            promotion_decision?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Subjects */
+            subjects?: components["schemas"]["SubjectRowRead"][];
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -1358,6 +1583,32 @@ export interface components {
             level_order: number;
             /** Name */
             name: string;
+        };
+        /** ClassReviewRead */
+        ClassReviewRead: {
+            /** Cards */
+            cards?: components["schemas"]["CardRead"][];
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Promotion Applies */
+            promotion_applies: boolean;
+            /** Return Note */
+            return_note?: string | null;
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Term Label */
+            term_label: string;
+            /** Term Number */
+            term_number: string;
         };
         /** ClassSubjectRead */
         ClassSubjectRead: {
@@ -2332,6 +2583,62 @@ export interface components {
             sex: string | null;
         };
         /**
+         * QueueEntryRead
+         * @description One class in the review queue (§8.4).
+         */
+        QueueEntryRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Remarks Written */
+            remarks_written: number;
+            /** Roll */
+            roll: number;
+            state: components["schemas"]["ClassTermState"];
+            /** Submitted At */
+            submitted_at?: string | null;
+            /** Submitted By */
+            submitted_by?: string | null;
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Term Label */
+            term_label: string;
+        };
+        /** RemarkSaveRow */
+        RemarkSaveRow: {
+            /** Head Teacher Remark */
+            head_teacher_remark?: string | null;
+            /** Position Text */
+            position_text?: string | null;
+            /** Promotion Decision */
+            promotion_decision?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+        };
+        /** RemarksSave */
+        RemarksSave: {
+            /** Rows */
+            rows: components["schemas"]["RemarkSaveRow"][];
+        };
+        /**
+         * ReturnRequest
+         * @description §7: `POST /classes/{id}/return` takes `{ note }`, and it is required.
+         */
+        ReturnRequest: {
+            /** Note */
+            note: string;
+        };
+        /**
          * SectionHeadingRead
          * @description A section as the class list shows it, without any pupil's text.
          */
@@ -2435,6 +2742,27 @@ export interface components {
              */
             term_id: string;
         };
+        /**
+         * SnapshotRead
+         * @description What approval froze, reported back so it is visible rather than implied.
+         */
+        SnapshotRead: {
+            /** Graded */
+            graded: number;
+            /**
+             * Grading Scale Id
+             * Format: uuid
+             */
+            grading_scale_id: string;
+            /** Grading Scale Name */
+            grading_scale_name: string;
+            /** Reports */
+            reports: number;
+            /** Rows */
+            rows: number;
+            /** Ungraded */
+            ungraded: number;
+        };
         /** SubjectCreate */
         SubjectCreate: {
             /**
@@ -2481,6 +2809,36 @@ export interface components {
             name: string;
             /** Parent Subject Id */
             parent_subject_id: string | null;
+        };
+        /**
+         * SubjectRowRead
+         * @description One line of the card's score table, both sheets side by side.
+         */
+        SubjectRowRead: {
+            /**
+             * Class Subject Id
+             * Format: uuid
+             */
+            class_subject_id: string;
+            /** Display Order */
+            display_order: number;
+            /** Halves */
+            halves?: {
+                [key: string]: components["schemas"]["CardHalf"];
+            };
+            /** Is Group */
+            is_group: boolean;
+            /** Parent Subject Id */
+            parent_subject_id?: string | null;
+            /** Parent Subject Name */
+            parent_subject_name?: string | null;
+            /**
+             * Subject Id
+             * Format: uuid
+             */
+            subject_id: string;
+            /** Subject Name */
+            subject_name: string;
         };
         /** SubjectUpdate */
         SubjectUpdate: {
@@ -3144,6 +3502,40 @@ export interface operations {
             };
         };
     };
+    approve_class_api_v1_classes__class_id__approve_post: {
+        parameters: {
+            query: {
+                /** @description Which term to review. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_attendance_api_v1_classes__class_id__attendance_get: {
         parameters: {
             query: {
@@ -3518,6 +3910,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgressRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_remarks_api_v1_classes__class_id__remarks_put: {
+        parameters: {
+            query: {
+                /** @description Which term to review. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemarksSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassReviewRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    return_class_api_v1_classes__class_id__return_post: {
+        parameters: {
+            query: {
+                /** @description Which term to review. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassReviewRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_class_review_api_v1_classes__class_id__review_get: {
+        parameters: {
+            query: {
+                /** @description Which term to review. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassReviewRead"];
                 };
             };
             /** @description Validation Error */
@@ -4193,6 +4695,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PupilNarrativeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_queue_api_v1_review_queue_get: {
+        parameters: {
+            query?: {
+                /** @description Defaults to the current term, which §2.3 sets in the platform. */
+                term_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueueEntryRead"][];
                 };
             };
             /** @description Validation Error */

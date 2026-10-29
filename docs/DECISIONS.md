@@ -1470,3 +1470,109 @@ any other writer, and R10 reads rows it did not write. Now one helper,
 `support.has_text`, with the full whitespace set, used by R8's check, R10's
 gate and the comment check — three copies of a whitespace list being three
 chances to disagree about what counts as written.
+
+---
+
+## Milestone 9 — review, approval and the snapshot
+
+### D67 — Approval is one transaction, and it refuses rather than half-finish
+
+`review.approve` writes the snapshot **before** the state change and commits
+once. Two failure modes it is built against:
+
+- A class marked approved with no grades on it. The only repair would be to
+  recompute them, which is precisely what §4.5 forbids — so there must be no
+  state in which that is the situation.
+- A class approved against **no active scale**, which would freeze every
+  grade as blank, permanently. That is a `409` with a message that says so,
+  not a best-effort approval (§14 A27).
+
+A test asserts the second one leaves the class `submitted`, because "it
+refuses" and "it refuses cleanly" are different claims.
+
+### D68 — Exactly one function writes a grade, and a scan enforces it
+
+`tests/unit/test_grade_snapshot_is_sacred.py` parses every module under
+`src/app` and fails if `grade_letter` or `grading_scale_id` is assigned
+anywhere but `review._snapshot_grades`. It catches `setattr(row,
+"grade_letter", …)` too, which an attribute scan alone would miss.
+
+The integration tests prove rule 6 holds *today*: they move the A+ boundary
+after approval, activate the new scale, and check the card still says A+. This
+scan proves the rule cannot be broken *by accident* — which is the failure
+mode that matters, because nothing about it is visible until a parent
+complains that their child's card and the portal disagree.
+
+Verified not to be vacuous by planting a second writer in
+`services/marks.py`, watching the scan name it, and removing it. Two further
+tests keep the guard honest: one asserts the permitted function really does
+write both fields (so a rename cannot silently switch the guard off), and one
+asserts `recompute_averages` still skips approved rows.
+
+Milestone 10's post-publication edit (R13) will need a second entry in
+`PERMITTED`, and that should be a deliberate act with the comment above it in
+front of whoever makes it.
+
+### D69 — `overall_percentage` is frozen at approval, on a guessed formula
+
+R6 defines *Overall Percentage* as "the pupil's aggregate as a percentage" and
+then says the exact definition is **unconfirmed**. §1.4 puts it in the card's
+header, so something has to fill it.
+
+It is computed once, at approval, by `grading.overall_percentage` — the mean
+of the pupil's second-half period averages across scored subjects (§14 A25).
+The second half rather than both because R5 treats a term's contribution to
+the annual average as its second-half *Total Weighted Average*, and that sheet
+is the one carrying the exam.
+
+**Why freeze it rather than derive it at print time.** The figure is printed
+on a card a parent keeps. §4.5's argument about grades applies word for word:
+a recomputed aggregate would silently disagree with the paper. So it is
+snapshotted beside the grades, and `python -m app.recompute_averages` is the
+documented route to moving it — on unapproved rows only.
+
+This one is worth putting in front of the school early, because unlike the
+grading scale there is no printed card to check it against: the photographed
+cards have the header filled in, so the figure can be reverse-engineered from
+a filled-in card if one turns up (the same photograph that would settle N2 and
+N3).
+
+### D70 — The head teacher writes while others cannot
+
+R14 makes a submitted class read-only — for **teachers**. The head teacher's
+remark, the position text and the promotion decision stay writable while a
+class is `submitted` *or* `approved`, and are refused before submission
+(§14 A26).
+
+Approving and finishing the remarks are separate acts in practice: a head
+teacher approves a class to unblock publication and keeps typing. Locking the
+remark at approval would mean approving last, which inverts the workflow §1.6
+describes.
+
+Before submission there is nothing to remark on, and allowing it then would
+have a head teacher writing about a card that is still being changed.
+
+### D71 — A group heading reaches the card through its children
+
+R7 keeps a heading out of `class_subjects` entirely — it carries no scores, so
+`services/subjects.py` refuses to offer one to a class. But §9 prints "English
+as a spanning group heading over its five sub-rows", so the card needs the
+heading's **name**.
+
+The review payload therefore carries `parent_subject_name` on each child row
+rather than inventing a heading row server-side. The renderer groups by it,
+which is also what milestone 11's PDF template will do. The alternative — a
+synthetic row with no `class_subject_id` — would put a thing that is not a
+class-subject into a list of class-subjects, and every consumer would have to
+know to skip it.
+
+### D72 — §5.2's dash in the admin's column is deliberate
+
+Review, approve, return and the remark are the head teacher's and **not the
+admin's**, which is the cell most likely to look like an oversight. §1.6 keeps
+approve and publish as two steps held by two people, and
+`test_review_authz.py` asserts the admin gets a 403 on all five endpoints.
+
+The admin's route to a changed grade is `PATCH /entries/{id}` after
+publication (R13) — audited, with a reason required, and resolving against the
+snapshotted scale rather than today's. That is milestone 10.

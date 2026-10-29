@@ -81,6 +81,11 @@ class AuditAction(str):
     CLASS_SUBMITTED = "class_term.submitted"
     CLASS_RETURNED = "class_term.returned"
     CLASS_APPROVED = "class_term.approved"
+    HEAD_TEACHER_REMARKS_SAVED = "term_reports.head_teacher_remarks_saved"
+    # §4.5: the one moment a grade is decided. Audited separately from the
+    # approval itself so "which scale were these grades frozen against" has a
+    # row of its own.
+    GRADES_SNAPSHOTTED = "result_entries.grades_snapshotted"
 
 
 class AuditLog(Base):

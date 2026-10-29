@@ -1,8 +1,9 @@
 """Structural guards over the whole API surface.
 
 These are the tests that cannot go stale. The behavioural tables in
-`test_setup_authz.py` and `test_teacher_authz.py` only cover the endpoints
-somebody remembered to list; these two make forgetting fail:
+`test_setup_authz.py`, `test_teacher_authz.py` and `test_review_authz.py`
+only cover the endpoints somebody remembered to list; these two make
+forgetting fail:
 
 - every `/api/v1` route outside `/auth` declares a capability gate
 - every such route appears in one of those tables
@@ -16,13 +17,14 @@ import pytest
 from fastapi.routing import APIRoute
 
 from tests.integration.routes import capability_gated, guarded_routes, normalise
+from tests.integration.test_review_authz import REVIEW_ENDPOINTS
 from tests.integration.test_setup_authz import SETUP_ENDPOINTS
 from tests.integration.test_teacher_authz import (
     STAFF_ENDPOINTS,
     TEACHER_ONLY_ENDPOINTS,
 )
 
-TABLED = SETUP_ENDPOINTS + TEACHER_ONLY_ENDPOINTS + STAFF_ENDPOINTS
+TABLED = SETUP_ENDPOINTS + TEACHER_ONLY_ENDPOINTS + STAFF_ENDPOINTS + REVIEW_ENDPOINTS
 
 
 def test_there_are_routes_to_check() -> None:

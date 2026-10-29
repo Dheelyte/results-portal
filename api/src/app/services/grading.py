@@ -420,3 +420,43 @@ def band_for(average: decimal.Decimal | None, bands: Sequence[GradeBand]) -> Gra
         if band.min_score <= value <= band.max_score:
             return band
     return None
+
+
+# ---------------------------------------------------------------------------
+# R6 — overall percentage.  ⚠ PLACEHOLDER: the definition is unconfirmed.
+# ---------------------------------------------------------------------------
+#
+# §1.4 puts *Overall Percentage* in the card's header, once per term, beside
+# Position and No. in Class. §6 R6 defines it as "the pupil's aggregate as a
+# percentage" and then says, in as many words, that the exact definition is
+# unconfirmed.
+#
+# Something has to fill `term_reports.overall_percentage`, and approval is the
+# only moment rule 6 permits it to be fixed: after publication a parent is
+# holding a card with this number printed on it. So it is computed here, once,
+# by one named function, and `python -m app.recompute_averages` moves it when
+# the school answers (§14 A25).
+#
+# The placeholder is the mean of the pupil's **second-half** period averages
+# across scored subjects. Two reasons for the second half rather than both:
+# R5 treats a term's contribution to the annual average as its second-half
+# *Total Weighted Average*, and the second-half sheet is the one that carries
+# the exam. The obvious alternative — the mean across both halves — is one
+# line away.
+
+
+def overall_percentage(averages: Sequence[decimal.Decimal | None]) -> decimal.Decimal | None:
+    """A pupil's aggregate across subjects, as a percentage. ⚠ PLACEHOLDER (R6).
+
+    Subjects with no average are skipped rather than counted as zero: a
+    subject a pupil is not taking must not drag their aggregate down. R10
+    guarantees every offered subject has a score before approval, so in
+    practice nothing is skipped — this matters only for a row written by some
+    other path.
+    """
+    present = [average for average in averages if average is not None]
+    if not present:
+        return None
+
+    total = sum(present, start=decimal.Decimal(0))
+    return (total / len(present)).quantize(AVERAGE_PLACES, rounding=decimal.ROUND_HALF_UP)

@@ -148,6 +148,22 @@
         "title": "AccountRead",
         "type": "object"
       },
+      "ApprovalRead": {
+        "properties": {
+          "review": {
+            "$ref": "#/components/schemas/ClassReviewRead"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/SnapshotRead"
+          }
+        },
+        "required": [
+          "review",
+          "snapshot"
+        ],
+        "title": "ApprovalRead",
+        "type": "object"
+      },
       "AssessmentPeriodRead": {
         "properties": {
           "closes_on": {
@@ -413,6 +429,438 @@
           "times_absent"
         ],
         "title": "AttendanceSaveRow",
+        "type": "object"
+      },
+      "CardAttendance": {
+        "description": "The card's attendance block. Named apart from `classwork.AttendanceRead`\non purpose: that one is a row a teacher edits and carries the pupil's\nname; this is what the card prints.",
+        "properties": {
+          "times_absent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Absent"
+          },
+          "times_late": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Late"
+          },
+          "times_present": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Present"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          }
+        },
+        "title": "CardAttendance",
+        "type": "object"
+      },
+      "CardGrowth": {
+        "properties": {
+          "height_end_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height End M"
+          },
+          "height_start_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Start M"
+          },
+          "weight_end_kg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight End Kg"
+          },
+          "weight_start_kg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Start Kg"
+          }
+        },
+        "title": "CardGrowth",
+        "type": "object"
+      },
+      "CardHalf": {
+        "description": "One pupil's figures for one subject on one sheet.",
+        "properties": {
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "ca_test_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test Total"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "grade_letter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade Letter"
+          },
+          "grade_remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade Remark"
+          },
+          "is_snapshot": {
+            "default": false,
+            "title": "Is Snapshot",
+            "type": "boolean"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          },
+          "period_average": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Average"
+          }
+        },
+        "title": "CardHalf",
+        "type": "object"
+      },
+      "CardPassage": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Label"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "section_id": {
+            "format": "uuid",
+            "title": "Section Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "code",
+          "label"
+        ],
+        "title": "CardPassage",
+        "type": "object"
+      },
+      "CardRead": {
+        "description": "One pupil's card as the parent will see it, plus the review fields.",
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "attendance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardAttendance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "class_teacher_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Teacher Comment"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "growth": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardGrowth"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "head_teacher_remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Teacher Remark"
+          },
+          "house_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Name"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "narrative": {
+            "items": {
+              "$ref": "#/components/schemas/CardPassage"
+            },
+            "title": "Narrative",
+            "type": "array"
+          },
+          "no_in_class": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No In Class"
+          },
+          "overall_percentage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Percentage"
+          },
+          "position_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Text"
+          },
+          "promotion_decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promotion Decision"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "subjects": {
+            "items": {
+              "$ref": "#/components/schemas/SubjectRowRead"
+            },
+            "title": "Subjects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "CardRead",
         "type": "object"
       },
       "ChangePasswordRequest": {
@@ -786,6 +1234,68 @@
           "is_active"
         ],
         "title": "ClassRead",
+        "type": "object"
+      },
+      "ClassReviewRead": {
+        "properties": {
+          "cards": {
+            "items": {
+              "$ref": "#/components/schemas/CardRead"
+            },
+            "title": "Cards",
+            "type": "array"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "promotion_applies": {
+            "title": "Promotion Applies",
+            "type": "boolean"
+          },
+          "return_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Note"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "term_label": {
+            "title": "Term Label",
+            "type": "string"
+          },
+          "term_number": {
+            "title": "Term Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "term_number",
+          "term_label",
+          "state",
+          "promotion_applies"
+        ],
+        "title": "ClassReviewRead",
         "type": "object"
       },
       "ClassSubjectRead": {
@@ -3385,6 +3895,161 @@
         "title": "PupilRead",
         "type": "object"
       },
+      "QueueEntryRead": {
+        "description": "One class in the review queue (\u00a78.4).",
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "remarks_written": {
+            "title": "Remarks Written",
+            "type": "integer"
+          },
+          "roll": {
+            "title": "Roll",
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "submitted_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted By"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "term_label": {
+            "title": "Term Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "term_label",
+          "state",
+          "roll",
+          "remarks_written"
+        ],
+        "title": "QueueEntryRead",
+        "type": "object"
+      },
+      "RemarkSaveRow": {
+        "additionalProperties": false,
+        "properties": {
+          "head_teacher_remark": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Teacher Remark"
+          },
+          "position_text": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Text"
+          },
+          "promotion_decision": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promotion Decision"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id"
+        ],
+        "title": "RemarkSaveRow",
+        "type": "object"
+      },
+      "RemarksSave": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RemarkSaveRow"
+            },
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "RemarksSave",
+        "type": "object"
+      },
+      "ReturnRequest": {
+        "additionalProperties": false,
+        "description": "\u00a77: `POST /classes/{id}/return` takes `{ note }`, and it is required.",
+        "properties": {
+          "note": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "title": "ReturnRequest",
+        "type": "object"
+      },
       "SectionHeadingRead": {
         "description": "A section as the class list shows it, without any pupil's text.",
         "properties": {
@@ -3615,6 +4280,46 @@
         "title": "SheetRead",
         "type": "object"
       },
+      "SnapshotRead": {
+        "description": "What approval froze, reported back so it is visible rather than implied.",
+        "properties": {
+          "graded": {
+            "title": "Graded",
+            "type": "integer"
+          },
+          "grading_scale_id": {
+            "format": "uuid",
+            "title": "Grading Scale Id",
+            "type": "string"
+          },
+          "grading_scale_name": {
+            "title": "Grading Scale Name",
+            "type": "string"
+          },
+          "reports": {
+            "title": "Reports",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "ungraded": {
+            "title": "Ungraded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "grading_scale_id",
+          "grading_scale_name",
+          "rows",
+          "graded",
+          "ungraded",
+          "reports"
+        ],
+        "title": "SnapshotRead",
+        "type": "object"
+      },
       "SubjectCreate": {
         "properties": {
           "display_order": {
@@ -3712,6 +4417,72 @@
           "is_active"
         ],
         "title": "SubjectRead",
+        "type": "object"
+      },
+      "SubjectRowRead": {
+        "description": "One line of the card's score table, both sheets side by side.",
+        "properties": {
+          "class_subject_id": {
+            "format": "uuid",
+            "title": "Class Subject Id",
+            "type": "string"
+          },
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "halves": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CardHalf"
+            },
+            "title": "Halves",
+            "type": "object"
+          },
+          "is_group": {
+            "title": "Is Group",
+            "type": "boolean"
+          },
+          "parent_subject_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Subject Id"
+          },
+          "parent_subject_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Subject Name"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_subject_id",
+          "subject_id",
+          "subject_name",
+          "is_group",
+          "display_order"
+        ],
+        "title": "SubjectRowRead",
         "type": "object"
       },
       "SubjectUpdate": {
@@ -4972,6 +5743,67 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/approve": {
+      "post": {
+        "description": "Approve the class, freezing every grade against the active scale.\n\n\u00a712's criterion for this milestone. The snapshot comes back in the\nresponse rather than being left implicit: this is the one irreversible\nstep in the workflow, and the head teacher should be able to see that it\nwrote what it says it wrote.",
+        "operationId": "approve_class_api_v1_classes__class_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to review.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to review.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApprovalRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve Class",
+        "tags": [
+          "head teacher: review"
+        ]
+      }
+    },
     "/api/v1/classes/{class_id}/attendance": {
       "get": {
         "operationId": "read_attendance_api_v1_classes__class_id__attendance_get",
@@ -5666,6 +6498,209 @@
         "summary": "Read Progress",
         "tags": [
           "teacher: progress and submission"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/remarks": {
+      "put": {
+        "description": "The remark, the position text and \u2014 in third term \u2014 the promotion.",
+        "operationId": "save_remarks_api_v1_classes__class_id__remarks_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to review.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to review.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RemarksSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Remarks",
+        "tags": [
+          "head teacher: review"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/return": {
+      "post": {
+        "description": "Send the class back with a note, which is required (R10's lesson).",
+        "operationId": "return_class_api_v1_classes__class_id__return_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to review.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to review.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Return Class",
+        "tags": [
+          "head teacher: review"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/review": {
+      "get": {
+        "description": "Every pupil's card as the parent will see it (\u00a78.4).",
+        "operationId": "read_class_review_api_v1_classes__class_id__review_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to review.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to review.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassReviewRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Class Review",
+        "tags": [
+          "head teacher: review"
         ]
       }
     },
@@ -6862,6 +7897,68 @@
         "summary": "Save Pupil Narrative",
         "tags": [
           "teacher: narrative and class records"
+        ]
+      }
+    },
+    "/api/v1/review/queue": {
+      "get": {
+        "description": "Classes submitted for review, longest-waiting first.",
+        "operationId": "read_queue_api_v1_review_queue_get",
+        "parameters": [
+          {
+            "description": "Defaults to the current term, which \u00a72.3 sets in the platform.",
+            "in": "query",
+            "name": "term_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Defaults to the current term, which \u00a72.3 sets in the platform.",
+              "title": "Term Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QueueEntryRead"
+                  },
+                  "title": "Response Read Queue Api V1 Review Queue Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Queue",
+        "tags": [
+          "head teacher: review"
         ]
       }
     },

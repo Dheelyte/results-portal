@@ -81,3 +81,11 @@ CommentBankReader = Annotated[User, Depends(requires(Action.USE_COMMENT_BANK))]
 # `policy.can_submit_class` answers it — the page reports the answer as
 # `may_submit` rather than hiding the page.
 ClassSubmitter = Annotated[User, Depends(requires(Action.SUBMIT_CLASS))]
+
+# §5.2's head teacher rows: "Approve / return class — ✅ all" and "Head teacher
+# remark, promotion, position — ✅ all". **All**, not "own class": the head
+# teacher reviews every class in the school, so there is no scoped half to
+# these — `SCHOOL_WIDE_ROLES` in `authz/scope.py` already gives them every row
+# of their own school and nothing of anyone else's.
+ClassReviewer = Annotated[User, Depends(requires(Action.REVIEW_CLASS))]
+RemarkWriter = Annotated[User, Depends(requires(Action.SET_HEAD_TEACHER_REMARK))]

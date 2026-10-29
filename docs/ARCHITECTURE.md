@@ -300,6 +300,7 @@ results-portal/
 │   │   │   ├── wellbeing.py     # attendance (R9) and growth
 │   │   │   ├── reports.py       # the term report's own fields
 │   │   │   ├── submission.py    # R10's gate and §8.3's progress page
+│   │   │   ├── review.py        # §8.4, and §4.5's grade snapshot
 │   │   │   ├── setup.py         # the term readiness checklist
 │   │   │   ├── workflow.py       # R14's state machine
 │   │   │   ├── cumulative.py    # term and annual averages
@@ -324,6 +325,7 @@ results-portal/
     │   │   │                    #   subjects, pupils, accounts, assessment
     │   │   ├── teacher/         # my classes, [classSubjectId]: the grid,
     │   │   │                    #   narrative/[pupilId], class/[classId]
+    │   │   ├── review/          # §8.4: the queue, and [classId]
     │   │   ├── narrative/       # narrative writing screen
     │   │   ├── class/           # class teacher progress view
     │   │   └── review/          # head teacher review
@@ -1070,6 +1072,19 @@ pupil's narrative likewise. `GET /phrases?scope=` is new: §8.2 puts a
 phrase-bank button beside every section, and §5.2's comment-bank row is about
 *managing* the bank, not reading it (`docs/DECISIONS.md` D55, D57).
 
+`POST /classes/{id}/approve` is the one irreversible step in the workflow. It
+freezes `grade_letter` and `grading_scale_id` onto every result row and
+`overall_percentage` onto every report (§4.5), in the **same transaction** as
+the state change — a class approved with no grades on it could only be fixed by
+recomputing, which is the thing §4.5 forbids. It refuses outright if no scale is
+active, and returns what it froze so the head teacher can see it rather than
+infer it. `GET /review/queue` takes no `term_id` by default, for the reason D51
+gives.
+
+Exactly one function in the codebase assigns `grade_letter`, and
+`tests/unit/test_grade_snapshot_is_sacred.py` fails the day a second one
+appears.
+
 Every endpoint in the admin block is admin-only, declared in the route
 signature through `authz/dependencies.py` and asserted cell by cell against
 §5.2 in `tests/integration/test_setup_authz.py`; the teacher block is asserted
@@ -1299,10 +1314,10 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 
 | # | Question | Needed by |
 |---|---|---|
-| N1 | Which grading scale is current — the card's seven bands, or the six-band scale approved in September? | 9 (grade snapshot) |
+| N1 | Which grading scale is current — the card's seven bands, or the six-band scale approved in September? | 9 (grade snapshot) — **reached, and now the most consequential question open.** Approval freezes every grade against whichever scale is active, and §4.5 forbids recomputing afterwards. Approving a term against the wrong scale cannot be put right: the cards are printed. The card's seven bands are seeded and active (A2); confirm before the first approval, not before the first release. |
 | N2 | Marks obtainable for CA Test 1–5, Mid Term Test and Exam. Does 40/60 survive as CA Total vs Exam? | 5 (setup) — **reached, not blocking.** The screen and the table are built and nothing defaults; the school's own numbers are simply not in yet, so R1's validation has nothing real to check against. A photograph of a **filled-in** card would settle this, and probably N1 and N3 with it. |
 | N3 | The *Total Weighted Average* formula, how 1st/2nd Term Ave. and Annual Scores (Ave.) are derived, **and whether a period average is rounded before a grade band is read from it** — the card's own bands leave 39.5 in no band (`docs/DECISIONS.md` D43). **Reached. Built on a documented placeholder** (A3) and a rounding assumption (A17), both behind one named function each, with `python -m app.recompute_averages` to backfill. Still the single most valuable answer outstanding: it decides what every average on every card says. | 6 |
-| N4 | Is *Position (In grades)* filled in, and in what form? | 9 |
+| N4 | Is *Position (In grades)* filled in, and in what form? | 9 — **reached, not blocking.** `position_text` is free text the head teacher may leave empty (R11), so any answer fits without a change. Nothing computes or displays a rank, and a test asserts that. |
 | N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
 | N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) |
 | N7 | All sixteen narrative sections, or a reduced set? | 7 — **reached, not blocking.** All sixteen are built and `is_active` retires any of them without a migration, so a reduced set is a row edit rather than a change. Still worth asking before launch: §8.2 says so, and sixteen passages × thirty pupils is the single largest demand this system makes of one person. |
@@ -1365,4 +1380,7 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A22 | The narrative is grouped on screen the way §1.4 groups it on the card — the seven curriculum areas under one heading, then B–J with none — using `narrative_sections.group_label`. | **Low.** It is already data; the screen renders whatever grouping the rows carry. |
 | A23 | A class-subject is **complete** for a sheet when every pupil has a score in every column the school has set a maximum for. A pupil who missed a test is marked 0, as on paper. | **Low.** One predicate, `submission.columns_filled`. The weaker reading — "has a period average" — would let a half-entered row through, which is what R10 exists to prevent (R2 coalesces a blank to zero, so such a row still prints a figure). |
 | A24 | Submission fills `term_reports.no_in_class` with the roll size, and guarantees a `term_reports` row for every pupil. | **Low.** One loop in `services/submission.py`. §4.8 does not say who sets `no_in_class`; submission is when the roll is final, and publication (R12) and the head teacher's remark both need the rows to exist. |
+| A25 | *Overall Percentage* is the mean of the pupil's **second-half** period averages across scored subjects, frozen at approval. **Placeholder** — R6 says the definition is unconfirmed. | **Low before approval, high after.** One function, `grading.overall_percentage`, plus `python -m app.recompute_averages`. Once a class is approved the figure is printed on a card, and §4.5's argument applies to it as much as to a grade. |
+| A26 | The head teacher may write the remark, position and promotion while a class is **submitted or approved**, not before submission. | **Low.** One state check in `services/review.py`. R14's lock is on *teachers*; the remark is the head teacher's own and is often typed after approval. |
+| A27 | Approving refuses outright if no grading scale is active, rather than approving with blank grades. | **Low.** One check — but the alternative is unrecoverable: §4.5 gives no way to fill a grade in afterwards. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |
