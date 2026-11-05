@@ -189,6 +189,82 @@ class AvailabilityRead(BaseModel):
     message: str | None = None
 
 
+class CardLineRead(BaseModel):
+    """One row of the printed score table, as a parent sees it."""
+
+    subject_name: str
+    # The spanning heading, on the first row of its group only (§9).
+    group_name: str | None = None
+    group_size: int = 0
+    in_group: bool = False
+    values: dict[str, decimal.Decimal | None] = Field(default_factory=dict)
+    cumulative: dict[str, decimal.Decimal | None] = Field(default_factory=dict)
+    grade: str | None = None
+
+
+class ParentCardRead(BaseModel):
+    """The card as the parent sees it — the same assembly the PDF renders.
+
+    One source for both (`services/reportcard.py`), so the page a parent
+    reads and the PDF they download cannot disagree.
+    """
+
+    title: str
+    subtitle: str
+    school_name: str
+
+    date: dt.date | None = None
+    pupil_name: str
+    admission_number: str
+    overall_percentage: decimal.Decimal | None = None
+    position_text: str | None = None
+    class_name: str
+    session_name: str
+    no_in_class: int | None = None
+    house_name: str | None = None
+
+    times_school_opened: int | None = None
+    times_present: int | None = None
+    times_absent: int | None = None
+    times_late: int | None = None
+
+    height_start_m: decimal.Decimal | None = None
+    height_end_m: decimal.Decimal | None = None
+    weight_start_kg: decimal.Decimal | None = None
+    weight_end_kg: decimal.Decimal | None = None
+
+    columns: list[tuple[str, str]] = Field(default_factory=list)
+    cumulative_columns: list[str] = Field(default_factory=list)
+    maxima: dict[str, decimal.Decimal | None] = Field(default_factory=dict)
+    lines: list[CardLineRead] = Field(default_factory=list)
+    grand_total: dict[str, decimal.Decimal | None] = Field(default_factory=dict)
+
+    # The bands in force for *this* card, not today's (§9 item 6).
+    key: list[tuple[str, str, str]] = Field(default_factory=list)
+
+    narrative_groups: list[tuple[str, str | None, list[tuple[str, str, str | None]]]] = Field(
+        default_factory=list
+    )
+
+    class_teacher_comment: str | None = None
+    head_teacher_remark: str | None = None
+    promotion_decision: str | None = None
+    return_date: dt.date | None = None
+
+
+class ChildReportRead(BaseModel):
+    """One term for one child: the card, or R12's sentence."""
+
+    pupil_id: uuid.UUID
+    term_id: uuid.UUID
+    term_label: str
+    available: bool
+    published_at: dt.datetime | None = None
+    acknowledged_at: dt.datetime | None = None
+    message: str | None = None
+    card: ParentCardRead | None = None
+
+
 class ChildReportsRead(BaseModel):
     pupil_id: uuid.UUID
     first_name: str

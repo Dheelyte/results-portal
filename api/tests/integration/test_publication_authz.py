@@ -46,6 +46,7 @@ PARENT_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("GET", f"/my/children/{ANY_ID}/reports", None),
     ("GET", f"/my/children/{ANY_ID}/reports/{ANY_ID}", None),
     ("GET", f"/my/children/{ANY_ID}/reports/{ANY_ID}/pdf?half=first_half", None),
+    ("POST", f"/my/children/{ANY_ID}/reports/{ANY_ID}/acknowledge", None),
 ]
 
 ROLES_WITHOUT_PUBLICATION = [UserRole.HEAD_TEACHER, UserRole.TEACHER, UserRole.PARENT]

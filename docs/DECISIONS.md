@@ -1809,3 +1809,208 @@ asks.
 
 An autouse fixture points `report_store` at a `tmp_path` per test, which also
 means a test run cannot leave cards behind in the development volume.
+
+---
+
+## Milestone 12 — the parent portal
+
+### D88 — The report is the gate; the card's rows are not scoped again
+
+`reportcard.build` reads a pupil's score rows filtered by school, pupil and
+period — **not** through `scope.scoped_result_entries`, which returns nothing
+to a parent by design (milestone 6: "a parent reaches scores through their
+child's published report, never through this table").
+
+Found by the card coming back with no subject rows for a parent who was
+looking at their own published result.
+
+The authorization is one step earlier and is stronger for it: `build` resolves
+the pupil through `scoped_pupils` and the report through
+`scoped_term_reports`, which for a parent means **their own child** and
+**`state = 'published'`** (R12). Reaching the score query at all means the
+card may be read; filtering again would only mean a parent's own card came
+back empty.
+
+`test_the_card_gate_is_the_report_and_it_holds` pins what still stops another
+family: three gates, each sufficient on its own.
+
+### D89 — The parent view is server-rendered, with its own session
+
+D41 left three routes open and said one had to be chosen before this
+milestone. §8.5 chooses for us: "Server-rendered, target under 150 KB first
+load, **no client-side fetching for the report itself**… Assume a 3G
+connection on a low-end Android device."
+
+Option 1, then. The web server holds its own httpOnly cookie on `<domain>`,
+reads it in a server component, exchanges it for an access token over the
+Docker network, and sends HTML.
+
+**The API did not change.** Its refresh token is absent from every response
+body on purpose — "returning it in the body would hand it to any successful
+XSS" — and lives only in an httpOnly cookie on `api.<domain>`. So the web
+server behaves like a browser: it reads the `Set-Cookie` the API sends and
+replays it as a `Cookie` header on the next call. The access token never
+reaches the parent's browser at all, which is stronger than the staff
+screens, where it lives in memory.
+
+Three consequences worth knowing:
+
+- **Every page load rotates the refresh token** (§5.1), so the rotated value
+  is written back. A rotation that was not stored would sign the parent out
+  on their next click, and reuse detection would revoke the family.
+- **`AuthProvider` moved out of the root layout** into `(auth)` and
+  `(staff)`. It was making every page — including the parent's — carry the
+  client session machinery.
+- **`cache: "no-store"` on every call.** Next's default fetch caching would
+  happily serve one child's card to the next person on a shared device.
+
+#### Rendering reads; one route handler writes
+
+Next.js forbids a server component from setting a cookie, and that is not a
+detail to work around — it is the right rule here. A page that renewed the
+session during render would consume a rotating refresh token it could not
+store, signing the parent out on their next click and tripping reuse
+detection as it went. The first version of this did exactly that and returned
+a 500.
+
+So the access token is cached in a **second** httpOnly cookie, `sshms_access`,
+for a minute less than its own thirty, and pages only ever **read**:
+
+| State | What a page sees | What it does |
+|---|---|---|
+| `live` | an unexpired access cookie | renders |
+| `stale` | refresh cookie, no access cookie | one 303 through `/api/session?next=…` |
+| `signed-out` | neither | 303 to `/` |
+
+`/api/session` is a route handler, which may write: it refreshes, stores both
+tokens, and sends the parent back where they were. One extra hop every half
+hour, and no magic. `currentSession` is wrapped in React's `cache`, so the
+shell and the page inside it share a single `/auth/me` call.
+
+The redirect is **relative** — `Location: /children`, not an absolute URL.
+Behind the reverse proxy the only absolute URL a handler can build is the
+container's own `http://0.0.0.0:3000/…`, a dead host from the parent's phone.
+
+### D90 — The parent's two actions need no JavaScript
+
+The download is a plain `<a href>` to a Next route handler, and the
+acknowledgement is a `<form>` posting to a server action. Both work with
+JavaScript switched off, which is the honest reading of "assume a 3G
+connection on a low-end Android device" — the first thing that fails on a bad
+connection is the bundle.
+
+The download handler also keeps the signed URL server-side: it follows the
+API's 302 itself and streams the PDF back, so the five-minute link never
+reaches an address bar where it could be copied into a group chat.
+
+### D91 — `next=` is an allowlist by shape
+
+`/api/session?next=…` arrives in a URL, so it arrives from anywhere. A
+redirect an attacker controls, reached by signing in, is what makes a
+phishing link look legitimate.
+
+`web/lib/server/next-path.ts` keeps a same-origin path and replaces anything
+else with `/children`. Refused: anything not starting with `/`; `//host` and
+`/\host`, which are protocol-relative and leave the site while looking like
+a path; and any control character, which could split the `Location` header.
+
+It is a pure module with no Next.js import so it can be tested directly, and
+`next-path.test.ts` asserts the refusals one by one — including that the
+fallback is itself a local path, since otherwise every refusal would *be* the
+open redirect.
+
+### D92 — Both halves of a term, not just the one in their hand
+
+§8.5 says "published terms → the report card", and §9 prints a card **per
+half term**. The second half is the default, because it is the sheet the
+parent holds: it carries the cumulative columns and the term's comments. But
+the first half is a link away rather than hidden — the school assessed it,
+the API already serves it under `?half=`, and nothing in §8.5 says a parent
+may see half a term.
+
+This is **N5** reached from the other side. N5 asks whether parents receive
+the first-half sheet at mid term; publication is per **term** (R12), so a
+parent sees a term or nothing, and which sheet they then read is a view
+rather than a release. Showing both answers the question in the only way
+that cannot be wrong, and the school's real answer removes a link or changes
+a default.
+
+Two links and a query parameter, on both the screen and the PDF. **Cost to
+reverse: low** — delete the `nav` and the `searchParams` read; the default
+is unchanged.
+
+### D93 — "Never log a pupil's identity" is a test, not a habit
+
+CLAUDE.md forbids a score, a comment, a token, a hash or a pupil's identity
+in a log line. That held for eleven milestones by attention alone, and then
+`parents.acknowledge` logged `pupil_id` — not a name, but one join from a
+child, with the database open beside the engineer reading the log.
+
+So it is now `tests/unit/test_logs_name_no_pupil.py`: an AST scan over
+`src/app`, one parametrised case per `logger.*` call, failing on any `extra=`
+key that names a person rather than a row. The safe ids are the row's own —
+`report_id`, `class_id`, `entry_id`, `key` — and those are what every call
+site already used.
+
+A static scan rather than a `caplog` assertion, because the breach that
+matters is the log line nobody thought to test: an `extra=` dictionary grown
+one field at a time. Verified by planting `pupil_id` back and watching the
+named case fail.
+
+### D94 — The sign-in page reports a code, never a message
+
+The parent's sign-in is a server action on a page with no JavaScript, so a
+failure is reported by redirecting back with a query parameter. The first
+version put the API's own sentence there, and that is a mistake: a query
+parameter is attacker-supplied, so the sentence on the school's sign-in
+page, under the school's name, becomes whoever sends the link's to write.
+"Your account is suspended. Call 0800 555 0199 to restore it." React escapes
+it, so it is text and not script — but a convincing sentence is the whole of
+a phishing page.
+
+So `signIn` returns a **reason** — `credentials`, `locked`, `unavailable`,
+derived from the API's status (423 is the §5.1 lockout, 401 is a wrong
+identifier *or* password and the API never says which) — and
+`lib/sign-in-message.ts` maps the small closed set to the page's own wording.
+An unrecognised code reads as the generic failure, which is the point:
+nothing from the URL reaches the page as words. The lookup is a `Map` rather
+than an object, so `?error=__proto__` finds nothing.
+
+#### And staff do not keep a session at this door
+
+`/` is the parent's door. A staff member who signs in here was being sent on
+to `/login` with the web-side refresh cookie still set — a second live token
+family, in a cookie the staff screens know nothing about and would never
+revoke. Now the action signs that session out, at the API too, before
+redirecting.
+
+### D95 — What §8.5's 150 KB actually measures, and what it came to
+
+`next build` reports "First Load JS", which is a count of JavaScript and
+excludes the stylesheet, the HTML and the polyfill chunk. §8.5 says "under
+150 KB first load", which a parent's phone reads as *everything it
+downloads*. So the figure was measured against the production image rather
+than taken from the build table: the image on the compose network, a real
+signed-in session, `curl --compressed` for each asset the page references.
+
+| | `/children` | the card |
+|---|---|---|
+| HTML (gzip) | 4.3 kB | 8.5 kB |
+| CSS | 4.8 kB | 4.8 kB |
+| JS, five module chunks | 109.5 kB | 109.5 kB |
+| **Total** | **≈ 118 kB** | **≈ 123 kB** |
+
+Under the target, and all but 9 kB of it is the React and Next runtime that
+every page in the app shares — the parent's own pages contribute 177 B each,
+because they are server components.
+
+The one asset that looked like a problem is `polyfills-*.js`, 39.6 kB gzipped,
+which would put both pages over. It is emitted with `noModule`, so a browser
+that understands ES modules never requests it, and every Android Chrome
+since 2017 does. It is counted out for that reason and not because it is
+inconvenient.
+
+What is **not** yet tested is §8.5's other half: "assume a 3G connection on a
+low-end Android device, and test against that." Byte counts are a proxy for
+it. The real thing needs a throttled browser, which is milestone 13's E2E
+work.

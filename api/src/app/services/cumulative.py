@@ -138,9 +138,12 @@ async def prior_term_averages(
         .join(AssessmentPeriod, AssessmentPeriod.id == ResultEntry.assessment_period_id)
         .join(ClassSubject, ClassSubject.id == ResultEntry.class_subject_id)
         .where(
-            ResultEntry.id.in_(
-                scope.scoped_result_entries(actor).with_only_columns(ResultEntry.id)
-            ),
+            # Filtered by school and pupil rather than by the row scope, for
+            # the reason `services/reportcard.py` sets out: the caller has
+            # already been granted sight of this pupil's card, and
+            # `scoped_result_entries` returns nothing to a parent by design
+            # (docs/DECISIONS.md D88). The caller checks the report first.
+            ResultEntry.school_id == actor.school_id,
             ResultEntry.pupil_id == pupil_id,
             AssessmentPeriod.term_id.in_(by_term),
         ),

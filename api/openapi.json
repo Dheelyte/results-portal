@@ -866,6 +866,80 @@
         "title": "CardHalf",
         "type": "object"
       },
+      "CardLineRead": {
+        "description": "One row of the printed score table, as a parent sees it.",
+        "properties": {
+          "cumulative": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Cumulative",
+            "type": "object"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "group_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Name"
+          },
+          "group_size": {
+            "default": 0,
+            "title": "Group Size",
+            "type": "integer"
+          },
+          "in_group": {
+            "default": false,
+            "title": "In Group",
+            "type": "boolean"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "subject_name"
+        ],
+        "title": "CardLineRead",
+        "type": "object"
+      },
       "CardPassage": {
         "properties": {
           "body": {
@@ -1221,6 +1295,82 @@
           "last_name"
         ],
         "title": "ChildRead",
+        "type": "object"
+      },
+      "ChildReportRead": {
+        "description": "One term for one child: the card, or R12's sentence.",
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentCardRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "term_label": {
+            "title": "Term Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "term_id",
+          "term_label",
+          "available"
+        ],
+        "title": "ChildReportRead",
         "type": "object"
       },
       "ChildReportsRead": {
@@ -3838,6 +3988,368 @@
           "what"
         ],
         "title": "OutstandingItem",
+        "type": "object"
+      },
+      "ParentCardRead": {
+        "description": "The card as the parent sees it \u2014 the same assembly the PDF renders.\n\nOne source for both (`services/reportcard.py`), so the page a parent\nreads and the PDF they download cannot disagree.",
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "class_teacher_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Teacher Comment"
+          },
+          "columns": {
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "cumulative_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cumulative Columns",
+            "type": "array"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "grand_total": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Grand Total",
+            "type": "object"
+          },
+          "head_teacher_remark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Teacher Remark"
+          },
+          "height_end_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height End M"
+          },
+          "height_start_m": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Start M"
+          },
+          "house_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Name"
+          },
+          "key": {
+            "items": {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Key",
+            "type": "array"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CardLineRead"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "maxima": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Maxima",
+            "type": "object"
+          },
+          "narrative_groups": {
+            "items": {
+              "maxItems": 3,
+              "minItems": 3,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                {
+                  "items": {
+                    "maxItems": 3,
+                    "minItems": 3,
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    ],
+                    "type": "array"
+                  },
+                  "type": "array"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Narrative Groups",
+            "type": "array"
+          },
+          "no_in_class": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No In Class"
+          },
+          "overall_percentage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overall Percentage"
+          },
+          "position_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Text"
+          },
+          "promotion_decision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Promotion Decision"
+          },
+          "pupil_name": {
+            "title": "Pupil Name",
+            "type": "string"
+          },
+          "return_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Date"
+          },
+          "school_name": {
+            "title": "School Name",
+            "type": "string"
+          },
+          "session_name": {
+            "title": "Session Name",
+            "type": "string"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "times_absent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Absent"
+          },
+          "times_late": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Late"
+          },
+          "times_present": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times Present"
+          },
+          "times_school_opened": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Times School Opened"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "weight_end_kg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight End Kg"
+          },
+          "weight_start_kg": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Start Kg"
+          }
+        },
+        "required": [
+          "title",
+          "subtitle",
+          "school_name",
+          "pupil_name",
+          "admission_number",
+          "class_name",
+          "session_name"
+        ],
+        "title": "ParentCardRead",
         "type": "object"
       },
       "PassageRead": {
@@ -8642,8 +9154,78 @@
     },
     "/api/v1/my/children/{pupil_id}/reports/{term_id}": {
       "get": {
-        "description": "One term's availability, or R12's sentence.\n\nA 200 with the message rather than a 404: \"not yet available\" is a normal\nanswer to a reasonable question, and the single most common thing a parent\nwill do in this system is open a result the evening before it is released.\nA 403 would confirm the report exists, which R12 is careful not to do.\n\nThe card itself arrives in milestone 12 with \u00a78.5's screens; what this\nsettles now is whether it may be opened at all.",
+        "description": "One term's card, or R12's sentence.\n\nA 200 with the message rather than a 404: \"not yet available\" is a normal\nanswer to a reasonable question, and the single most common thing a parent\nwill do in this system is open a result the evening before it is released.\nA 403 would confirm the report exists, which R12 is careful not to do.\n\nThe card is assembled by `services/reportcard.py` \u2014 the same function the\nPDF renders from, so the page and the download cannot disagree.",
         "operationId": "my_childs_report_api_v1_my_children__pupil_id__reports__term_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which half term's sheet.",
+            "in": "query",
+            "name": "half",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TermHalf",
+              "default": "second_half",
+              "description": "Which half term's sheet."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChildReportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Childs Report",
+        "tags": [
+          "parent"
+        ]
+      }
+    },
+    "/api/v1/my/children/{pupil_id}/reports/{term_id}/acknowledge": {
+      "post": {
+        "description": "A8: this replaces the signature and the physical return of the card.\n\nIdempotent \u2014 a parent who taps twice, or opens the page on a phone and\nagain on a laptop, has acknowledged once, and the first moment stands.",
+        "operationId": "acknowledge_api_v1_my_children__pupil_id__reports__term_id__acknowledge_post",
         "parameters": [
           {
             "in": "path",
@@ -8671,7 +9253,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AvailabilityRead"
+                  "$ref": "#/components/schemas/ChildReportRead"
                 }
               }
             },
@@ -8693,7 +9275,7 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "My Childs Report",
+        "summary": "Acknowledge",
         "tags": [
           "parent"
         ]

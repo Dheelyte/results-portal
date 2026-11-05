@@ -338,7 +338,10 @@ results-portal/
     │   │   ├── narrative/       # narrative writing screen
     │   │   ├── class/           # class teacher progress view
     │   │   └── review/          # head teacher review
-    │   └── (parent)/children/
+    │   ├── (parent)/children/   # §8.5, server-rendered, no client bundle
+    │   └── api/
+    │       ├── reports/         # the PDF download, server-side
+    │       └── session/         # the one place the parent's session renews
     ├── components/
     │   ├── ui.tsx
     │   ├── score-grid.tsx       # §8.1, both layouts from one DOM
@@ -348,6 +351,10 @@ results-portal/
     └── lib/
         ├── api/                 # generated from the OpenAPI schema
         ├── auth.tsx             # the signed-in user, token in memory only
+        ├── server/session.ts    # §8.5's web-side session (D89)
+        ├── server/next-path.ts  # where a renewal may redirect (D91)
+        ├── half.ts              # which of a term's two sheets (D92)
+        ├── sign-in-message.ts   # a code, not a message from the URL (D94)
         ├── scores.ts            # R1's browser mirror, kept out of the component
         ├── scores.test.ts       # `npm test` — Node's own runner, no framework
         ├── attendance.ts        # R9's browser mirror
@@ -1344,7 +1351,7 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 | N2 | Marks obtainable for CA Test 1–5, Mid Term Test and Exam. Does 40/60 survive as CA Total vs Exam? | 5 (setup) — **reached, not blocking.** The screen and the table are built and nothing defaults; the school's own numbers are simply not in yet, so R1's validation has nothing real to check against. A photograph of a **filled-in** card would settle this, and probably N1 and N3 with it. |
 | N3 | The *Total Weighted Average* formula, how 1st/2nd Term Ave. and Annual Scores (Ave.) are derived, **and whether a period average is rounded before a grade band is read from it** — the card's own bands leave 39.5 in no band (`docs/DECISIONS.md` D43). **Reached. Built on a documented placeholder** (A3) and a rounding assumption (A17), both behind one named function each, with `python -m app.recompute_averages` to backfill. Still the single most valuable answer outstanding: it decides what every average on every card says. | 6 |
 | N4 | Is *Position (In grades)* filled in, and in what form? | 9 — **reached, not blocking.** `position_text` is free text the head teacher may leave empty (R11), so any answer fits without a change. Nothing computes or displays a rank, and a test asserts that. |
-| N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
+| N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) — **reached in 12, not blocking.** Publication is per **term** (R12), so a parent sees a term's results or nothing; which *sheet* they read is then a view, not a release. The portal shows both, defaulting to the second half — the sheet they hold, with the cumulative columns and the term's comments — and the first half is one link away (`docs/DECISIONS.md` D92). Answering this removes a link or a default, nothing more. |
 | N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) — **reached, and answered by printing all four.** The photographs carry them, §9 lists them, and the cost of keeping something the school does not want is one template edit. The parent signature prints as a ruled line, because A8 replaces the physical return with an acknowledgement but the card is also printed and handed over. |
 | N7 | All sixteen narrative sections, or a reduced set? | 7 — **reached, not blocking.** All sixteen are built and `is_active` retires any of them without a migration, so a reduced set is a row edit rather than a change. Still worth asking before launch: §8.2 says so, and sixteen passages × thirty pupils is the single largest demand this system makes of one person. |
 | N9 | Teacher devices and connectivity — school Wi-Fi, or personal phones on mobile data at home? | 6 (offline behaviour) — **reached, not blocking.** §8.1's own answer is built: autosave every 20s and on blur, `localStorage` drafts reconciled on reload, and a failed save retried rather than lost. The open part is whether to go further — a service worker and a true offline queue — which only matters if teachers work where there is no signal at all. |
@@ -1397,7 +1404,7 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A13 | A sheet's Marks Obtainable row counts as configured once its terminal column (Mid Term Test or Exam) and at least one CA test have a maximum — not all five. | **Low.** One predicate in `services/marks.py`. Tied to N2: a definite answer replaces the judgement. |
 | A14 | A column maximum may not be lowered below a score already entered against it; the admin raises it or corrects the entries. | **Low.** One check in `services/marks.py`, and §4.4 still permits the change itself. |
 | A15 | Grade bands must cover every **whole** mark from 0 to 100 without overlapping. Fractional coverage is deliberately not claimed, pending N3. | **Low.** One function in `services/grading.py`, with a test that fails on purpose when N3 lands. |
-| A16 | The staff screens are client-rendered, because the session cookie is scoped to `api.<domain>` and the web server cannot read it. | **Low** for the setup screens. **Open** for §8.5's parent view, whose 150 KB server-rendered target this does not reach — three routes out, none foreclosed, in `docs/DECISIONS.md` D41. |
+| A16 | The staff screens are client-rendered, because the session cookie is scoped to `api.<domain>` and the web server cannot read it. **Settled for the parent view in milestone 12**, which is server-rendered with its own web-side session (`docs/DECISIONS.md` D89). | **Low.** The two halves are independent: the staff screens keep their in-memory token, the parent's pages never see one. |
 | A17 | A period average is **rounded half up to the nearest whole mark** before a grade band is read from it, so 39.5 is a D and 39.49 is an E. | **Low.** One named function, `grading.banded_value`, and `test_period_average.py` pins the current behaviour so answering N3 means changing a test on purpose. |
 | A18 | A score may carry **at most one decimal place** (R1's own wording). The column is `numeric(5,2)` because `period_average` shares the type, so this is a service rule rather than a constraint. | **Low.** One check in `services/results.py` and its mirror in `web/lib/scores.ts`. |
 | A19 | A teacher may see the school's reference data — calendar, subjects, grading scale, Marks Obtainable, narrative sections — while only an admin may change it. See `docs/DECISIONS.md` D50. | **Low.** One function in `authz/scope.py`, nine call sites. The write surface does not move either way. |

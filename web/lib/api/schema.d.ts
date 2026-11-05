@@ -812,19 +812,42 @@ export interface paths {
         };
         /**
          * My Childs Report
-         * @description One term's availability, or R12's sentence.
+         * @description One term's card, or R12's sentence.
          *
          *     A 200 with the message rather than a 404: "not yet available" is a normal
          *     answer to a reasonable question, and the single most common thing a parent
          *     will do in this system is open a result the evening before it is released.
          *     A 403 would confirm the report exists, which R12 is careful not to do.
          *
-         *     The card itself arrives in milestone 12 with §8.5's screens; what this
-         *     settles now is whether it may be opened at all.
+         *     The card is assembled by `services/reportcard.py` — the same function the
+         *     PDF renders from, so the page and the download cannot disagree.
          */
         get: operations["my_childs_report_api_v1_my_children__pupil_id__reports__term_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/children/{pupil_id}/reports/{term_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Acknowledge
+         * @description A8: this replaces the signature and the physical return of the card.
+         *
+         *     Idempotent — a parent who taps twice, or opens the page on a phone and
+         *     again on a laptop, has acknowledged once, and the first moment stands.
+         */
+        post: operations["acknowledge_api_v1_my_children__pupil_id__reports__term_id__acknowledge_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1724,6 +1747,36 @@ export interface components {
             /** Period Average */
             period_average?: string | null;
         };
+        /**
+         * CardLineRead
+         * @description One row of the printed score table, as a parent sees it.
+         */
+        CardLineRead: {
+            /** Cumulative */
+            cumulative?: {
+                [key: string]: string | null;
+            };
+            /** Grade */
+            grade?: string | null;
+            /** Group Name */
+            group_name?: string | null;
+            /**
+             * Group Size
+             * @default 0
+             */
+            group_size: number;
+            /**
+             * In Group
+             * @default false
+             */
+            in_group: boolean;
+            /** Subject Name */
+            subject_name: string;
+            /** Values */
+            values?: {
+                [key: string]: string | null;
+            };
+        };
         /** CardPassage */
         CardPassage: {
             /** Body */
@@ -1848,6 +1901,33 @@ export interface components {
              * Format: uuid
              */
             pupil_id: string;
+        };
+        /**
+         * ChildReportRead
+         * @description One term for one child: the card, or R12's sentence.
+         */
+        ChildReportRead: {
+            /** Acknowledged At */
+            acknowledged_at?: string | null;
+            /** Available */
+            available: boolean;
+            card?: components["schemas"]["ParentCardRead"] | null;
+            /** Message */
+            message?: string | null;
+            /** Published At */
+            published_at?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Term Label */
+            term_label: string;
         };
         /** ChildReportsRead */
         ChildReportsRead: {
@@ -2823,6 +2903,96 @@ export interface components {
             teacher?: string | null;
             /** What */
             what: string;
+        };
+        /**
+         * ParentCardRead
+         * @description The card as the parent sees it — the same assembly the PDF renders.
+         *
+         *     One source for both (`services/reportcard.py`), so the page a parent
+         *     reads and the PDF they download cannot disagree.
+         */
+        ParentCardRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** Class Name */
+            class_name: string;
+            /** Class Teacher Comment */
+            class_teacher_comment?: string | null;
+            /** Columns */
+            columns?: [
+                string,
+                string
+            ][];
+            /** Cumulative Columns */
+            cumulative_columns?: string[];
+            /** Date */
+            date?: string | null;
+            /** Grand Total */
+            grand_total?: {
+                [key: string]: string | null;
+            };
+            /** Head Teacher Remark */
+            head_teacher_remark?: string | null;
+            /** Height End M */
+            height_end_m?: string | null;
+            /** Height Start M */
+            height_start_m?: string | null;
+            /** House Name */
+            house_name?: string | null;
+            /** Key */
+            key?: [
+                string,
+                string,
+                string
+            ][];
+            /** Lines */
+            lines?: components["schemas"]["CardLineRead"][];
+            /** Maxima */
+            maxima?: {
+                [key: string]: string | null;
+            };
+            /** Narrative Groups */
+            narrative_groups?: [
+                string,
+                string | null,
+                [
+                    string,
+                    string,
+                    string | null
+                ][]
+            ][];
+            /** No In Class */
+            no_in_class?: number | null;
+            /** Overall Percentage */
+            overall_percentage?: string | null;
+            /** Position Text */
+            position_text?: string | null;
+            /** Promotion Decision */
+            promotion_decision?: string | null;
+            /** Pupil Name */
+            pupil_name: string;
+            /** Return Date */
+            return_date?: string | null;
+            /** School Name */
+            school_name: string;
+            /** Session Name */
+            session_name: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Times Absent */
+            times_absent?: number | null;
+            /** Times Late */
+            times_late?: number | null;
+            /** Times Present */
+            times_present?: number | null;
+            /** Times School Opened */
+            times_school_opened?: number | null;
+            /** Title */
+            title: string;
+            /** Weight End Kg */
+            weight_end_kg?: string | null;
+            /** Weight Start Kg */
+            weight_start_kg?: string | null;
         };
         /**
          * PassageRead
@@ -5232,6 +5402,41 @@ export interface operations {
     };
     my_childs_report_api_v1_my_children__pupil_id__reports__term_id__get: {
         parameters: {
+            query?: {
+                /** @description Which half term's sheet. */
+                half?: components["schemas"]["TermHalf"];
+            };
+            header?: never;
+            path: {
+                pupil_id: string;
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChildReportRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_api_v1_my_children__pupil_id__reports__term_id__acknowledge_post: {
+        parameters: {
             query?: never;
             header?: never;
             path: {
@@ -5248,7 +5453,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AvailabilityRead"];
+                    "application/json": components["schemas"]["ChildReportRead"];
                 };
             };
             /** @description Validation Error */

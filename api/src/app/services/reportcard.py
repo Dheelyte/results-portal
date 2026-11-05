@@ -217,15 +217,24 @@ async def build(
         else None
     )
 
+    # **The report is the gate, not the row.** `scoped_result_entries`
+    # deliberately returns nothing to a parent — milestone 6 made that choice
+    # because a parent must not reach the score table directly — and the
+    # report above is what grants sight of these figures: `scoped_term_reports`
+    # already refused unless this caller may see it, which for a parent means
+    # their own child and `state = 'published'` (R12).
+    #
+    # So the query is filtered by school, pupil and period rather than by the
+    # row scope. Reaching here at all means the card may be read; narrowing
+    # again would mean a parent's own published card came back empty
+    # (docs/DECISIONS.md D88).
     rows = await rows_of(
         db,
         select(ResultEntry, Subject)
         .join(ClassSubject, ClassSubject.id == ResultEntry.class_subject_id)
         .join(Subject, Subject.id == ClassSubject.subject_id)
         .where(
-            ResultEntry.id.in_(
-                scope.scoped_result_entries(actor).with_only_columns(ResultEntry.id)
-            ),
+            ResultEntry.school_id == actor.school_id,
             ResultEntry.pupil_id == pupil_id,
             ResultEntry.assessment_period_id == period.id,
         )

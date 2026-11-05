@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
 from app.models import (
+    AuditAction,
     Class,
     Enrollment,
     GuardianPupil,
@@ -38,6 +39,7 @@ from app.models import (
     TermReport,
     User,
 )
+from app.services import audit
 from app.services.errors import NotFound
 from app.services.publication import UNAVAILABLE_MESSAGE
 from app.services.support import all_of, one_or_404, rows_of
@@ -208,3 +210,57 @@ async def guardians_of(db: AsyncSession, actor: User, pupil_id: uuid.UUID) -> Se
         db,
         select(GuardianPupil.guardian_user_id).where(GuardianPupil.pupil_id == pupil_id),
     )
+
+
+async def acknowledge(
+    db: AsyncSession,
+    actor: User,
+    *,
+    pupil_id: uuid.UUID,
+    term_id: uuid.UUID,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> TermReport:
+    """A parent confirms they have seen the card (§8.5, A8).
+
+    This replaces the signature and the physical return of the paper card:
+    "Please return this card to the School on ___ when next term begins".
+
+    Idempotent. A parent who taps twice, or opens the page on a phone and
+    again on a laptop, has still acknowledged once — and the first moment is
+    the true one, so a second tap does not move it.
+    """
+    # For its refusal, not its value: a pupil who is not this parent's child
+    # is a 404 here, before anything is read or written.
+    await _own_child(db, actor, pupil_id)
+    report = await db.scalar(
+        scope.scoped_term_reports(actor).where(
+            TermReport.pupil_id == pupil_id, TermReport.term_id == term_id
+        )
+    )
+    if report is None:
+        # Unpublished or withheld. R12 again: invisible, not forbidden — and
+        # there is nothing to acknowledge.
+        raise NotFound(UNAVAILABLE_MESSAGE)
+
+    if report.parent_acknowledged_at is None:
+        report.parent_acknowledged_at = dt.datetime.now(dt.UTC)
+        await db.flush()
+        await audit.record(
+            db,
+            school_id=actor.school_id,
+            action=AuditAction.REPORT_ACKNOWLEDGED,
+            entity_type="term_report",
+            entity_id=report.id,
+            actor_id=actor.id,
+            after={"acknowledged": True},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await db.commit()
+
+    # The report id alone, deliberately. It identifies the row for support
+    # work without naming a child, and CLAUDE.md forbids "a pupil's identity
+    # in logs". `test_logs_name_no_pupil` keeps it that way.
+    logger.info("report acknowledged", extra={"report_id": str(report.id)})
+    return report

@@ -1017,3 +1017,200 @@ async def test_a_pupil_in_another_school_is_not_found(
     )
 
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# What a parent reads (§8.5, A8)
+# ---------------------------------------------------------------------------
+
+
+async def test_a_published_card_comes_back_whole(client, admin, parent, approved_class) -> None:
+    """§8.5's page needs the card itself, not a flag saying one exists.
+
+    It is assembled by `services/reportcard.py` — the same function the PDF
+    renders from — so the page a parent reads and the file they download
+    cannot disagree.
+    """
+    await publish(client, admin, approved_class)
+
+    response = await client.get(
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/{approved_class.term.id}",
+        params={"half": "second_half"},
+        headers=parent,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["available"] is True
+    card = body["card"]
+    assert card["pupil_name"].startswith("Okafor")
+    assert card["title"] == "CONTINUOUS ASSESSMENT FOR FIRST TERM"
+    assert card["subtitle"] == "SECOND HALF TERM"
+    assert card["class_name"] == "Primary 4"
+    assert card["overall_percentage"] == "94.00"
+    assert card["head_teacher_remark"] == "Well done."
+    assert [line["subject_name"] for line in card["lines"]] == ["MATHEMATICS"]
+    assert card["lines"][0]["grade"] == "A+"
+    # §9 item 6: the bands this card was graded against.
+    assert [letter for letter, _, _ in card["key"]][0] == "A+"
+
+
+async def test_a_withheld_card_carries_no_card_at_all(
+    client, admin, parent, approved_class
+) -> None:
+    """R12. Not a card with fields blanked out — nothing."""
+    await publish(
+        client,
+        admin,
+        approved_class,
+        withhold=[approved_class.pupils["Ada"].id],
+        reason="Fees outstanding.",
+    )
+
+    response = await client.get(
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/{approved_class.term.id}",
+        headers=parent,
+    )
+
+    body = response.json()
+    assert body["available"] is False
+    assert body["card"] is None
+    assert body["message"] == UNAVAILABLE_MESSAGE
+    assert "Fees" not in response.text
+
+
+async def test_a_parent_acknowledges_a_card(client, admin, parent, approved_class) -> None:
+    """A8: "a digital acknowledgement by the parent replaces the physical
+    signature and the returned card"."""
+    await publish(client, admin, approved_class)
+
+    response = await client.post(
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/"
+        f"{approved_class.term.id}/acknowledge",
+        headers=parent,
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["acknowledged_at"] is not None
+    # The whole card comes back, so §8.5's page re-renders from one response
+    # rather than fetching again on a 3G connection.
+    assert response.json()["card"] is not None
+
+
+async def test_acknowledging_twice_keeps_the_first_moment(
+    client, admin, parent, approved_class
+) -> None:
+    """A parent taps on a phone and again on a laptop. They acknowledged
+    once, and the first moment is the true one."""
+    await publish(client, admin, approved_class)
+    path = (
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/"
+        f"{approved_class.term.id}/acknowledge"
+    )
+
+    first = await client.post(path, headers=parent)
+    second = await client.post(path, headers=parent)
+
+    assert second.status_code == 200
+    assert second.json()["acknowledged_at"] == first.json()["acknowledged_at"]
+
+
+async def test_an_unpublished_card_cannot_be_acknowledged(client, parent, approved_class) -> None:
+    response = await client.post(
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/"
+        f"{approved_class.term.id}/acknowledge",
+        headers=parent,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == UNAVAILABLE_MESSAGE
+
+
+async def test_the_acknowledgement_reaches_the_admins_screen(
+    client, admin, parent, approved_class
+) -> None:
+    """The school needs to know who has seen a card — that is what the
+    paper return was for."""
+    await publish(client, admin, approved_class)
+    await client.post(
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/"
+        f"{approved_class.term.id}/acknowledge",
+        headers=parent,
+    )
+
+    state = await publication_state(client, admin, approved_class)
+
+    assert report_of(state, "Ada")["acknowledged_at"] is not None
+    assert report_of(state, "Chidi")["acknowledged_at"] is None
+
+
+async def test_the_acknowledgement_is_audited(
+    client, admin, parent, approved_class, session
+) -> None:
+    await publish(client, admin, approved_class)
+    await client.post(
+        f"{API}/my/children/{approved_class.pupils['Ada'].id}/reports/"
+        f"{approved_class.term.id}/acknowledge",
+        headers=parent,
+    )
+
+    rows = (
+        (
+            await session.execute(
+                select(AuditLog).where(AuditLog.action == "term_report.acknowledged")
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    assert len(rows) == 1
+    assert rows[0].actor_id == approved_class.parent.id
+
+
+async def test_a_parent_sees_both_children(client, admin, parent, approved_class) -> None:
+    """§12's criterion: "multi-child parent sees both children". §10's seed
+    calls this out as the fixture that catches most multi-child bugs."""
+    await publish(client, admin, approved_class)
+
+    listing = await client.get(f"{API}/my/children", headers=parent)
+    assert {child["first_name"] for child in listing.json()} == set(ROLL)
+
+    for child in listing.json():
+        reports = await client.get(f"{API}/my/children/{child['pupil_id']}/reports", headers=parent)
+        first = next(t for t in reports.json()["terms"] if t["term_label"] == "First Term")
+        assert first["available"] is True, child["first_name"]
+
+
+async def test_the_card_gate_is_the_report_and_it_holds(
+    client, admin, headers_for, approved_class, session, password_hash
+) -> None:
+    """D88 widened the score query inside the card, so this pins what still
+    stops another family reading it.
+
+    Three gates remain, and each one alone is enough: the pupil must be the
+    caller's own (`scoped_pupils`), the report must be visible to them
+    (`scoped_term_reports`, which for a parent means published), and the
+    school must match.
+    """
+    await publish(client, admin, approved_class)
+
+    other = User(
+        school_id=approved_class.klass.school_id,
+        role=UserRole.PARENT,
+        full_name="Another Parent",
+        email="stranger@sshms.test",
+        password_hash=password_hash,
+        must_change_password=False,
+    )
+    session.add(other)
+    await session.commit()
+    headers = await headers_for(other)
+
+    for path in (
+        f"/my/children/{approved_class.pupils['Ada'].id}/reports/{approved_class.term.id}",
+        f"/my/children/{approved_class.pupils['Ada'].id}/reports/{approved_class.term.id}/pdf",
+    ):
+        response = await client.get(f"{API}{path}", headers=headers)
+        assert response.status_code == 404, path
+        assert "Okafor" not in response.text

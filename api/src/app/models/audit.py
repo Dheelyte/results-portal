@@ -93,6 +93,9 @@ class AuditAction(str):
     REPORT_WITHHELD = "term_report.withheld"
     REPORT_RELEASED = "term_report.released"
     ENTRY_EDITED_AFTER_PUBLICATION = "result_entries.edited_after_publication"
+    # A8: the acknowledgement replaces the parent's signature and the
+    # physical return of the card, so it is a record the school keeps.
+    REPORT_ACKNOWLEDGED = "term_report.acknowledged"
 
 
 class AuditLog(Base):
