@@ -89,3 +89,17 @@ ClassSubmitter = Annotated[User, Depends(requires(Action.SUBMIT_CLASS))]
 # of their own school and nothing of anyone else's.
 ClassReviewer = Annotated[User, Depends(requires(Action.REVIEW_CLASS))]
 RemarkWriter = Annotated[User, Depends(requires(Action.SET_HEAD_TEACHER_REMARK))]
+
+# §5.2's publication rows, all admin: "Publish / withhold / release" and "Edit
+# after publication (reason required)". Not the head teacher's — §1.6 keeps
+# approve and publish as two steps held by two people.
+Publisher = Annotated[User, Depends(requires(Action.PUBLISH))]
+
+# §5.2: "View audit log — admin ✅, head teacher read-only". Both roles read
+# the same rows; "read-only" is enforced by there being no verb but GET and by
+# `services/audit.py` being the only writer in the codebase.
+AuditReader = Annotated[User, Depends(requires(Action.VIEW_AUDIT_LOG))]
+
+# §5.2's parent rows. *Which* children is the other half, and
+# `authz/scope.py` answers it — the single most important filter here.
+ParentReader = Annotated[User, Depends(requires(Action.VIEW_OWN_CHILDREN_REPORTS))]

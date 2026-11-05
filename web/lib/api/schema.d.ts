@@ -35,6 +35,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Audit
+         * @description The audit log, newest first (§4.9).
+         *
+         *     §5.2 gives this to the admin in full and the head teacher read-only. In a
+         *     resource nothing writes through, those are the same rows — "read-only" is
+         *     enforced by there being no verb here but GET, and by `services/audit.py`
+         *     being the only writer in the codebase.
+         */
+        get: operations["read_audit_api_v1_audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/change-password": {
         parameters: {
             query?: never;
@@ -405,6 +430,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}/publication": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Publication
+         * @description Every report in the class with its publication state.
+         *
+         *     Added beyond §7's list for the same reason D57's GETs were: the publish
+         *     screen cannot show who is held back without reading it.
+         */
+        get: operations["read_publication_api_v1_classes__class_id__publication_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish Class
+         * @description Publish a class, optionally holding individuals back (R12).
+         */
+        post: operations["publish_class_api_v1_classes__class_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/remarks": {
         parameters: {
             query?: never;
@@ -539,6 +607,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/entries/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Entry
+         * @description Correct one score after approval (R13).
+         *
+         *     Admin only, reason required, audited with before and after values — and
+         *     the grade is re-resolved against the scale the row was **frozen** against,
+         *     never today's (§4.5, CLAUDE.md rule 6).
+         */
+        patch: operations["edit_entry_api_v1_entries__entry_id__patch"];
+        trace?: never;
+    };
     "/api/v1/grading-scales": {
         parameters: {
             query?: never;
@@ -666,6 +758,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my/children": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Children
+         * @description The caller's own children — §10: a parent may have several, in
+         *     different classes.
+         */
+        get: operations["my_children_api_v1_my_children_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/children/{pupil_id}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Childs Reports
+         * @description Each term of the current session, and whether its result is available.
+         *
+         *     Unpublished terms are listed as unavailable rather than hidden: a parent
+         *     looking for a result needs to see that the term exists and the result is
+         *     not there yet. R12's sentence is the whole explanation, deliberately.
+         */
+        get: operations["my_childs_reports_api_v1_my_children__pupil_id__reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/my/children/{pupil_id}/reports/{term_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Childs Report
+         * @description One term's availability, or R12's sentence.
+         *
+         *     A 200 with the message rather than a 404: "not yet available" is a normal
+         *     answer to a reasonable question, and the single most common thing a parent
+         *     will do in this system is open a result the evening before it is released.
+         *     A 403 would confirm the report exists, which R12 is careful not to do.
+         *
+         *     The card itself arrives in milestone 12 with §8.5's screens; what this
+         *     settles now is whether it may be opened at all.
+         */
+        get: operations["my_childs_report_api_v1_my_children__pupil_id__reports__term_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/narrative-sections": {
         parameters: {
             query?: never;
@@ -766,6 +931,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pupils/{pupil_id}/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Pupil Entries
+         * @description One pupil's score rows, with the ids `PATCH /entries/{id}` needs.
+         *
+         *     §7 lists the PATCH and no way to reach an id: the grid is teacher-only
+         *     (§5.2) and the review payload is the head teacher's. The same missing half
+         *     D37, D51 and D57 record (docs/DECISIONS.md D75).
+         */
+        get: operations["read_pupil_entries_api_v1_pupils__pupil_id__entries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pupils/{pupil_id}/narrative": {
         parameters: {
             query?: never;
@@ -784,6 +973,46 @@ export interface paths {
          */
         put: operations["save_pupil_narrative_api_v1_pupils__pupil_id__narrative_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{report_id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Release Report
+         * @description Release one withheld report (R12: "released individually later").
+         */
+        post: operations["release_report_api_v1_reports__report_id__release_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/{report_id}/withhold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Withhold Report
+         * @description Pull one report back, with a reason the parent never sees (R12).
+         */
+        post: operations["withhold_report_api_v1_reports__report_id__withhold_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1294,6 +1523,73 @@ export interface components {
             /** Times Present */
             times_present: number;
         };
+        /** AuditEntryRead */
+        AuditEntryRead: {
+            /** Action */
+            action: string;
+            /** Actor Id */
+            actor_id?: string | null;
+            /** Actor Name */
+            actor_name?: string | null;
+            /** After */
+            after?: {
+                [key: string]: unknown;
+            } | null;
+            /** Before */
+            before?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Entity Id */
+            entity_id?: string | null;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Ip Address */
+            ip_address?: string | null;
+            /** Reason */
+            reason?: string | null;
+        };
+        /** AuditPageRead */
+        AuditPageRead: {
+            /** Entries */
+            entries?: components["schemas"]["AuditEntryRead"][];
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Total */
+            total: number;
+        };
+        /**
+         * AvailabilityRead
+         * @description Whether one term's report can be opened, and nothing more (R12).
+         */
+        AvailabilityRead: {
+            /** Acknowledged At */
+            acknowledged_at?: string | null;
+            /** Available */
+            available: boolean;
+            /** Message */
+            message?: string | null;
+            /** Published At */
+            published_at?: string | null;
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Term Label */
+            term_label: string;
+        };
         /**
          * CardAttendance
          * @description The card's attendance block. Named apart from `classwork.AttendanceRead`
@@ -1461,6 +1757,38 @@ export interface components {
             /** Term Label */
             term_label: string;
         };
+        /** ChildRead */
+        ChildRead: {
+            /** Admission Number */
+            admission_number: string;
+            /** Class Name */
+            class_name?: string | null;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+        };
+        /** ChildReportsRead */
+        ChildReportsRead: {
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Terms */
+            terms?: components["schemas"]["AvailabilityRead"][];
+        };
         /** ClassAttendanceRead */
         ClassAttendanceRead: {
             /**
@@ -1569,6 +1897,24 @@ export interface components {
              * Format: uuid
              */
             term_id: string;
+        };
+        /** ClassPublicationRead */
+        ClassPublicationRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Reports */
+            reports?: components["schemas"]["ReportStateRead"][];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            workflow_state: components["schemas"]["ClassTermState"];
         };
         /** ClassRead */
         ClassRead: {
@@ -1744,6 +2090,50 @@ export interface components {
             pupil_id: string;
         };
         /**
+         * CorrectableRowRead
+         * @description One score row an admin could correct, with the id R13 needs.
+         */
+        CorrectableRowRead: {
+            /** Ca Test 1 */
+            ca_test_1?: string | null;
+            /** Ca Test 2 */
+            ca_test_2?: string | null;
+            /** Ca Test 3 */
+            ca_test_3?: string | null;
+            /** Ca Test 4 */
+            ca_test_4?: string | null;
+            /** Ca Test 5 */
+            ca_test_5?: string | null;
+            /** Ca Test Total */
+            ca_test_total?: string | null;
+            /**
+             * Class Subject Id
+             * Format: uuid
+             */
+            class_subject_id: string;
+            /** Columns */
+            columns?: string[];
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Exam */
+            exam?: string | null;
+            /** Grade Letter */
+            grade_letter?: string | null;
+            /** Half */
+            half: string;
+            /** Is Snapshot */
+            is_snapshot: boolean;
+            /** Mid Term Test */
+            mid_term_test?: string | null;
+            /** Period Average */
+            period_average?: string | null;
+            /** Subject Name */
+            subject_name: string;
+        };
+        /**
          * CreatedAccountRead
          * @description A new or reset account, with its temporary password.
          *
@@ -1813,6 +2203,56 @@ export interface components {
             assessment_period_id: string;
             /** Rows */
             rows: components["schemas"]["EntryRow"][];
+        };
+        /**
+         * EntryEditRead
+         * @description What the correction changed, including whether the grade moved.
+         */
+        EntryEditRead: {
+            /** After */
+            after: {
+                [key: string]: string | null;
+            };
+            /** Before */
+            before: {
+                [key: string]: string | null;
+            };
+            /**
+             * Entry Id
+             * Format: uuid
+             */
+            entry_id: string;
+            /** Grade Changed */
+            grade_changed: boolean;
+            /** Pupil Name */
+            pupil_name: string;
+            /** Regraded Against */
+            regraded_against?: string | null;
+            /** Subject Name */
+            subject_name: string;
+        };
+        /**
+         * EntryEditRequest
+         * @description R13. A reason is required, and §4.9 says to reject the request without
+         *     one — so it is required by the schema as well as by the service.
+         */
+        EntryEditRequest: {
+            /** Ca Test 1 */
+            ca_test_1?: number | string | null;
+            /** Ca Test 2 */
+            ca_test_2?: number | string | null;
+            /** Ca Test 3 */
+            ca_test_3?: number | string | null;
+            /** Ca Test 4 */
+            ca_test_4?: number | string | null;
+            /** Ca Test 5 */
+            ca_test_5?: number | string | null;
+            /** Exam */
+            exam?: number | string | null;
+            /** Mid Term Test */
+            mid_term_test?: number | string | null;
+            /** Reason */
+            reason: string;
         };
         /**
          * EntryRead
@@ -2414,6 +2854,42 @@ export interface components {
             /** Times School Opened */
             times_school_opened?: number | null;
         };
+        /**
+         * PublicationState
+         * @enum {string}
+         */
+        PublicationState: "draft" | "published" | "withheld";
+        /** PublishOutcomeRead */
+        PublishOutcomeRead: {
+            /** Already Published */
+            already_published?: string[];
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Published */
+            published?: string[];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
+            /** Withheld */
+            withheld?: string[];
+        };
+        /**
+         * PublishRequest
+         * @description §7: `POST /classes/{id}/publish` takes `{ withhold_pupil_ids, reason }`.
+         */
+        PublishRequest: {
+            /** Reason */
+            reason?: string | null;
+            /** Withhold Pupil Ids */
+            withhold_pupil_ids?: string[];
+        };
         /** PupilCommentRead */
         PupilCommentRead: {
             /** Admission Number */
@@ -2466,6 +2942,25 @@ export interface components {
              * @description As the card records it.
              */
             sex?: ("M" | "F") | null;
+        };
+        /** PupilEntriesRead */
+        PupilEntriesRead: {
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Rows */
+            rows?: components["schemas"]["CorrectableRowRead"][];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
         };
         /**
          * PupilNarrativeRead
@@ -2629,6 +3124,33 @@ export interface components {
         RemarksSave: {
             /** Rows */
             rows: components["schemas"]["RemarkSaveRow"][];
+        };
+        /**
+         * ReportStateRead
+         * @description One pupil's publication state, for the admin's list.
+         */
+        ReportStateRead: {
+            /** Acknowledged At */
+            acknowledged_at?: string | null;
+            /** Admission Number */
+            admission_number: string;
+            /** Name */
+            name: string;
+            /** Published At */
+            published_at?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /**
+             * Report Id
+             * Format: uuid
+             */
+            report_id: string;
+            state: components["schemas"]["PublicationState"];
+            /** Withheld Reason */
+            withheld_reason?: string | null;
         };
         /**
          * ReturnRequest
@@ -3098,6 +3620,11 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** WithholdRequest */
+        WithholdRequest: {
+            /** Reason */
+            reason: string;
+        };
         /**
          * WorkloadRead
          * @description Everything the teacher's first screen needs, in one request.
@@ -3173,6 +3700,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MarksObtainableRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_audit_api_v1_audit_get: {
+        parameters: {
+            query?: {
+                entity_type?: string | null;
+                entity_id?: string | null;
+                action?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditPageRead"];
                 };
             };
             /** @description Validation Error */
@@ -3923,6 +4485,78 @@ export interface operations {
             };
         };
     };
+    read_publication_api_v1_classes__class_id__publication_get: {
+        parameters: {
+            query: {
+                /** @description Which term to publish. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassPublicationRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    publish_class_api_v1_classes__class_id__publish_post: {
+        parameters: {
+            query: {
+                /** @description Which term to publish. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishOutcomeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     save_remarks_api_v1_classes__class_id__remarks_put: {
         parameters: {
             query: {
@@ -4201,6 +4835,41 @@ export interface operations {
             };
         };
     };
+    edit_entry_api_v1_entries__entry_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntryEditRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntryEditRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_grading_scales_api_v1_grading_scales_get: {
         parameters: {
             query?: never;
@@ -4436,6 +5105,89 @@ export interface operations {
             };
         };
     };
+    my_children_api_v1_my_children_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChildRead"][];
+                };
+            };
+        };
+    };
+    my_childs_reports_api_v1_my_children__pupil_id__reports_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChildReportsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_childs_report_api_v1_my_children__pupil_id__reports__term_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pupil_id: string;
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_narrative_sections_api_v1_narrative_sections_get: {
         parameters: {
             query?: {
@@ -4636,6 +5388,40 @@ export interface operations {
             };
         };
     };
+    read_pupil_entries_api_v1_pupils__pupil_id__entries_get: {
+        parameters: {
+            query: {
+                /** @description Which term to publish. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilEntriesRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_pupil_narrative_api_v1_pupils__pupil_id__narrative_get: {
         parameters: {
             query: {
@@ -4695,6 +5481,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PupilNarrativeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    release_report_api_v1_reports__report_id__release_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportStateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    withhold_report_api_v1_reports__report_id__withhold_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WithholdRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportStateRead"];
                 };
             };
             /** @description Validation Error */

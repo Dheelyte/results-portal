@@ -29,15 +29,23 @@ SOURCE_ROOT = pathlib.Path(__file__).resolve().parents[2] / "src" / "app"
 # was overwritten could no longer explain the letter beside it.
 SNAPSHOT_FIELDS = frozenset({"grade_letter", "grading_scale_id"})
 
-# The one function permitted to write them, and the one command permitted to
-# read-and-skip them.
+# The only functions permitted to write them.
 #
-# `review._snapshot_grades` is approval. Milestone 10's post-publication edit
-# (R13) will need a second entry here, and adding it should be a deliberate
-# act with this comment in front of whoever does it — not a silent extra
-# assignment somewhere in a router.
+# `review._snapshot_grades` is approval: §4.5's one moment, where a grade is
+# decided from the active scale.
+#
+# `publication._regrade_against_snapshot` is R13's post-publication edit. It
+# is permitted for a specific reason, and the reason is the condition of its
+# being permitted: it re-resolves against **the scale already on the row**,
+# never against today's active scale. The rest of that card was graded against
+# the snapshot, so a corrected row graded any other way would leave one line
+# of a printed card unexplainable. A test below pins that behaviour.
+#
+# Adding a third entry should be a deliberate act with this comment in front
+# of whoever does it — not a silent extra assignment in a router.
 PERMITTED = {
     ("services/review.py", "_snapshot_grades"),
+    ("services/publication.py", "_regrade_against_snapshot"),
 }
 
 
@@ -108,14 +116,31 @@ def test_only_approval_writes_a_grade(path: pathlib.Path) -> None:
         )
 
 
-def test_the_permitted_writer_really_does_write_it() -> None:
+def test_the_permitted_writers_really_do_write_it() -> None:
     """Otherwise this scan would pass by watching the wrong function — and a
     rename would turn the guard off without failing anything."""
-    writes = snapshot_writes(SOURCE_ROOT / "services" / "review.py")
-    functions = {function for _, function in writes}
+    approval = snapshot_writes(SOURCE_ROOT / "services" / "review.py")
+    assert "_snapshot_grades" in {function for _, function in approval}
+    assert SNAPSHOT_FIELDS <= {field for field, _ in approval}
 
-    assert "_snapshot_grades" in functions
-    assert SNAPSHOT_FIELDS <= {field for field, _ in writes}
+    correction = snapshot_writes(SOURCE_ROOT / "services" / "publication.py")
+    assert "_regrade_against_snapshot" in {function for _, function in correction}
+
+
+def test_the_post_publication_edit_regrades_against_the_row_not_the_present() -> None:
+    """R13's permission is conditional on this (§4.5, CLAUDE.md rule 6).
+
+    `publication._regrade_against_snapshot` may write a grade **because** it
+    reads the scale from `entry.grading_scale_id`. If it ever called
+    `active_scale` instead, a correction made after the school changed a band
+    would grade one line of a printed card differently from the rest of it.
+    """
+    source = (SOURCE_ROOT / "services" / "publication.py").read_text(encoding="utf-8")
+    start = source.index("async def _regrade_against_snapshot")
+    body = source[start:]
+
+    assert "entry.grading_scale_id" in body
+    assert "active_scale" not in body
 
 
 def test_the_recompute_command_skips_snapshotted_rows() -> None:

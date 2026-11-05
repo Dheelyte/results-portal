@@ -25,6 +25,7 @@ from app.models import (
     AcademicSession,
     AssessmentPeriod,
     AttendanceRecord,
+    AuditLog,
     Class,
     ClassSubject,
     ClassTeacher,
@@ -552,6 +553,22 @@ def scoped_class_term_status(user: User, academic_session_id: uuid.UUID | None =
         )
 
     return stmt.where(False)
+
+
+def scoped_audit_log(user: User) -> Select:
+    """Audit rows this user may read (§4.9, §5.2).
+
+    §5.2: "View audit log — admin ✅, head teacher read-only". Both see the
+    same rows of their own school; "read-only" is enforced by there being no
+    endpoint that writes or deletes one, and by `services/audit.py` being the
+    only writer in the codebase.
+
+    Teachers and parents see nothing. The log carries before/after values —
+    R13's edits record the actual scores, because "what did this card say
+    before?" cannot be answered without them — so its audience is the two
+    roles who already see every card.
+    """
+    return _school_wide_only(select(AuditLog).where(AuditLog.school_id == user.school_id), user)
 
 
 def scoped_users(user: User) -> Select:

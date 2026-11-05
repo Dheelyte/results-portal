@@ -28,7 +28,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
@@ -603,8 +603,6 @@ async def my_work(db: AsyncSession, actor: User, *, term_id: uuid.UUID | None = 
 async def _roll_sizes(
     db: AsyncSession, actor: User, *, academic_session_id: uuid.UUID
 ) -> dict[uuid.UUID, int]:
-    from sqlalchemy import func
-
     rows = await rows_of(
         db,
         select(Enrollment.class_id, func.count())
@@ -628,7 +626,6 @@ async def _entry_counts(
     milestone 8 answers it against every column. This is a progress hint on a
     list screen, and it says so by being a count rather than a tick.
     """
-    from sqlalchemy import func
 
     by_period = {period.id: half for half, period in periods.items()}
     if not by_period:

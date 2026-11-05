@@ -431,6 +431,207 @@
         "title": "AttendanceSaveRow",
         "type": "object"
       },
+      "AuditEntryRead": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Id"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ip_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ip Address"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "entity_type",
+          "created_at"
+        ],
+        "title": "AuditEntryRead",
+        "type": "object"
+      },
+      "AuditPageRead": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntryRead"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AuditPageRead",
+        "type": "object"
+      },
+      "AvailabilityRead": {
+        "description": "Whether one term's report can be opened, and nothing more (R12).",
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "term_label": {
+            "title": "Term Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "term_id",
+          "term_label",
+          "available"
+        ],
+        "title": "AvailabilityRead",
+        "type": "object"
+      },
       "CardAttendance": {
         "description": "The card's attendance block. Named apart from `classwork.AttendanceRead`\non purpose: that one is a row a teacher edits and carries the pupil's\nname; this is what the card prints.",
         "properties": {
@@ -971,6 +1172,88 @@
         "title": "ChecklistRead",
         "type": "object"
       },
+      "ChildRead": {
+        "properties": {
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "class_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Class Name"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "admission_number",
+          "first_name",
+          "last_name"
+        ],
+        "title": "ChildRead",
+        "type": "object"
+      },
+      "ChildReportsRead": {
+        "properties": {
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/AvailabilityRead"
+            },
+            "title": "Terms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "first_name",
+          "last_name"
+        ],
+        "title": "ChildReportsRead",
+        "type": "object"
+      },
       "ClassAttendanceRead": {
         "properties": {
           "class_id": {
@@ -1205,6 +1488,42 @@
           "editable"
         ],
         "title": "ClassNarrativeRead",
+        "type": "object"
+      },
+      "ClassPublicationRead": {
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "reports": {
+            "items": {
+              "$ref": "#/components/schemas/ReportStateRead"
+            },
+            "title": "Reports",
+            "type": "array"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "workflow_state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "workflow_state"
+        ],
+        "title": "ClassPublicationRead",
         "type": "object"
       },
       "ClassRead": {
@@ -1536,6 +1855,159 @@
         "title": "CommentSaveRow",
         "type": "object"
       },
+      "CorrectableRowRead": {
+        "description": "One score row an admin could correct, with the id R13 needs.",
+        "properties": {
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "ca_test_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test Total"
+          },
+          "class_subject_id": {
+            "format": "uuid",
+            "title": "Class Subject Id",
+            "type": "string"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "grade_letter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade Letter"
+          },
+          "half": {
+            "title": "Half",
+            "type": "string"
+          },
+          "is_snapshot": {
+            "title": "Is Snapshot",
+            "type": "boolean"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          },
+          "period_average": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period Average"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "class_subject_id",
+          "subject_name",
+          "half",
+          "is_snapshot"
+        ],
+        "title": "CorrectableRowRead",
+        "type": "object"
+      },
       "CreatedAccountRead": {
         "description": "A new or reset account, with its temporary password.\n\nThe password is shown **once**, here. It is not stored in readable form,\nnot logged and not audited, so if it is lost the only route is another\nreset. Pass it to the account holder out of band; they must change it\nbefore the portal will let them do anything else.",
         "properties": {
@@ -1672,6 +2144,199 @@
           "rows"
         ],
         "title": "EntriesSave",
+        "type": "object"
+      },
+      "EntryEditRead": {
+        "description": "What the correction changed, including whether the grade moved.",
+        "properties": {
+          "after": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "After",
+            "type": "object"
+          },
+          "before": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Before",
+            "type": "object"
+          },
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "grade_changed": {
+            "title": "Grade Changed",
+            "type": "boolean"
+          },
+          "pupil_name": {
+            "title": "Pupil Name",
+            "type": "string"
+          },
+          "regraded_against": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regraded Against"
+          },
+          "subject_name": {
+            "title": "Subject Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entry_id",
+          "pupil_name",
+          "subject_name",
+          "before",
+          "after",
+          "grade_changed"
+        ],
+        "title": "EntryEditRead",
+        "type": "object"
+      },
+      "EntryEditRequest": {
+        "additionalProperties": false,
+        "description": "R13. A reason is required, and \u00a74.9 says to reject the request without\none \u2014 so it is required by the schema as well as by the service.",
+        "properties": {
+          "ca_test_1": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 1"
+          },
+          "ca_test_2": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 2"
+          },
+          "ca_test_3": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 3"
+          },
+          "ca_test_4": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 4"
+          },
+          "ca_test_5": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ca Test 5"
+          },
+          "exam": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exam"
+          },
+          "mid_term_test": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Term Test"
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "EntryEditRequest",
         "type": "object"
       },
       "EntryRead": {
@@ -3428,6 +4093,93 @@
         "title": "ProgressRead",
         "type": "object"
       },
+      "PublicationState": {
+        "enum": [
+          "draft",
+          "published",
+          "withheld"
+        ],
+        "title": "PublicationState",
+        "type": "string"
+      },
+      "PublishOutcomeRead": {
+        "properties": {
+          "already_published": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Already Published",
+            "type": "array"
+          },
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "published": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Published",
+            "type": "array"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          },
+          "withheld": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Withheld",
+            "type": "array"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id"
+        ],
+        "title": "PublishOutcomeRead",
+        "type": "object"
+      },
+      "PublishRequest": {
+        "additionalProperties": false,
+        "description": "\u00a77: `POST /classes/{id}/publish` takes `{ withhold_pupil_ids, reason }`.",
+        "properties": {
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "withhold_pupil_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 400,
+            "title": "Withhold Pupil Ids",
+            "type": "array"
+          }
+        },
+        "title": "PublishRequest",
+        "type": "object"
+      },
       "PupilCommentRead": {
         "properties": {
           "admission_number": {
@@ -3597,6 +4349,43 @@
           "last_name"
         ],
         "title": "PupilCreate",
+        "type": "object"
+      },
+      "PupilEntriesRead": {
+        "properties": {
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CorrectableRowRead"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "first_name",
+          "last_name",
+          "term_id"
+        ],
+        "title": "PupilEntriesRead",
         "type": "object"
       },
       "PupilNarrativeRead": {
@@ -4031,6 +4820,76 @@
           "rows"
         ],
         "title": "RemarksSave",
+        "type": "object"
+      },
+      "ReportStateRead": {
+        "description": "One pupil's publication state, for the admin's list.",
+        "properties": {
+          "acknowledged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acknowledged At"
+          },
+          "admission_number": {
+            "title": "Admission Number",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "report_id": {
+            "format": "uuid",
+            "title": "Report Id",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/PublicationState"
+          },
+          "withheld_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withheld Reason"
+          }
+        },
+        "required": [
+          "report_id",
+          "pupil_id",
+          "name",
+          "admission_number",
+          "state"
+        ],
+        "title": "ReportStateRead",
         "type": "object"
       },
       "ReturnRequest": {
@@ -5095,6 +5954,22 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WithholdRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "WithholdRequest",
+        "type": "object"
+      },
       "WorkloadRead": {
         "description": "Everything the teacher's first screen needs, in one request.",
         "properties": {
@@ -5251,6 +6126,119 @@
         "summary": "Set a sheet's column maxima",
         "tags": [
           "admin: academic structure"
+        ]
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "description": "The audit log, newest first (\u00a74.9).\n\n\u00a75.2 gives this to the admin in full and the head teacher read-only. In a\nresource nothing writes through, those are the same rows \u2014 \"read-only\" is\nenforced by there being no verb here but GET, and by `services/audit.py`\nbeing the only writer in the codebase.",
+        "operationId": "read_audit_api_v1_audit_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 80,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditPageRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Audit",
+        "tags": [
+          "admin: publication"
         ]
       }
     },
@@ -6501,6 +7489,138 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/publication": {
+      "get": {
+        "description": "Every report in the class with its publication state.\n\nAdded beyond \u00a77's list for the same reason D57's GETs were: the publish\nscreen cannot show who is held back without reading it.",
+        "operationId": "read_publication_api_v1_classes__class_id__publication_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to publish.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to publish.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassPublicationRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Publication",
+        "tags": [
+          "admin: publication"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/publish": {
+      "post": {
+        "description": "Publish a class, optionally holding individuals back (R12).",
+        "operationId": "publish_class_api_v1_classes__class_id__publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to publish.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to publish.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishOutcomeRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Publish Class",
+        "tags": [
+          "admin: publication"
+        ]
+      }
+    },
     "/api/v1/classes/{class_id}/remarks": {
       "put": {
         "description": "The remark, the position text and \u2014 in third term \u2014 the promotion.",
@@ -7011,6 +8131,65 @@
         ]
       }
     },
+    "/api/v1/entries/{entry_id}": {
+      "patch": {
+        "description": "Correct one score after approval (R13).\n\nAdmin only, reason required, audited with before and after values \u2014 and\nthe grade is re-resolved against the scale the row was **frozen** against,\nnever today's (\u00a74.5, CLAUDE.md rule 6).",
+        "operationId": "edit_entry_api_v1_entries__entry_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EntryEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntryEditRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Edit Entry",
+        "tags": [
+          "admin: publication"
+        ]
+      }
+    },
     "/api/v1/grading-scales": {
       "get": {
         "description": "Every scale the school has used, active one first.\n\nOld scales are kept because \u00a74.5 requires it: a card printed last term\nmust still agree with the portal, and its grades were resolved from the\nscale in force then.",
@@ -7378,6 +8557,145 @@
         "summary": "My Assignments",
         "tags": [
           "teacher: score entry"
+        ]
+      }
+    },
+    "/api/v1/my/children": {
+      "get": {
+        "description": "The caller's own children \u2014 \u00a710: a parent may have several, in\ndifferent classes.",
+        "operationId": "my_children_api_v1_my_children_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ChildRead"
+                  },
+                  "title": "Response My Children Api V1 My Children Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Children",
+        "tags": [
+          "parent"
+        ]
+      }
+    },
+    "/api/v1/my/children/{pupil_id}/reports": {
+      "get": {
+        "description": "Each term of the current session, and whether its result is available.\n\nUnpublished terms are listed as unavailable rather than hidden: a parent\nlooking for a result needs to see that the term exists and the result is\nnot there yet. R12's sentence is the whole explanation, deliberately.",
+        "operationId": "my_childs_reports_api_v1_my_children__pupil_id__reports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChildReportsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Childs Reports",
+        "tags": [
+          "parent"
+        ]
+      }
+    },
+    "/api/v1/my/children/{pupil_id}/reports/{term_id}": {
+      "get": {
+        "description": "One term's availability, or R12's sentence.\n\nA 200 with the message rather than a 404: \"not yet available\" is a normal\nanswer to a reasonable question, and the single most common thing a parent\nwill do in this system is open a result the evening before it is released.\nA 403 would confirm the report exists, which R12 is careful not to do.\n\nThe card itself arrives in milestone 12 with \u00a78.5's screens; what this\nsettles now is whether it may be opened at all.",
+        "operationId": "my_childs_report_api_v1_my_children__pupil_id__reports__term_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Childs Report",
+        "tags": [
+          "parent"
         ]
       }
     },
@@ -7770,6 +9088,67 @@
         ]
       }
     },
+    "/api/v1/pupils/{pupil_id}/entries": {
+      "get": {
+        "description": "One pupil's score rows, with the ids `PATCH /entries/{id}` needs.\n\n\u00a77 lists the PATCH and no way to reach an id: the grid is teacher-only\n(\u00a75.2) and the review payload is the head teacher's. The same missing half\nD37, D51 and D57 record (docs/DECISIONS.md D75).",
+        "operationId": "read_pupil_entries_api_v1_pupils__pupil_id__entries_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term to publish.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term to publish.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilEntriesRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Pupil Entries",
+        "tags": [
+          "admin: publication"
+        ]
+      }
+    },
     "/api/v1/pupils/{pupil_id}/narrative": {
       "get": {
         "description": "One pupil, all sixteen sections \u2014 the page \u00a78.2 describes.",
@@ -7897,6 +9276,114 @@
         "summary": "Save Pupil Narrative",
         "tags": [
           "teacher: narrative and class records"
+        ]
+      }
+    },
+    "/api/v1/reports/{report_id}/release": {
+      "post": {
+        "description": "Release one withheld report (R12: \"released individually later\").",
+        "operationId": "release_report_api_v1_reports__report_id__release_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportStateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Release Report",
+        "tags": [
+          "admin: publication"
+        ]
+      }
+    },
+    "/api/v1/reports/{report_id}/withhold": {
+      "post": {
+        "description": "Pull one report back, with a reason the parent never sees (R12).",
+        "operationId": "withhold_report_api_v1_reports__report_id__withhold_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "report_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Report Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithholdRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportStateRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Withhold Report",
+        "tags": [
+          "admin: publication"
         ]
       }
     },

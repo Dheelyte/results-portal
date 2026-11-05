@@ -25,6 +25,14 @@ export type NarrativeSection = Schemas["NarrativeSectionRead"];
 export type NarrativeAssignment = Schemas["NarrativeAssignmentRead"];
 export type Comment = Schemas["CommentRead"];
 export type Checklist = Schemas["ChecklistRead"];
+export type ClassPublication = Schemas["ClassPublicationRead"];
+export type ReportState = Schemas["ReportStateRead"];
+export type PublishOutcome = Schemas["PublishOutcomeRead"];
+export type EntryEdit = Schemas["EntryEditRead"];
+export type AuditPage = Schemas["AuditPageRead"];
+export type AuditEntry = Schemas["AuditEntryRead"];
+export type PupilEntries = Schemas["PupilEntriesRead"];
+export type CorrectableRow = Schemas["CorrectableRowRead"];
 export type ChecklistItem = Schemas["ChecklistItemRead"];
 export type TermHalf = AssessmentPeriod["half"];
 export type Role = Account["role"];
@@ -43,7 +51,48 @@ export function adminApi(token: string) {
     makeSessionCurrent: (id: string) =>
       send<AcademicSession>("POST", `/sessions/${id}/current`),
 
-    terms: (academicSessionId?: string) =>
+/* --- Publication and the audit log (§7, R12, R13) ------------------ */
+
+    publication: (classId: string, termId: string) =>
+      get<ClassPublication>(`/classes/${classId}/publication`, { term_id: termId }),
+
+    publishClass: (
+      classId: string,
+      termId: string,
+      body: Schemas["PublishRequest"],
+    ) =>
+      request<PublishOutcome>(`/classes/${classId}/publish`, {
+        method: "POST",
+        token,
+        query: { term_id: termId },
+        body,
+      }),
+
+    releaseReport: (reportId: string) =>
+      send<ReportState>("POST", `/reports/${reportId}/release`),
+
+    withholdReport: (reportId: string, reason: string) =>
+      send<ReportState>("POST", `/reports/${reportId}/withhold`, { reason }),
+
+    /** The ids `editEntry` needs — §7 lists the PATCH and no way to reach
+     *  one (D75). */
+    pupilEntries: (pupilId: string, termId: string) =>
+      get<PupilEntries>(`/pupils/${pupilId}/entries`, { term_id: termId }),
+
+    /** R13: a reason is required, and the grade is re-resolved against the
+     *  scale the row was frozen against, never today's. */
+    editEntry: (entryId: string, body: Schemas["EntryEditRequest"]) =>
+      send<EntryEdit>("PATCH", `/entries/${entryId}`, body),
+
+    audit: (query: {
+      entity_type?: string;
+      entity_id?: string;
+      action?: string;
+      limit?: number;
+      offset?: number;
+    }) => get<AuditPage>("/audit", query),
+
+        terms: (academicSessionId?: string) =>
       get<Term[]>("/terms", { academic_session_id: academicSessionId }),
     createTerm: (body: Schemas["TermCreate"]) => send<Term>("POST", "/terms", body),
     updateTerm: (id: string, body: Schemas["TermUpdate"]) =>

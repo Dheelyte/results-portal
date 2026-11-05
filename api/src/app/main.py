@@ -24,7 +24,9 @@ from app.routers import (
     classwork,
     entry,
     health,
+    parents,
     people,
+    publication,
     review,
     setup,
     structure,
@@ -121,6 +123,11 @@ def create_app() -> FastAPI:
     # §7's review block. §5.2 gives these to the head teacher alone — "✅ all",
     # every class in the school, which `SCHOOL_WIDE_ROLES` already scopes.
     app.include_router(review.router, prefix=settings.api_v1_prefix)
+
+    # §7's publication block (admin), and the parent's read path that R12's
+    # message travels on.
+    app.include_router(publication.router, prefix=settings.api_v1_prefix)
+    app.include_router(parents.router, prefix=settings.api_v1_prefix)
 
     return app
 

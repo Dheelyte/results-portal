@@ -1576,3 +1576,104 @@ approve and publish as two steps held by two people, and
 The admin's route to a changed grade is `PATCH /entries/{id}` after
 publication (R13) — audited, with a reason required, and resolving against the
 snapshotted scale rather than today's. That is milestone 10.
+
+---
+
+## Milestone 10 — publication, withholding and the audit log
+
+### D73 — Three parent endpoints land in milestone 10, not 12
+
+§12 puts the parent portal at milestone 12, but milestone 10's criterion is
+"withheld pupil's parent sees the R12 message" — and a message about a report
+cannot be demonstrated without the endpoint a parent reads it from.
+
+So `GET /my/children`, `/my/children/{id}/reports` and
+`/my/children/{id}/reports/{term_id}` exist now, answering exactly one
+question: may this be opened? §8.5's screens, the card payload, the PDF link
+and the acknowledgement stay in milestone 12.
+
+The unavailable answer is a **200 with the message**, not a 404 and not a 403.
+"Not yet available" is a normal answer to a reasonable question — the single
+most common thing a parent will do in this system is open a result the evening
+before it is released — and a 403 would confirm the report exists, which R12
+is careful not to do.
+
+### D74 — R12's sentence is defined once and tested character for character
+
+§6 quotes the message, so `publication.UNAVAILABLE_MESSAGE` holds it verbatim
+and `services/parents.py` imports it rather than repeating it.
+
+Three things are asserted about it, and the third is the one that matters:
+
+- it is exactly "Result not yet available. Please contact the school.";
+- it is the same string on the list and on the direct URL;
+- the response **says nothing else**. A test greps the whole payload for the
+  withholding reason and for the words "withheld" and "withhold" and requires
+  all three absent.
+
+That last test is there because the obvious implementation leaks. A payload
+with `state: "withheld"` and `reason: null` tells a parent their child was
+singled out, and a parent reading that on a phone in a shop has learned
+something the school meant to tell them in person.
+
+### D75 — `PATCH /entries/{id}` was unreachable, so the lookup it needs exists
+
+Found by driving the live stack: §7 lists R13's PATCH under the admin's
+publication block, and nothing an admin may call returns an entry id. The
+score grid is teacher-only (§5.2) and the review payload is the head
+teacher's; the admin got a 403 from both.
+
+`GET /pupils/{id}/entries?term_id=` closes it — one pupil at a time, because
+that is the shape of a correction ("Ada's Mathematics exam mark is wrong"). It
+returns each row's id, its columns, its stored scores, its average, its
+snapshotted grade and whether that grade is frozen.
+
+The same missing half D37, D51 and D57 record, and the fourth time it has been
+the admin-versus-teacher boundary that hid it. A test asserts the lookup's
+output is the PATCH's input, so the pair cannot drift.
+
+### D76 — R13 regrades against the row's own scale, and the scan enforces it
+
+`publication._regrade_against_snapshot` is the **second and last** function
+permitted to write `grade_letter`, and its entry in
+`test_grade_snapshot_is_sacred.py`'s allowlist is conditional on how it does
+it: it reads the scale from `entry.grading_scale_id`, never from
+`active_scale`. A test greps the function body for both.
+
+Why it has to be that way: the rest of that card was graded against the
+snapshot. If the school has since changed a band, a corrected row graded
+against today's scale would leave one line of a printed card impossible to
+explain — the same failure §4.5 exists to prevent, arriving through the one
+door §4.5 leaves open.
+
+The response reports `grade_changed`, because that is the question the admin
+is actually asking: it decides whether the card has to be reprinted.
+
+### D77 — Publishing twice is harmless
+
+The admin will publish a class, notice something, correct it and publish
+again. A second run therefore publishes whatever is still in draft, leaves
+already-published rows and their timestamps untouched, and reports all three
+groups separately (§14 A28).
+
+The withhold list is read as the current intention rather than as a delta, so
+a second publish with an empty list releases nobody — releasing is
+`POST /reports/{id}/release`, deliberately per pupil, because R12 says
+withheld pupils are released *individually*.
+
+### D78 — The audit log is the one place scores travel in a payload
+
+§4.9 asks for before/after values on a post-publication edit, and the question
+that answers — "what did this card say before?" — cannot be answered without
+them. So `audit_log.before`/`after` carry actual scores for R13's edits, which
+is the single exception to CLAUDE.md's standing rule, and it is why
+`scope.scoped_audit_log` admits only the admin and the head teacher: the same
+two roles who already see every card.
+
+Everything else audited in this system records counts, field names and ids.
+The grep tests in the score, narrative, attendance and remark suites all
+assert that, and this is the one place they do not.
+
+§5.2 marks the head teacher's access "read-only". In a GET-only resource that
+is the same rows; what makes it read-only is that no endpoint writes or
+deletes one, and `services/audit.py` is the only writer in the codebase.

@@ -301,6 +301,9 @@ results-portal/
 │   │   │   ├── reports.py       # the term report's own fields
 │   │   │   ├── submission.py    # R10's gate and §8.3's progress page
 │   │   │   ├── review.py        # §8.4, and §4.5's grade snapshot
+│   │   │   ├── publication.py   # R12, R13, and the entry lookup R13 needs
+│   │   │   ├── parents.py       # R12's message, and the parent's read path
+│   │   │   ├── auditlog.py      # reading §4.9's log
 │   │   │   ├── setup.py         # the term readiness checklist
 │   │   │   ├── workflow.py       # R14's state machine
 │   │   │   ├── cumulative.py    # term and annual averages
@@ -322,7 +325,8 @@ results-portal/
     │   │   └── change-password/ # the must_change_password gate (§5.1)
     │   ├── (staff)/
     │   │   ├── admin/           # setup: checklist, calendar, classes,
-    │   │   │                    #   subjects, pupils, accounts, assessment
+    │   │   │                    #   subjects, pupils, accounts, assessment,
+    │   │   │                    #   publish, audit
     │   │   ├── teacher/         # my classes, [classSubjectId]: the grid,
     │   │   │                    #   narrative/[pupilId], class/[classId]
     │   │   ├── review/          # §8.4: the queue, and [classId]
@@ -1085,6 +1089,23 @@ Exactly one function in the codebase assigns `grade_letter`, and
 `tests/unit/test_grade_snapshot_is_sacred.py` fails the day a second one
 appears.
 
+`POST /classes/{id}/publish` takes `{ withhold_pupil_ids, reason }` and refuses
+a class that is not `approved` — §1.6 keeps approve and publish as two steps
+held by two people, and the head teacher is refused here as firmly as a
+teacher is. A `reason` is required only when something is held back; the parent
+never sees it. Publishing twice is harmless.
+
+`GET /pupils/{id}/entries?term_id=` is new. §7 lists `PATCH /entries/{id}` and
+no admin-reachable route that yields an entry id — the grid is teacher-only
+(§5.2) and the review payload is the head teacher's — so without it R13's verb
+could not be called at all (`docs/DECISIONS.md` D75).
+
+The parent block's first three endpoints exist from milestone 10, because
+"a withheld pupil's parent sees the R12 message" cannot be shown without them.
+They return R12's sentence with a **200**, not a 404: "not yet available" is a
+normal answer, and a 403 would confirm the report exists. §8.5's screens, the
+PDF link and the acknowledgement are milestone 12.
+
 Every endpoint in the admin block is admin-only, declared in the route
 signature through `authz/dependencies.py` and asserted cell by cell against
 §5.2 in `tests/integration/test_setup_authz.py`; the teacher block is asserted
@@ -1383,4 +1404,6 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A25 | *Overall Percentage* is the mean of the pupil's **second-half** period averages across scored subjects, frozen at approval. **Placeholder** — R6 says the definition is unconfirmed. | **Low before approval, high after.** One function, `grading.overall_percentage`, plus `python -m app.recompute_averages`. Once a class is approved the figure is printed on a card, and §4.5's argument applies to it as much as to a grade. |
 | A26 | The head teacher may write the remark, position and promotion while a class is **submitted or approved**, not before submission. | **Low.** One state check in `services/review.py`. R14's lock is on *teachers*; the remark is the head teacher's own and is often typed after approval. |
 | A27 | Approving refuses outright if no grading scale is active, rather than approving with blank grades. | **Low.** One check — but the alternative is unrecoverable: §4.5 gives no way to fill a grade in afterwards. |
+| A28 | Publishing requires the class to be `approved`; a second publish of the same class is harmless and leaves already-published dates alone. | **Low.** One state check and one branch in `services/publication.py`. The admin will publish, notice something, correct it and publish again — refusing the second run would make a correction mean republishing from scratch. |
+| A29 | A withhold needs a reason; a plain publish does not. The reason is never sent to a parent. | **Low.** One check. R12 gives the parent one sentence, so the reason exists for the school's own record and the audit log. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

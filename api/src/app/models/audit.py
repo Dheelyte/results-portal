@@ -87,6 +87,13 @@ class AuditAction(str):
     # row of its own.
     GRADES_SNAPSHOTTED = "result_entries.grades_snapshotted"
 
+    # Publication (milestone 10). §4.9 requires a row for every publish,
+    # withhold and release, and for every change after approval.
+    CLASS_PUBLISHED = "class.published"
+    REPORT_WITHHELD = "term_report.withheld"
+    REPORT_RELEASED = "term_report.released"
+    ENTRY_EDITED_AFTER_PUBLICATION = "result_entries.edited_after_publication"
+
 
 class AuditLog(Base):
     __tablename__ = "audit_log"
