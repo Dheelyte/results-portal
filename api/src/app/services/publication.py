@@ -27,6 +27,7 @@ a band, the corrected score must still be graded the way the rest of that
 card was.
 """
 
+import asyncio
 import datetime as dt
 import logging
 import uuid
@@ -36,7 +37,9 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import backup
 from app.authz import scope
+from app.config import get_settings
 from app.models import (
     AssessmentPeriod,
     AuditAction,
@@ -192,6 +195,13 @@ async def publish_class(
             "publication."
         )
 
+    # §11: "a dump taken immediately before every publish". Here, and not a
+    # line earlier: every refusal above has already happened, so a dump is
+    # taken only when a publication is actually about to occur. And not a
+    # line later either — nothing has been mutated yet, so what the dump
+    # captures is the state to come back to.
+    await _back_up_before_publishing(class_id=class_id, term_id=term.id)
+
     outcome = PublishOutcome(term_id=term.id, class_id=klass.id, class_name=klass.name)
     now = dt.datetime.now(dt.UTC)
 
@@ -255,6 +265,46 @@ async def publish_class(
 
     await db.commit()
     return outcome
+
+
+async def _back_up_before_publishing(*, class_id: uuid.UUID, term_id: uuid.UUID) -> None:
+    """Dump the database before a class is published (§11).
+
+    §11's reason, in its own words: "Results data is irreplaceable — no
+    teacher will rewrite 480 passages." Publication is the moment results
+    become something parents have seen, and R13's correction path rewrites
+    rows afterwards. A dump from a moment earlier is the only way back.
+
+    A failure **refuses the publish**, because `require_prepublish_backup` is
+    true by default: a safety net nobody checks is not a safety net, and the
+    one time it matters is the time it was missing. An admin who must publish
+    with a broken backup store can set the key false, which is the decision
+    §14 records rather than a branch hidden in here.
+
+    `to_thread` because `backup.take` shells out to pg_dump and blocks; left
+    on the event loop it would stall every other request for the second or
+    two the dump takes.
+    """
+    try:
+        taken = await asyncio.to_thread(backup.take, reason="pre-publish")
+    except backup.BackupFailed as exc:
+        if get_settings().require_prepublish_backup:
+            raise Conflict(
+                "The pre-publication backup could not be taken, so nothing was published. "
+                f"{exc} Fix the backup store and publish again."
+            ) from None
+        logger.warning("publishing without a pre-publication backup", extra={"reason": str(exc)})
+        return
+
+    logger.info(
+        "pre-publication backup taken",
+        extra={
+            "key": taken.key,
+            "bytes": taken.size_bytes,
+            "class_id": str(class_id),
+            "term_id": str(term_id),
+        },
+    )
 
 
 async def _report(db: AsyncSession, actor: User, report_id: uuid.UUID) -> TermReport:

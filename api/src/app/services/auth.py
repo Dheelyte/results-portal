@@ -21,7 +21,7 @@ from app.auth.tokens import (
 )
 from app.config import settings
 from app.models import AuditAction, RefreshToken, User
-from app.services import audit
+from app.services import audit, ratelimit
 
 logger = logging.getLogger(__name__)
 
@@ -132,10 +132,21 @@ async def authenticate(
 ) -> IssuedTokens:
     """Log a user in by email or phone.
 
-    Raises InvalidCredentials or AccountLocked. A user with
+    Raises TooManyAttempts, InvalidCredentials or AccountLocked. A user with
     `must_change_password` set is still issued tokens — the gate is enforced on
     other endpoints, because changing the password requires being logged in.
     """
+    # §5.1's per-IP limit, before the password is touched: Argon2id is
+    # deliberately expensive, and an unthrottled login endpoint is a CPU
+    # amplifier pointed at the one host this runs on (services/ratelimit.py).
+    await ratelimit.enforce(session, ip_address)
+
+    # Counted and committed before anything can fail, so an attempt is spent
+    # whatever happens next — including the unknown-identifier path below,
+    # which writes no audit row and would otherwise cost nothing.
+    await ratelimit.record(session, ip_address)
+    await session.commit()
+
     now = _now()
     user = await _find_user_by_identifier(session, identifier)
 

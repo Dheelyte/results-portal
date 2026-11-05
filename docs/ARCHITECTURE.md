@@ -273,6 +273,7 @@ results-portal/
 │   ├── ARCHITECTURE.md          # this file
 │   ├── CARD-FINDINGS.md         # open conflicts — read before building
 │   ├── DECISIONS.md             # append an entry whenever you decide something
+│   ├── RUNBOOK.md               # §11: backups, the restore drill, the E2E
 │   └── report-card/             # photographs of the physical card
 │       ├── first-half-term.{jpg,HEIC}      # HEIC is the original
 │       ├── second-half-term.{jpg,HEIC}
@@ -321,27 +322,29 @@ results-portal/
 │   │   │   ├── render.py        # Jinja2 → WeasyPrint, reproducibly
 │   │   │   ├── storage.py       # §9's object key; R2's seam
 │   │   │   └── links.py         # the five-minute signed URL
+│   │   ├── backup.py           # §11's pg_dump, nightly and pre-publish
 │   │   └── seed/
 │   └── tests/
 └── web/
     ├── app/
-    │   ├── (auth)/
-    │   │   ├── login/
-    │   │   └── change-password/ # the must_change_password gate (§5.1)
-    │   ├── (staff)/
+    │   ├── (staff)/             # one AuthProvider for all of it (D100)
+    │   │   ├── (signin)/
+    │   │   │   ├── login/
+    │   │   │   └── change-password/  # the must_change_password gate (§5.1)
     │   │   ├── admin/           # setup: checklist, calendar, classes,
     │   │   │                    #   subjects, pupils, accounts, assessment,
     │   │   │                    #   publish, audit
     │   │   ├── teacher/         # my classes, [classSubjectId]: the grid,
     │   │   │                    #   narrative/[pupilId], class/[classId]
-    │   │   ├── review/          # §8.4: the queue, and [classId]
-    │   │   ├── narrative/       # narrative writing screen
-    │   │   ├── class/           # class teacher progress view
-    │   │   └── review/          # head teacher review
+    │   │   └── review/          # §8.4: the queue, and [classId]
     │   ├── (parent)/children/   # §8.5, server-rendered, no client bundle
     │   └── api/
     │       ├── reports/         # the PDF download, server-side
     │       └── session/         # the one place the parent's session renews
+    ├── e2e/                     # §10's journey; playwright.config.ts beside it
+    │   ├── full-term.spec.ts
+    │   ├── smoke.spec.ts
+    │   └── api.ts               # the bulk setup, through the real API
     ├── components/
     │   ├── ui.tsx
     │   ├── score-grid.tsx       # §8.1, both layouts from one DOM
@@ -827,6 +830,10 @@ edit **requires** a non-empty `reason`; reject the request without one.
 - Accounts are **created by the admin**, never self-registered.
 - New accounts get a generated temporary password and `must_change_password`.
 - Lock for 15 minutes after 5 failed attempts; rate-limit login by IP too.
+  The second is `services/ratelimit.py` over the `login_attempts` table: the
+  lockout is per account and cannot see one address spraying identifiers,
+  where no account ever reaches five failures. A34 fixes the numbers §5.1
+  leaves open.
 
 **Parent login identifier.** Accept **either email or phone** against the same
 password. Many parents' email addresses are inactive, and an email-only reset
@@ -1250,7 +1257,7 @@ Requirements:
 | Authorization | pytest | Each endpoint × each role, asserting allow or 403/404. The most valuable suite in the project — write it early. |
 | Workflow | pytest | Every legal transition, a rejection for each illegal one. |
 | PDF | pytest | Golden files for both half-term layouts. |
-| E2E | Playwright | Full term: set up → enter both periods → narrative → submit → approve → publish → parent downloads and acknowledges. |
+| E2E | Playwright | Full term: set up → enter both periods → narrative → submit → approve → publish → parent downloads and acknowledges. `web/e2e/full-term.spec.ts`, at a phone viewport, against a freshly seeded database; `docker compose --profile e2e run --rm e2e`. A36 says what is clicked and what is not. |
 
 Do not use SQLite. Generated columns, enums, `citext` and triggers behave
 differently; tests would pass against a database you do not run.
@@ -1289,6 +1296,11 @@ refresh-token cookie of §5.1 keep `SameSite=Lax`.
   immediately before every publish. Results data is irreplaceable — no teacher
   will rewrite 480 passages. Document and test the restore procedure; an
   untested backup is not a backup.
+  `app/backup.py` and `python -m app.backup`; the pre-publication dump is in
+  `services/publication.py` and **refuses the publish if it fails** (A35).
+  `docs/RUNBOOK.md` §2–§3 has the crontab line and the restore procedure,
+  rehearsed on 2026-11-05 (`docs/DECISIONS.md` D97, D99). **Still local:** the
+  dumps are on the same disk as the database until the R2 account exists.
 - Migrations run as an explicit deploy step, never automatically at startup.
 
 ---
@@ -1422,4 +1434,7 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A31 | Generated cards are cached on the host at `REPORT_STORE`, not in a bucket, and served through signed URLs the API itself issues. | **Low.** `app/pdf/storage.py` is the seam — `put`, `get`, `exists` — and §11's R2 replaces the class and a setting. Nothing above it changes. |
 | A32 | The signed download link lives outside `/api/v1`, carries no session, and answers **403** to anything it cannot verify. | **Low.** One route. 403 matches §12's criterion and what an S3-compatible store returns for a bad presigned signature. |
 | A33 | "Please return this card to the School on ___" is filled with the term's end date, there being no field for it in the schema. | **Low.** One function, `reportcard._return_date`. If the school means the *next* term's start, that is the one line to change. |
-| A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |
+| A34 | §5.1's per-IP login limit is **20 attempts per 15 minutes per address**, counting successes as well as failures, refused with a 429 and `Retry-After`. §5.1 asks for the limit and names no numbers. | **Low.** Two environment keys, `LOGIN_IP_MAX_ATTEMPTS` and `LOGIN_IP_WINDOW_MINUTES`, so a school that shares one connection can be given more room without a deploy. The table behind it is `login_attempts`, holding an address and a moment (migration 0004, `docs/DECISIONS.md` D96). |
+| A35 | A publish whose pre-publication dump fails is **refused**, not warned about. §11 requires the dump and does not say what to do when it cannot be taken. | **Low.** One environment key, `REQUIRE_PREPUBLISH_BACKUP`, false to publish past a broken backup store. The alternative default — publish anyway — makes the dump a hope rather than a safety net, and the one time it matters is the time it was missing. |
+| A36 | The E2E journey drives **every screen and every transition** in the browser with representative work typed into each, and fills the remaining ~1,600 score cells and ~150 narrative passages through the real API as the real role. §10 names the journey and not how much of it is clicked. | **Low.** More clicking is always possible; it costs runtime, not structure. The all-clicks version is about an hour per run and fails unreadably (`docs/DECISIONS.md` D98). |
+| A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. **Confirmed to bite in development:** Chrome treats `localhost` as a public suffix, so `localhost` ↔ `api.localhost` is cross-*site* locally while production is same-site, and `SameSite=Lax` withholds the refresh cookie locally. It errs safe, and `docs/RUNBOOK.md` §4 has the `.test` recipe for an exact mirror (`docs/DECISIONS.md` D100). | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

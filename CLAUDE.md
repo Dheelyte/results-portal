@@ -53,9 +53,13 @@ docker compose exec api python -m app.seed        # demo data
 docker compose exec api python -m app.recompute_averages --dry-run   # R3
 docker compose exec api pytest tests/integration/test_report_card.py \
     --golden-update                               # rewrite the card's golden text (§9)
+docker compose exec api python -m app.backup      # §11's dump; --prune-only for retention
 cd web && npm run dev                             # frontend
 cd web && npm run typecheck && npm run lint && npm test
-npx playwright test                               # E2E
+
+# §10's E2E journey. Needs a freshly seeded database and its own container,
+# behind a compose profile — docs/RUNBOOK.md §4 has the whole sequence.
+docker compose --profile e2e run --rm e2e
 ```
 
 ## Conventions
@@ -74,6 +78,13 @@ npx playwright test                               # E2E
 
 Scores, comments, tokens, password hashes, or a pupil's identity in logs or
 error messages. PDFs are served only through short-lived signed URLs.
+
+## Operations
+
+`docs/RUNBOOK.md` is how this is run: backups and the restore procedure
+(§11), the E2E journey, and what to do when a sign-in is refused or a parent
+says a result is missing. Keep it true — every command in it has been run,
+and that is the only reason it is worth having.
 
 ## When you finish a milestone
 

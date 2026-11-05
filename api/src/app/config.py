@@ -48,6 +48,18 @@ class Settings(BaseSettings):
     # replaces it (docs/DECISIONS.md D82).
     report_store: str = "/var/lib/portal/reports"
 
+    # Where §11's database dumps go: "nightly pg_dump to R2, 30 days
+    # retained".  A directory for the same reason the report cache is one —
+    # §0 is a single host, and `app/backup.py` is the seam R2 replaces
+    # (docs/DECISIONS.md D97).
+    backup_store: str = "/var/lib/portal/backups"
+
+    # §11: "a dump taken immediately before every publish". True means a
+    # publish is refused if that dump cannot be taken, which is the only
+    # reading under which the backup is a safety net rather than a hope.
+    # A34's sibling assumption; see §14.
+    require_prepublish_backup: bool = True
+
     # --- Origins (docs/DECISIONS.md, D13) ---------------------------------
     # The single origin allowed to call this API from a browser.  Never "*":
     # the refresh cookie travels with credentials, and the two are
@@ -63,6 +75,17 @@ class Settings(BaseSettings):
     # §5.1: lock for 15 minutes after 5 failed attempts.
     max_failed_attempts: int = 5
     lockout_minutes: int = 15
+
+    # §5.1's second defence: "rate-limit login by IP too". The lockout above
+    # is per account and cannot see one address spraying identifiers.
+    #
+    # §5.1 names no numbers, so these are A20's assumption: twenty attempts a
+    # quarter-hour, the same window as the lockout. A household sharing one
+    # phone hotspot, every member mistyping twice, stays well under it; an
+    # attacker gets twenty guesses per window per address. Both are
+    # environment keys, so the school can be given more room without a deploy.
+    login_ip_max_attempts: int = 20
+    login_ip_window_minutes: int = 15
 
     @model_validator(mode="after")
     def _demand_a_real_jwt_secret_in_production(self) -> "Settings":
@@ -95,6 +118,10 @@ class Settings(BaseSettings):
     @property
     def report_store_path(self) -> pathlib.Path:
         return pathlib.Path(self.report_store)
+
+    @property
+    def backup_store_path(self) -> pathlib.Path:
+        return pathlib.Path(self.backup_store)
 
     @property
     def test_dsn(self) -> str:

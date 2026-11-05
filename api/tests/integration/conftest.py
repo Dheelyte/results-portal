@@ -10,6 +10,8 @@ login must persist its attempt counter even though the request fails — and a
 harness that swallowed commits would hide exactly that.
 """
 
+import dataclasses
+import datetime as dt
 import pathlib
 import uuid
 from collections.abc import AsyncIterator
@@ -20,7 +22,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from app import config
+from app import backup, config
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.main import app
@@ -78,6 +80,45 @@ def clean_report_store(tmp_path, monkeypatch) -> pathlib.Path:
     store.mkdir()
     monkeypatch.setattr(config.settings, "report_store", str(store))
     return store
+
+
+@dataclasses.dataclass
+class BackupRecorder:
+    """What `backup.take` was asked to do, and what it should pretend."""
+
+    calls: list[str] = dataclasses.field(default_factory=list)
+    fail_with: str | None = None
+
+    def take(self, *, reason: str, retain_days: int = 30) -> backup.Backup:
+        self.calls.append(reason)
+        if self.fail_with is not None:
+            raise backup.BackupFailed(self.fail_with)
+        return backup.Backup(
+            key=f"2026/portal-test-{len(self.calls)}-{reason}.dump",
+            size_bytes=1024,
+            taken_at=dt.datetime.now(dt.UTC),
+            reason=reason,
+        )
+
+
+@pytest.fixture(autouse=True)
+def backups(monkeypatch, tmp_path) -> BackupRecorder:
+    """Stand in for §11's pre-publication `pg_dump` (D97).
+
+    Publication takes a real dump, and the suite publishes dozens of times.
+    Shelling out to pg_dump for each would add a second a test and make every
+    publication test depend on a binary in the image — so the call is
+    recorded here instead, and the *real* thing has its own tests in
+    `test_backup.py`, which is where "an untested backup is not a backup"
+    is actually answered.
+
+    Autouse, because a publication test that forgot this fixture would dump
+    the suite's database without anyone noticing it had.
+    """
+    recorder = BackupRecorder()
+    monkeypatch.setattr(backup, "take", recorder.take)
+    monkeypatch.setattr(config.settings, "backup_store", str(tmp_path / "backups"))
+    return recorder
 
 
 @pytest.fixture(autouse=True)

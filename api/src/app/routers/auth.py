@@ -20,6 +20,7 @@ from app.schemas.auth import (
 )
 from app.services import auth as auth_service
 from app.services.auth import AccountLocked, AuthError, InvalidCredentials, IssuedTokens
+from app.services.ratelimit import TooManyAttempts
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,15 @@ async def login(
             ip_address=client_ip(request),
             user_agent=request.headers.get("user-agent"),
         )
+    except TooManyAttempts as exc:
+        # §5.1's per-IP limit. 429 with Retry-After, as RFC 9110 §10.2.3
+        # asks, and a message that names no identifier: the limit must not
+        # become the account-enumeration oracle the 401 above avoids being.
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from None
     except AccountLocked as exc:
         # 423 Locked says precisely what happened without revealing whether
         # the password was right.

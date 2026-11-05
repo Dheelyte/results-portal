@@ -27,6 +27,39 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
       fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
+# ---------------------------------------------------------------------------
+# pg_dump, for §11's backups
+#
+# "Nightly pg_dump to R2 … plus a dump taken immediately before every
+# publish." The pre-publish dump is taken by *this* process, so it cannot be
+# delegated to the postgres container, and the client must therefore live
+# here.
+#
+# From PGDG rather than Debian, because the major version has to match the
+# server: bookworm ships client 15, and pg_dump refuses outright to dump a
+# server newer than itself. A client/server mismatch is the kind of fault
+# nobody discovers until the restore, which is the one moment it must not be
+# discovered (docs/DECISIONS.md D97).
+#
+# The key is fetched to a keyring file and the repository is signed by it —
+# never `apt-key`, which trusts a key for every repository on the system.
+# ---------------------------------------------------------------------------
+ARG PG_MAJOR=16
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes ca-certificates curl gnupg \
+    && install -d /usr/share/keyrings \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+         | gpg --dearmor -o /usr/share/keyrings/pgdg.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] \
+http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+         > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install --no-install-recommends --yes "postgresql-client-${PG_MAJOR}" \
+    && apt-get purge --yes curl gnupg \
+    && apt-get autoremove --yes \
+    && rm -rf /var/lib/apt/lists/*
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     UV_COMPILE_BYTECODE=1 \

@@ -104,6 +104,12 @@ def test_the_tenant_model_list_is_complete() -> None:
         "schools",  # the tenant itself
         "users",  # scoped by the auth layer, not by a row filter
         "refresh_tokens",  # reachable only through the presenting cookie
+        # §5.1's per-IP login limit. The only table in this schema with no
+        # `school_id`, and deliberately so: an attempt is recorded before any
+        # user is found, so there is no school to attribute it to. It holds an
+        # address and a moment, nothing tenant-scoped, and no router reads it
+        # at all (docs/DECISIONS.md D96).
+        "login_attempts",
     }
 
     tenant_tables = set(Base.metadata.tables) - exempt

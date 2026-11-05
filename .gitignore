@@ -33,3 +33,9 @@ next-env.d.ts
 # Copied into the web container for client generation; the source of truth
 # is api/openapi.json.
 /web/openapi.json
+
+# Playwright's own output (ARCHITECTURE.md §10). The traces are large and are
+# only useful to whoever just watched the run fail.
+/web/playwright-report/
+/web/test-results/
+/web/blob-report/

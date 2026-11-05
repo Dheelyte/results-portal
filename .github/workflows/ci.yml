@@ -173,10 +173,12 @@ jobs:
           echo "web host /healthz -> $code"
           test "$code" = "404"
 
-      - name: The baseline migration applies
+      # Every migration, not just the baseline: the chain has to apply to an
+      # empty database, which is the only claim §12's milestone 3 makes.
+      - name: The migrations apply from empty
         run: |
           docker compose exec -T api alembic upgrade head
-          docker compose exec -T api alembic current | grep -q '0001_baseline'
+          docker compose exec -T api alembic current | grep -q '(head)'
 
       - name: The web app is served through Caddy
         run: |
@@ -203,6 +205,60 @@ jobs:
       - name: Container logs on failure
         if: failure()
         run: docker compose logs --no-color --tail 200
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  # ---------------------------------------------------------------------------
+  # §10's one E2E journey. Its own job, because it needs the whole stack, a
+  # seeded database and a browser, and because when it fails the question is
+  # always "did the stack come up?" — which the job above answers separately.
+  # ---------------------------------------------------------------------------
+  e2e:
+    name: E2E — a full term, in a browser
+    runs-on: ubuntu-latest
+    needs: [api, web]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the API hostname
+        run: echo "127.0.0.1 api.localhost" | sudo tee -a /etc/hosts
+
+      - name: Start the stack
+        run: |
+          cp .env.example .env
+          # §5.1's per-IP limit is 20 per 15 minutes (A34) and the journey
+          # signs in at every step from one address. The browser sign-ins
+          # cannot be cached — the staff token lives in memory (D41).
+          echo "LOGIN_IP_MAX_ATTEMPTS=200" >> .env
+          docker compose up -d --wait --wait-timeout 300
+
+      - name: Migrate and seed
+        run: |
+          docker compose exec -T api alembic upgrade head
+          docker compose exec -T api python -m app.seed
+
+      - name: Run the journey
+        env:
+          CI: "true"
+        run: docker compose --profile e2e run --rm e2e
+
+      - name: The traces, if it failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 300
 
       - name: Tear down
         if: always()

@@ -17,6 +17,10 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # §11's dumps, read-only here. pg_dump runs in the api container and
+      # pg_restore in this one, so the volume has to be visible to both or
+      # every restore starts with a file copy (docs/RUNBOOK.md §3).
+      - backup_store:/backups:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-portal} -d ${POSTGRES_DB:-portal}"]
       interval: 5s
@@ -34,10 +38,19 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://portal:portal@postgres:5432/portal}
       REPORT_STORE: ${REPORT_STORE:-/var/lib/portal/reports}
+      BACKUP_STORE: ${BACKUP_STORE:-/var/lib/portal/backups}
+      # §11 takes a dump before every publish and refuses to publish without
+      # one. False only to get results out past a broken backup store.
+      REQUIRE_PREPUBLISH_BACKUP: ${REQUIRE_PREPUBLISH_BACKUP:-true}
       # The one origin allowed to call this API from a browser. Never "*" —
       # the refresh cookie is sent with credentials (milestone 2).
       PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:-http://localhost:8080}
       JWT_SECRET: ${JWT_SECRET:-dev-only-not-a-secret-change-me-before-production}
+      # §5.1's per-IP limit (A34). Pass-through so the E2E stack can raise it:
+      # the journey signs in at every step from one address, and the staff
+      # screens cannot cache a token — it lives in memory (D41).
+      LOGIN_IP_MAX_ATTEMPTS: ${LOGIN_IP_MAX_ATTEMPTS:-20}
+      LOGIN_IP_WINDOW_MINUTES: ${LOGIN_IP_WINDOW_MINUTES:-15}
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
@@ -55,6 +68,9 @@ services:
       # artifact"). A named volume, so a container rebuild does not throw
       # away every card a parent might be about to open.
       - report_store:/var/lib/portal/reports
+      # §11's database dumps: nightly, and one before every publish. A named
+      # volume so a container rebuild does not throw away the only copy.
+      - backup_store:/var/lib/portal/backups
     depends_on:
       postgres:
         condition: service_healthy
@@ -105,6 +121,52 @@ services:
       start_period: 40s
     restart: unless-stopped
 
+  # E2E, behind a profile so the normal `docker compose up -d` never starts it
+  # (ARCHITECTURE.md §10, docs/DECISIONS.md D98).
+  #
+  #   docker compose --profile e2e run --rm e2e
+  #
+  # Microsoft's own image, because Playwright does not support musl and the
+  # web service is node:22-alpine. The tag's version must equal the
+  # `@playwright/test` version in web/package.json: the client and the
+  # bundled browsers are released together.
+  #
+  # `network_mode: host` so the two hostnames inside the container are the
+  # two hostnames outside it. The journey crosses between `localhost:8080`
+  # and `api.localhost:8080`, and testing that over the Docker network would
+  # test a topology the school does not have.
+  e2e:
+    profiles: ["e2e"]
+    image: mcr.microsoft.com/playwright:v1.64.1-noble
+    network_mode: host
+    extra_hosts:
+      - "api.localhost:127.0.0.1"
+    working_dir: /work
+    environment:
+      E2E_BASE_URL: ${E2E_BASE_URL:-http://localhost:8080}
+      E2E_API_URL: ${E2E_API_URL:-http://api.localhost:8080}
+      CI: ${CI:-}
+      # The image already carries the browsers for this exact version, so the
+      # install step must not fetch them again — that is the whole reason for
+      # pinning the tag to the package.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    volumes:
+      - ./web:/work
+      # Its own, because the web service's are musl-linked and this image is
+      # glibc. Installed on first run and kept.
+      - e2e_node_modules:/work/node_modules
+    # `npm ci` deletes node_modules and reinstalls from scratch, which on this
+    # tree is minutes — and the volume below keeps them between runs, so it is
+    # minutes spent undoing itself. Install only when the install is missing.
+    command:
+      - sh
+      - -c
+      - >-
+        if [ ! -d node_modules/@playwright/test ]; then
+          npm ci --no-audit --no-fund;
+        fi;
+        exec npx playwright test
+
   caddy:
     image: caddy:2-alpine
     ports:
@@ -139,7 +201,9 @@ services:
 volumes:
   pgdata:
   report_store:
+  backup_store:
   web_node_modules:
   web_next_cache:
+  e2e_node_modules:
   caddy_data:
   caddy_config:

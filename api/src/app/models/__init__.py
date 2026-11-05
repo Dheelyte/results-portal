@@ -35,7 +35,7 @@ from app.models.people import GuardianPupil, House, Pupil
 from app.models.result import MarksObtainable, ResultEntry
 from app.models.school import School
 from app.models.subject import ClassSubject, ClassTeacher, Subject, TeachingAssignment
-from app.models.user import RefreshToken, User, UserRole, user_role_enum
+from app.models.user import LoginAttempt, RefreshToken, User, UserRole, user_role_enum
 from app.models.wellbeing import AttendanceRecord, GrowthRecord
 from app.models.workflow import (
     ClassTermState,
@@ -65,6 +65,7 @@ __all__ = [
     "GrowthRecord",
     "GuardianPupil",
     "House",
+    "LoginAttempt",
     "MarksObtainable",
     "NarrativeEntry",
     "NarrativeSection",

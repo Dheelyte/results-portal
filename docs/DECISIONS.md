@@ -2014,3 +2014,264 @@ What is **not** yet tested is §8.5's other half: "assume a 3G connection on a
 low-end Android device, and test against that." Byte counts are a proxy for
 it. The real thing needs a throttled browser, which is milestone 13's E2E
 work.
+
+## Milestone 13 — hardening
+
+### D96 — The per-IP login limit is a table, not a counter in memory
+
+§5.1 asks for two defences on login and milestone 2 built one: "lock for 15
+minutes after 5 failed attempts; **rate-limit login by IP too**". The second
+was outstanding, and reading the login path showed why it is not optional.
+
+The lockout counts failures **against a user row**. The attack it cannot see
+is one address working through a list of identifiers: no single account ever
+reaches five failures. Worse, `services/auth.py` says this of an unknown
+identifier —
+
+> No audit row: there is no `school_id` to attach it to, and `audit_log`
+> requires one.
+
+— so the cheapest attack is also the one that leaves the least trace. Neither
+the lockout nor the audit log sees it.
+
+**Where the counter lives.** A Postgres table, `login_attempts` (migration
+0004), holding an address and a moment and nothing else. Not an in-process
+window, because production runs two uvicorn workers: an attacker would get
+twice the allowance and a deploy would forget everything. One insert per
+login attempt, at a school of ~450 accounts, is not a cost worth optimising
+away. It is the only table in the schema with **no `school_id`** — an attempt
+is recorded before any user is found, so there is no school to attribute it
+to.
+
+**Attempts, not failures.** A successful login spends allowance too. What is
+being limited is volume from one address, and an attacker holding one valid
+account should not be able to hide behind it. The cost is real and worth
+stating: a parent behind a hotspot someone else exhausted waits with them.
+
+**Before the password, not after.** `enforce` runs before `verify_password`,
+so a refused request does no Argon2id work. Argon2 is deliberately expensive;
+an unthrottled login endpoint is a CPU amplifier pointed at the one host this
+runs on.
+
+**20 per 15 minutes** (A34), with a 429 and `Retry-After`, the message
+carefully naming no account — §5.1's 401 is careful not to be an enumeration
+oracle, and the 429 must not undo that. Both numbers are environment keys, so
+a school that shares one connection can be given more room without a deploy.
+
+The two defences are tested apart on purpose: `spend_the_allowance` uses a
+fresh identifier each time, so no account locks, because otherwise a 429 test
+could pass on the strength of a 423 it never saw.
+
+### D97 — `pg_dump` lives in the API image, from PGDG
+
+§11 wants a dump "immediately before every publish", and that dump is taken by
+the API process. It cannot be delegated to the postgres container — nothing
+in the API can exec into another container — so the client has to be in the
+API image.
+
+From PGDG rather than Debian, because the major version must match the
+server. Bookworm ships client 15 against a server 16, and pg_dump refuses
+outright to dump a server newer than itself. A client/server mismatch is
+exactly the kind of fault nobody finds until the restore, which is the one
+moment it must not be found. The first attempt simply asked apt for
+`postgresql-client-16` and failed with exit 100, which is how this was
+discovered rather than assumed.
+
+Custom format (`-Fc`): compressed, and `pg_restore` can read a single table
+out of it — which matters when the thing to undo is one class's publication
+rather than a whole term.
+
+Two details that are security, not style. The password reaches pg_dump
+through `PGPASSWORD` and never through argv, because `ps` shows argv to
+anyone on the host. And a failure reports **the exit code only**, never
+pg_dump's stderr: a libpq connection error quotes the DSN, and the DSN
+contains the password.
+
+### D98 — The E2E journey clicks every screen and types representative work
+
+§10 names one E2E journey: "Full term: set up → enter both periods →
+narrative → submit → approve → publish → parent downloads and acknowledges."
+
+Driven entirely through the browser, "enter both periods" alone is 10 pupils
+× 12 subjects × 7 columns × 2 halves — about 1,700 cells — and the narrative
+is 16 passages per pupil, 160 more. That test runs for an hour and fails for
+reasons nobody can read.
+
+So the split is: **every screen and every state transition happens in the
+browser**, with representative work typed into each — a score into the grid
+(and checked after a reload, because §8.1's autosave is the bespoke part), a
+passage into the narrative screen, the second half's maxima into the admin
+form, submit, approve, publish, and the parent's card, download and
+acknowledgement. The remaining bulk is filled **through the real API as the
+real role**, with the same validation and the same authorization the screens
+go through. Nothing is faked and no rule is bypassed; it is simply not typed.
+
+Two consequences worth knowing:
+
+- It runs at a **phone viewport** (`devices["Pixel 7"]`), because §8.1 and
+  §8.5 both specify one. A control that exists only in the desktop layout
+  fails here.
+- It needs a **freshly seeded** database, because a class can only be
+  published once. Re-running it against a stack it has already run against
+  fails at submit, which is right.
+
+`retries: 0` and `workers: 1`: the journey is one story told in order, so
+parallelism would not be faster, only wrong, and a retry would hide the
+ordering bug this is most likely to catch.
+
+Microsoft's own Playwright image, behind a compose profile so
+`docker compose up -d` never starts it, because Playwright does not support
+musl and the web service is `node:22-alpine`. The image tag and the
+`@playwright/test` version must match — the client and its browsers ship
+together.
+
+### D99 — The restore drill, performed
+
+§11 does not ask for a backup; it asks for a *tested* one. "Document and test
+the restore procedure; an untested backup is not a backup." So this was run
+rather than written, on **2026-11-05**, against the development database —
+which held a small but real school: 4 pupils, 48 score rows, 32 narrative
+passages, and 2 **published** term reports with grades already frozen.
+
+```
+before                                    after restoring into a fresh db
+ pupils | passages | entries | reports     pupils | passages | entries | reports
+      4 |       32 |      48 |       2          4 |       32 |      48 |       2
+
+published|2                               published|2
+alembic                                   0004
+
+SSHMS/2026/001|Compr. & Poetry|A+|100.00  SSHMS/2026/001|Compr. & Poetry|A+|100.00
+SSHMS/2026/001|Computer|A+|100.00         SSHMS/2026/001|Computer|A+|100.00
+```
+
+Then the swap, the API back up, `alembic current` → `0004 (head)`, `/readyz`
+→ 200, and a parent's published card opened through Caddy still reading
+`CONTINUOUS ASSESSMENT FOR FIRST TERM`, `Overall Percentage 100`,
+`MATHEMATICS … A+`.
+
+That last check is the one that matters and the one a row count cannot make.
+§4.5 forbids recomputing a grade on a published result; a restore that
+silently regraded would be the worst outcome this system has, so the drill
+ends by **looking at a card**, not by counting rows.
+
+Four things the drill taught, now in `docs/RUNBOOK.md` §3:
+
+1. **Restore into a fresh database and rename.** `pg_restore --clean` over a
+   database being read leaves a half-restored schema and no way to tell how
+   far it got. `createdb portal_restored`, restore, verify, then two `ALTER
+   DATABASE … RENAME`s. The old one is kept as `portal_broken_<date>`.
+2. **The dumps must be visible to both containers.** `pg_dump` runs in `api`
+   and `pg_restore` in `postgres`. The compose file now mounts the volume in
+   both — `/var/lib/portal/backups` and a read-only `/backups` — because the
+   alternative is starting every restore with a file copy, under pressure.
+3. **The object key must not repeat the store's name.** The first dump landed
+   at `backups/backups/2026/…`: the key carried a `backups/` prefix copied
+   from `pdf/storage.py`, where it is right because that store is generic.
+   This one is a directory of nothing but backups, so the key is now
+   `<year>/portal-<timestamp>Z-<reason>.dump`.
+4. **A restore invalidates sessions and leaves newer PDFs behind.** Neither
+   is a fault, and both are things to tell the school *before* rather than
+   after. Written down in the runbook.
+
+**What is still missing, and it is not small.** The dumps sit on the same disk
+as the database. That survives a bad migration, a wrong `UPDATE` and a
+mistaken publish — which is most of what actually happens — and it survives
+nothing at all if the host is lost. §11's diagram puts them in R2. Until that
+account exists the runbook carries an `rclone` line and a note saying plainly
+that this is the one open item.
+
+### D100 — The E2E found a real bug on its first honest run
+
+Milestone 12 moved `AuthProvider` out of the root layout so the parent's
+server-rendered pages would not carry the client session machinery (D89). It
+went into **two** route groups: `(auth)` for the sign-in screens and
+`(staff)` for everything behind them.
+
+That was wrong, and nothing until now could see it. Signing in at `/login`
+and arriving at `/admin` crosses a route-group boundary, so React unmounts
+one provider and mounts another — and §5.1 keeps the access token **in
+memory** (D41). It was dropped on the very first hop after sign-in.
+
+In production the refresh cookie covers it: the new provider's mount calls
+`POST /auth/refresh` and gets a token back. In development nothing covers
+it, for a reason worth writing down, because it will catch someone else:
+
+> Chrome treats `localhost` as a **public suffix**. So `localhost` and
+> `api.localhost` are cross-**site** in development, while `portal.x.ng` and
+> `api.x.ng` are same-site in production. `SameSite=Lax` therefore withholds
+> the refresh cookie in development and sends it in production.
+
+A11 predicted exactly this when the API was given its own hostname — "can
+produce dev-only cookie puzzles" — and here it is. It errs safe: development
+is stricter than production, so anything working locally works deployed.
+
+**The fix** is one provider spanning the sign-in and what it leads to:
+`/login` and `/change-password` moved into `(staff)/(signin)/`, and the
+`(auth)` group is gone. The parent's pages still carry nothing.
+
+Three smaller things the same run turned up, each now a comment where it
+belongs:
+
+- **`page.reload()` cannot be used on a staff screen in development**, for
+  the reason above. The journey asserts persistence by navigating away and
+  back *inside* the app instead, which re-fetches from the API and proves
+  the same thing — the value was saved, not merely held in state.
+- **"Saved" is not an assertion.** The autosave indicator is a live status;
+  once a save lands and the sheet refetches, it returns to "No changes". The
+  journey waits for nothing to be outstanding and then checks the value is
+  there, which is what a teacher actually cares about.
+- **`getByLabel` does not find these `<select>`s.** Each sits *inside* its
+  own `<label>`, so the label's text content is "Class" followed by every
+  option; the accessible name is still "Class", so the journey locates them
+  by role. Harmless in the app, and worth knowing before the next test.
+
+And one where waiting on the obvious word was the bug: the publish screen's
+own prose reads "A class is published once the head teacher has approved
+it", so waiting for `/published/i` matched instantly and the assertion raced
+an in-flight publish. It now waits for ten "Hold back" buttons — something
+only a publication produces.
+
+### D101 — What the journey needed to become trustworthy
+
+It passed, then failed, then passed. None of the intervening failures were
+in the application, and each one is now a comment where the next person will
+find it.
+
+**A silent submit.** On a loaded machine the sign-in click occasionally
+landed with nothing sent — `audit_log` showed no attempt at all, successful
+or failed, so the request was never made. That is the development Next
+server compiling a route on first request, and a button that is visible and
+enabled before React has finished wiring it. `signInAsStaff` submits up to
+three times, and **only** when the screen stayed silent: if the API refused
+us, the helper raises with the refusal instead of hammering it. Not
+Playwright's `retries`, which would re-run a whole step of a serial journey
+to fix one click.
+
+The parent's sign-in needs none of this, and the reason is the design: it is
+a `<form>` posting to a server action, so it works before any JavaScript has
+loaded (D90). It is the steadiest screen in the journey, which is a pleasant
+way to be shown that §8.5's "3G on a low-end Android device" was worth
+taking literally.
+
+**Timeouts of 150 s, not 60.** Twice what a passing step needs, for a reason
+that is about first visits rather than about the app: the development server
+compiles each route the first time it is asked for, and the PDF step renders
+through WeasyPrint on first request. A step that opens two new screens pays
+both.
+
+**`npm ci` was costing minutes per run.** It deletes `node_modules` and
+reinstalls from scratch, and the container keeps them in a volume between
+runs — so it was minutes spent undoing itself, and one run died on an
+`ETIMEDOUT` fetching packages it already had. The install is now conditional
+on the install being missing.
+
+**It needs a freshly seeded database and says so.** A class can only be
+published once, so a second run against the same stack fails at submit.
+`docs/RUNBOOK.md` §4 has the four commands, and CI does them in order.
+
+What the journey proves that nothing else did: §11's pre-publication dump
+really is taken — three runs, three `*-pre-publish.dump` files beside the
+drill's — the ten reports really do reach `published`, and a parent really
+can open the card, download the PDF and acknowledge it from a phone-sized
+browser.
