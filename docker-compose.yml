@@ -33,6 +33,7 @@ services:
       APP_ENV: ${APP_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://portal:portal@postgres:5432/portal}
+      REPORT_STORE: ${REPORT_STORE:-/var/lib/portal/reports}
       # The one origin allowed to call this API from a browser. Never "*" —
       # the refresh cookie is sent with credentials (milestone 2).
       PUBLIC_WEB_ORIGIN: ${PUBLIC_WEB_ORIGIN:-http://localhost:8080}
@@ -50,6 +51,10 @@ services:
       # need an image rebuild to take effect.
       - ./api/pyproject.toml:/app/pyproject.toml:ro
       - ./api/scripts:/app/scripts:ro
+      # Generated report cards (§9, §2.1: "generate on demand, cache the
+      # artifact"). A named volume, so a container rebuild does not throw
+      # away every card a parent might be about to open.
+      - report_store:/var/lib/portal/reports
     depends_on:
       postgres:
         condition: service_healthy
@@ -133,6 +138,7 @@ services:
 
 volumes:
   pgdata:
+  report_store:
   web_node_modules:
   web_next_cache:
   caddy_data:

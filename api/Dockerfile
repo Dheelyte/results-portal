@@ -1,15 +1,31 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
-# base — Python plus uv, no project code
+# base — Python, uv, and WeasyPrint's native libraries
 #
-# WeasyPrint's native libraries (pango, cairo, gdk-pixbuf) are deliberately not
-# installed: the PDF arrives in milestone 11 and an unused 200MB of shared
-# objects in every image until then is waste.
+# WeasyPrint renders through Pango and HarfBuzz rather than a browser engine,
+# so the text layout happens in these shared objects and not in Python. Cairo
+# is **not** needed: WeasyPrint 53 replaced it with its own PDF writer.
+#
+# The fonts are pinned for a reason. §9 requires deterministic output — "same
+# data renders byte-identically, so regeneration is verifiable" — and a PDF's
+# text layout depends on the exact font metrics available to the renderer. A
+# machine with a different font set would produce a different file from the
+# same data, and the golden-file test would fail for reasons nobody could see.
+# fonts-dejavu-core is a fixed, packaged set, and the stylesheet names only
+# those families (docs/DECISIONS.md D80).
 # ---------------------------------------------------------------------------
 FROM python:3.12-slim-bookworm AS base
 
 COPY --from=ghcr.io/astral-sh/uv:0.5 /uv /uvx /bin/
+
+RUN apt-get update && apt-get install --no-install-recommends --yes \
+      libpango-1.0-0 \
+      libpangoft2-1.0-0 \
+      libharfbuzz0b \
+      libffi8 \
+      fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

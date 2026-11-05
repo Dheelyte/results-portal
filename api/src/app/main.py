@@ -21,6 +21,7 @@ from app.routers import (
     academic,
     assessment,
     auth,
+    cards,
     classwork,
     entry,
     health,
@@ -128,6 +129,12 @@ def create_app() -> FastAPI:
     # message travels on.
     app.include_router(publication.router, prefix=settings.api_v1_prefix)
     app.include_router(parents.router, prefix=settings.api_v1_prefix)
+    app.include_router(cards.router, prefix=settings.api_v1_prefix)
+
+    # The signed download sits outside the versioned prefix on purpose: the
+    # token is its own authority, so it carries no session and declares no
+    # capability (§9, docs/DECISIONS.md D81).
+    app.include_router(cards.download_router)
 
     return app
 

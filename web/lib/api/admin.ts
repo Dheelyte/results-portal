@@ -6,7 +6,7 @@
  * adds no shapes of its own.
  */
 
-import { request, type Schemas } from "./client";
+import { request, requestBlob, type Schemas } from "./client";
 
 export type AcademicSession = Schemas["AcademicSessionRead"];
 export type Term = Schemas["TermRead"];
@@ -73,6 +73,16 @@ export function adminApi(token: string) {
 
     withholdReport: (reportId: string, reason: string) =>
       send<ReportState>("POST", `/reports/${reportId}/withhold`, { reason }),
+
+    /** The printable card (§9), as a blob URL the browser can open.
+     *
+     *  Not a plain link: the endpoint needs an Authorization header and a
+     *  browser following an anchor sends none. `fetch` carries the header,
+     *  follows the 302 to the signed URL itself, and hands back the PDF —
+     *  which is then a blob the viewer or the print dialog can take.
+     */
+    cardBlobUrl: (pupilId: string, termId: string, half: "first_half" | "second_half") =>
+      requestBlob(`/pupils/${pupilId}/card`, { token, query: { term_id: termId, half } }),
 
     /** The ids `editEntry` needs — §7 lists the PATCH and no way to reach
      *  one (D75). */

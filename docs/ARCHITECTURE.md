@@ -304,6 +304,9 @@ results-portal/
 │   │   │   ├── publication.py   # R12, R13, and the entry lookup R13 needs
 │   │   │   ├── parents.py       # R12's message, and the parent's read path
 │   │   │   ├── auditlog.py      # reading §4.9's log
+│   │   │   ├── reportcard.py    # §9's card, assembled for the template
+│   │   │   ├── cumulative.py    # R5's term and annual averages
+│   │   │   ├── cards.py         # render, cache, sign (§9, §2.1)
 │   │   │   ├── setup.py         # the term readiness checklist
 │   │   │   ├── workflow.py       # R14's state machine
 │   │   │   ├── cumulative.py    # term and annual averages
@@ -314,8 +317,10 @@ results-portal/
 │   │   ├── auth/
 │   │   ├── authz/
 │   │   ├── pdf/
-│   │   │   ├── templates/
-│   │   │   └── render.py
+│   │   │   ├── templates/       # card.html, card.css — the photographs
+│   │   │   ├── render.py        # Jinja2 → WeasyPrint, reproducibly
+│   │   │   ├── storage.py       # §9's object key; R2's seam
+│   │   │   └── links.py         # the five-minute signed URL
 │   │   └── seed/
 │   └── tests/
 └── web/
@@ -1340,7 +1345,7 @@ consequences in `docs/DECISIONS.md` (B1–B3). Summary:
 | N3 | The *Total Weighted Average* formula, how 1st/2nd Term Ave. and Annual Scores (Ave.) are derived, **and whether a period average is rounded before a grade band is read from it** — the card's own bands leave 39.5 in no band (`docs/DECISIONS.md` D43). **Reached. Built on a documented placeholder** (A3) and a rounding assumption (A17), both behind one named function each, with `python -m app.recompute_averages` to backfill. Still the single most valuable answer outstanding: it decides what every average on every card says. | 6 |
 | N4 | Is *Position (In grades)* filled in, and in what form? | 9 — **reached, not blocking.** `position_text` is free text the head teacher may leave empty (R11), so any answer fits without a change. Nothing computes or displays a rank, and a test asserts that. |
 | N5 | Do parents receive the first-half sheet at mid term, or only the full card at term end? | 10 (publication) |
-| N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) |
+| N6 | Do health and growth, house, times collected late, and the parent signature carry over to the digital card? | 11 (PDF) — **reached, and answered by printing all four.** The photographs carry them, §9 lists them, and the cost of keeping something the school does not want is one template edit. The parent signature prints as a ruled line, because A8 replaces the physical return with an acknowledgement but the card is also printed and handed over. |
 | N7 | All sixteen narrative sections, or a reduced set? | 7 — **reached, not blocking.** All sixteen are built and `is_active` retires any of them without a migration, so a reduced set is a row edit rather than a change. Still worth asking before launch: §8.2 says so, and sixteen passages × thirty pupils is the single largest demand this system makes of one person. |
 | N9 | Teacher devices and connectivity — school Wi-Fi, or personal phones on mobile data at home? | 6 (offline behaviour) — **reached, not blocking.** §8.1's own answer is built: autosave every 20s and on blur, `localStorage` drafts reconciled on reload, and a failed save retried rather than lost. The open part is whether to go further — a service worker and a true offline queue — which only matters if teachers work where there is no signal at all. |
 
@@ -1406,4 +1411,8 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A27 | Approving refuses outright if no grading scale is active, rather than approving with blank grades. | **Low.** One check — but the alternative is unrecoverable: §4.5 gives no way to fill a grade in afterwards. |
 | A28 | Publishing requires the class to be `approved`; a second publish of the same class is harmless and leaves already-published dates alone. | **Low.** One state check and one branch in `services/publication.py`. The admin will publish, notice something, correct it and publish again — refusing the second run would make a correction mean republishing from scratch. |
 | A29 | A withhold needs a reason; a plain publish does not. The reason is never sent to a parent. | **Low.** One check. R12 gives the parent one sentence, so the reason exists for the school's own record and the audit log. |
+| A30 | A term's contribution to the annual average is its **second-half** figure where one exists, falling back to the first half. **Placeholder** — R5 says the choice between that and a blend of both halves is unconfirmed. | **Low.** One function, `cumulative.term_average`. The count of terms travels beside every figure, as R5 asks. |
+| A31 | Generated cards are cached on the host at `REPORT_STORE`, not in a bucket, and served through signed URLs the API itself issues. | **Low.** `app/pdf/storage.py` is the seam — `put`, `get`, `exists` — and §11's R2 replaces the class and a setting. Nothing above it changes. |
+| A32 | The signed download link lives outside `/api/v1`, carries no session, and answers **403** to anything it cannot verify. | **Low.** One route. 403 matches §12's criterion and what an S3-compatible store returns for a bad presigned signature. |
+| A33 | "Please return this card to the School on ___" is filled with the term's end date, there being no field for it in the schema. | **Low.** One function, `reportcard._return_date`. If the school means the *next* term's start, that is the one line to change. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

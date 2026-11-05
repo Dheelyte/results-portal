@@ -831,6 +831,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/my/children/{pupil_id}/reports/{term_id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Childs Card
+         * @description A parent's own child's card, as a five-minute link.
+         *
+         *     `scoped_term_reports` filters a parent to published rows, so a withheld
+         *     card is simply not found — R12 again: invisible, not forbidden.
+         */
+        get: operations["my_childs_card_api_v1_my_children__pupil_id__reports__term_id__pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/narrative-sections": {
         parameters: {
             query?: never;
@@ -901,6 +924,33 @@ export interface paths {
         put?: never;
         /** Add a pupil */
         post: operations["create_pupil_api_v1_pupils_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pupils/{pupil_id}/card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pupils Card
+         * @description The same card, for the school's own printing.
+         *
+         *     §9 says the school will compare this output to the paper line by line,
+         *     and §7 gives no staff route to a PDF — the admin would otherwise have to
+         *     sign in as a parent to see what a parent gets (docs/DECISIONS.md D83).
+         *
+         *     Unlike the parent's route this does **not** require publication: the
+         *     point of checking a card is to check it before it goes out.
+         */
+        get: operations["pupils_card_api_v1_pupils__pupil_id__card_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1329,6 +1379,30 @@ export interface paths {
          *     is logged instead.
          */
         get: operations["readyz_readyz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reports/download/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download
+         * @description The file a signed link points at. No session; the token is the authority.
+         *
+         *     A forged, tampered or expired token gets the same 404 as a key that was
+         *     never issued — telling them apart would tell whoever is trying which half
+         *     to work on.
+         */
+        get: operations["download_reports_download__token__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5188,6 +5262,39 @@ export interface operations {
             };
         };
     };
+    my_childs_card_api_v1_my_children__pupil_id__reports__term_id__pdf_get: {
+        parameters: {
+            query?: {
+                /** @description Which half term's sheet. */
+                half?: components["schemas"]["TermHalf"];
+            };
+            header?: never;
+            path: {
+                pupil_id: string;
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_narrative_sections_api_v1_narrative_sections_get: {
         parameters: {
             query?: {
@@ -5341,6 +5448,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PupilRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pupils_card_api_v1_pupils__pupil_id__card_get: {
+        parameters: {
+            query: {
+                /** @description Which term. */
+                term_id: string;
+                /** @description Which half term's sheet. */
+                half?: components["schemas"]["TermHalf"];
+            };
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6138,6 +6279,35 @@ export interface operations {
                     "application/json": {
                         [key: string]: string;
                     };
+                };
+            };
+        };
+    };
+    download_reports_download__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

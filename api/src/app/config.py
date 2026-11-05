@@ -4,6 +4,7 @@ Every key is listed in the repository's `.env.example` (ARCHITECTURE.md §11).
 No default here may carry a real secret.
 """
 
+import pathlib
 from functools import lru_cache
 from typing import Literal
 
@@ -40,6 +41,12 @@ class Settings(BaseSettings):
     test_database_url: SecretStr | None = None
 
     api_v1_prefix: str = "/api/v1"
+
+    # Where generated report cards are cached (§9, §2.1: "generate on demand,
+    # cache the artifact"). A directory rather than a bucket while the
+    # deployment is one host — `app/pdf/storage.py` is the seam where R2
+    # replaces it (docs/DECISIONS.md D82).
+    report_store: str = "/var/lib/portal/reports"
 
     # --- Origins (docs/DECISIONS.md, D13) ---------------------------------
     # The single origin allowed to call this API from a browser.  Never "*":
@@ -84,6 +91,10 @@ class Settings(BaseSettings):
     def dsn(self) -> str:
         """The database URL as a plain string, for the engine and Alembic."""
         return self.database_url.get_secret_value()
+
+    @property
+    def report_store_path(self) -> pathlib.Path:
+        return pathlib.Path(self.report_store)
 
     @property
     def test_dsn(self) -> str:

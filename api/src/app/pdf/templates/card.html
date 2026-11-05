@@ -1,0 +1,196 @@
+{#
+  The report card (ARCHITECTURE.md §9).
+
+  The photographs in docs/report-card/ are the specification: this follows
+  them, including the things that look like mistakes.
+
+  - The heading is "CONTINUOUS ASSESSMENT FOR {TERM} TERM" with "{HALF} HALF
+    TERM" beneath. One card per half term.
+  - "ENGLISH" is printed as upright letters stacked one per row down a cell
+    spanning its five sub-rows. Not rotated text — the photograph shows
+    separate letters, and WeasyPrint's support for vertical writing modes is
+    thin enough that matching the paper is both easier and more faithful.
+  - The second-half sheet's cumulative columns read 2ND TERM AVE., 1ST TERM
+    AVE., ANNUAL SCORES (AVE.) — second before first.
+  - "Times Collected Late" is on the card, so it is here (N6 asks whether the
+    school wants it kept; nothing is lost by printing what the paper prints).
+
+  No arithmetic happens in this file. Every figure was decided in
+  services/ — R2 by Postgres, R3 and R4 by grading.py, R5 by cumulative.py,
+  R6 at approval — because a template that computed anything would be a
+  second implementation of a rule (CLAUDE.md rule 2).
+#}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ card.pupil_name }} — {{ card.subtitle | title }}</title>
+    <style>{{ stylesheet }}</style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>{{ card.school_name }}</h1>
+      <h2>{{ card.title }}</h2>
+      <h3>{{ card.subtitle }}</h3>
+    </header>
+
+    <section class="identity">
+      <div class="column">
+        <p><span class="label">Name of Pupil:</span> <span class="value">{{ card.pupil_name }}</span></p>
+        <p><span class="label">Overall Percentage:</span> <span class="value">{{ card.overall_percentage | number }}</span></p>
+        <p><span class="label">Class:</span> <span class="value">{{ card.class_name }}</span></p>
+        <p><span class="label">No. in Class:</span> <span class="value">{{ card.no_in_class | blank }}</span></p>
+      </div>
+      <div class="column">
+        <p><span class="label">Date:</span> <span class="value">{{ card.date | date }}</span></p>
+        <p><span class="label">Position (In grades):</span> <span class="value">{{ card.position_text | blank }}</span></p>
+        <p><span class="label">Year/Session:</span> <span class="value">{{ card.session_name }}</span></p>
+        <p><span class="label">House:</span> <span class="value">{{ card.house_name | blank }}</span></p>
+      </div>
+    </section>
+
+    <section class="side-by-side">
+      <table class="boxed attendance">
+        <caption>1. ATTENDANCE RECORD</caption>
+        <tbody>
+          <tr><th scope="row">Times School Opened:</th><td>{{ card.times_school_opened | blank }}</td></tr>
+          <tr><th scope="row">Times Present:</th><td>{{ card.times_present | blank }}</td></tr>
+          <tr><th scope="row">Times Absent:</th><td>{{ card.times_absent | blank }}</td></tr>
+          <tr><th scope="row">Times Collected Late:</th><td>{{ card.times_late | blank }}</td></tr>
+        </tbody>
+      </table>
+
+      <table class="boxed growth">
+        <caption>2. HEALTH AND PHYSICAL GROWTH</caption>
+        <thead>
+          <tr><th></th><th colspan="2">HEIGHT</th><th colspan="2">WEIGHT</th></tr>
+          <tr>
+            <th></th>
+            <th>Beginning of Term</th><th>End of Term</th>
+            <th>Beginning of Term</th><th>End of Term</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"></th>
+            <td>{{ card.height_start_m | number }} m</td>
+            <td>{{ card.height_end_m | number }} m</td>
+            <td>{{ card.weight_start_kg | number }} kg</td>
+            <td>{{ card.weight_end_kg | number }} kg</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="cognitive">
+      <h4>3. COGNITIVE ABILITY</h4>
+      <table class="boxed scores">
+        <thead>
+          <tr>
+            <th class="group-rail"></th>
+            <th class="subject">SUBJECTS</th>
+            {% for key, label in card.columns %}<th>{{ label }}</th>{% endfor %}
+            {% for label in card.cumulative_columns %}<th>{{ label }}</th>{% endfor %}
+            <th>GRADES</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="maxima">
+            <th class="group-rail"></th>
+            <th scope="row" class="subject">MARKS OBTAINABLE</th>
+            {% for key, label in card.columns %}
+              <td>{{ card.maxima.get(key) | number }}</td>
+            {% endfor %}
+            {% for label in card.cumulative_columns %}<td></td>{% endfor %}
+            <td></td>
+          </tr>
+
+          {% for line in card.lines %}
+            <tr>
+              {% if line.group_name %}
+                {# The spanning heading: upright letters, one per row, exactly
+                   as the paper prints it. R7 keeps the heading out of
+                   class_subjects, so it is drawn from its children. #}
+                <th class="group-rail" rowspan="{{ line.group_size }}">
+                  {% for letter in line.group_name %}{{ letter }}<br />{% endfor %}
+                </th>
+              {% elif not line.in_group %}
+                <th class="group-rail"></th>
+              {% endif %}
+              <th scope="row" class="subject">{{ line.name }}</th>
+              {% for key, label in card.columns %}
+                <td>{{ line.values.get(key) | number }}</td>
+              {% endfor %}
+              {% for label in card.cumulative_columns %}
+                <td>{{ line.cumulative.get(label) | number }}</td>
+              {% endfor %}
+              <td class="grade">{{ line.grade | blank }}</td>
+            </tr>
+          {% endfor %}
+
+          <tr class="grand-total">
+            <th class="group-rail"></th>
+            <th scope="row" class="subject">GRAND TOTAL</th>
+            {% for key, label in card.columns %}
+              <td>{{ card.grand_total.get(key) | number }}</td>
+            {% endfor %}
+            {% for label in card.cumulative_columns %}
+              <td>{{ card.grand_total.get(label) | number }}</td>
+            {% endfor %}
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    {% if card.key %}
+      <section class="key">
+        <h4>KEY</h4>
+        <ul>
+          {% for letter, remark, range in card.key %}
+            <li><span class="letter">{{ letter }}</span> = {{ remark }} {{ range }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+
+    <section class="assessment">
+      <h4>ASSESSMENT ON</h4>
+      {% for letter, group_label, sections in card.narrative_groups %}
+        {% if group_label %}<p class="group">{{ letter }}) {{ group_label }}</p>{% endif %}
+        <dl class="{% if group_label %}indented{% endif %}">
+          {% for code, label, body in sections %}
+            <dt>{% if not group_label %}{{ code }}. {% endif %}{{ label }}:</dt>
+            <dd>{{ body | blank }}</dd>
+          {% endfor %}
+        </dl>
+      {% endfor %}
+    </section>
+
+    <section class="footer">
+      <dl>
+        <dt>Class Teacher&rsquo;s Comment:</dt>
+        <dd>{{ card.class_teacher_comment | blank }}</dd>
+        <dt>Head Teacher&rsquo;s Comment:</dt>
+        <dd>{{ card.head_teacher_remark | blank }}</dd>
+        {% if card.promotion_decision %}
+          <dt>Promotion:</dt>
+          <dd>{{ card.promotion_decision }}</dd>
+        {% endif %}
+      </dl>
+
+      <p class="signatures">
+        Class Teacher&rsquo;s Signature: __________________
+        &nbsp;&nbsp; Head Teacher&rsquo;s Signature: __________________
+      </p>
+      <p class="signatures">
+        Parent&rsquo;s Name: __________________
+        &nbsp;&nbsp; Signature: __________________
+      </p>
+      <p class="return">
+        (Please return this card to the School on
+        {{ card.return_date | date }} when next term begins)
+      </p>
+    </section>
+  </body>
+</html>

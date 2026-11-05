@@ -8699,6 +8699,69 @@
         ]
       }
     },
+    "/api/v1/my/children/{pupil_id}/reports/{term_id}/pdf": {
+      "get": {
+        "description": "A parent's own child's card, as a five-minute link.\n\n`scoped_term_reports` filters a parent to published rows, so a withheld\ncard is simply not found \u2014 R12 again: invisible, not forbidden.",
+        "operationId": "my_childs_card_api_v1_my_children__pupil_id__reports__term_id__pdf_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which half term's sheet.",
+            "in": "query",
+            "name": "half",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TermHalf",
+              "default": "second_half",
+              "description": "Which half term's sheet."
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "My Childs Card",
+        "tags": [
+          "report card"
+        ]
+      }
+    },
     "/api/v1/narrative-sections": {
       "get": {
         "description": "The sixteen sections of \u00a71.4, in card order.\n\nSeven curriculum areas under \"Area of Curriculum\", then B through J.",
@@ -9026,6 +9089,71 @@
         "summary": "Add a pupil",
         "tags": [
           "admin: people"
+        ]
+      }
+    },
+    "/api/v1/pupils/{pupil_id}/card": {
+      "get": {
+        "description": "The same card, for the school's own printing.\n\n\u00a79 says the school will compare this output to the paper line by line,\nand \u00a77 gives no staff route to a PDF \u2014 the admin would otherwise have to\nsign in as a parent to see what a parent gets (docs/DECISIONS.md D83).\n\nUnlike the parent's route this does **not** require publication: the\npoint of checking a card is to check it before it goes out.",
+        "operationId": "pupils_card_api_v1_pupils__pupil_id__card_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which half term's sheet.",
+            "in": "query",
+            "name": "half",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TermHalf",
+              "default": "second_half",
+              "description": "Which half term's sheet."
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pupils Card",
+        "tags": [
+          "report card"
         ]
       }
     },
@@ -10308,6 +10436,42 @@
         "summary": "Readiness probe",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/reports/download/{token}": {
+      "get": {
+        "description": "The file a signed link points at. No session; the token is the authority.\n\nA forged, tampered or expired token gets the same 404 as a key that was\nnever issued \u2014 telling them apart would tell whoever is trying which half\nto work on.",
+        "operationId": "download_reports_download__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download",
+        "tags": [
+          "report card"
         ]
       }
     }

@@ -287,6 +287,8 @@ function ReportRow({
           <Button variant="secondary" disabled={busy} onClick={() => setCorrecting(!correcting)}>
             {correcting ? "Close" : "Correct a score"}
           </Button>
+
+          <CardLink api={api} pupilId={report.pupil_id} termId={termId} />
         </div>
       </div>
 
@@ -481,5 +483,57 @@ function CorrectionForm({
         {busy ? "Saving…" : "Correct it"}
       </Button>
     </div>
+  );
+}
+
+
+/**
+ * Opens the printable card (§9).
+ *
+ * The PDF arrives as a blob rather than through a link, because the
+ * endpoint needs an Authorization header and a browser following an anchor
+ * sends none. §9 says the school will compare this output to the paper line
+ * by line, so it is one click from the publish screen.
+ */
+function CardLink({
+  api,
+  pupilId,
+  termId,
+}: {
+  api: AdminApi;
+  pupilId: string;
+  termId: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  async function open(half: "first_half" | "second_half") {
+    setBusy(true);
+    setFailure(null);
+    let objectUrl: string | null = null;
+    try {
+      objectUrl = await api.cardBlobUrl(pupilId, termId, half);
+      window.open(objectUrl, "_blank", "noopener");
+    } catch (caught) {
+      setFailure(caught instanceof ApiError ? caught.message : "Could not open the card.");
+    } finally {
+      setBusy(false);
+      // Released later, not immediately: revoking at once can beat the new
+      // tab to the data.
+      const toRelease = objectUrl;
+      if (toRelease) window.setTimeout(() => URL.revokeObjectURL(toRelease), 60_000);
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      <Button variant="secondary" disabled={busy} onClick={() => void open("first_half")}>
+        Card: 1st half
+      </Button>
+      <Button variant="secondary" disabled={busy} onClick={() => void open("second_half")}>
+        2nd half
+      </Button>
+      {failure ? <span className="text-xs text-[var(--danger)]">{failure}</span> : null}
+    </span>
   );
 }

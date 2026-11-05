@@ -32,6 +32,8 @@ PUBLICATION_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("POST", f"/reports/{ANY_ID}/withhold", {"reason": "Fees outstanding."}),
     ("PATCH", f"/entries/{ANY_ID}", {"reason": "Transposed digits.", "ca_test_1": "7"}),
     ("GET", f"/pupils/{ANY_ID}/entries?term_id={ANY_ID}", None),
+    # §9's card, for the school's own printing (docs/DECISIONS.md D83).
+    ("GET", f"/pupils/{ANY_ID}/card?term_id={ANY_ID}&half=first_half", None),
 ]
 
 AUDIT_ENDPOINTS: list[tuple[str, str, dict | None]] = [
@@ -43,6 +45,7 @@ PARENT_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("GET", "/my/children", None),
     ("GET", f"/my/children/{ANY_ID}/reports", None),
     ("GET", f"/my/children/{ANY_ID}/reports/{ANY_ID}", None),
+    ("GET", f"/my/children/{ANY_ID}/reports/{ANY_ID}/pdf?half=first_half", None),
 ]
 
 ROLES_WITHOUT_PUBLICATION = [UserRole.HEAD_TEACHER, UserRole.TEACHER, UserRole.PARENT]

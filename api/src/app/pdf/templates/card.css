@@ -1,0 +1,271 @@
+/*
+  The report card's stylesheet (ARCHITECTURE.md §9).
+
+  A4 portrait, and built to match the photographs in docs/report-card/ rather
+  than to look modern. The paper card is dense ruled boxes; so is this.
+
+  Only DejaVu families are named. §9 requires deterministic output, and a PDF's
+  text layout depends on the exact fonts available to the renderer — naming a
+  family the image does not ship would silently fall back to something else
+  and change every measurement on the page (docs/DECISIONS.md D80).
+*/
+
+@page {
+  size: A4 portrait;
+  margin: 12mm 10mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 7.5pt;
+  line-height: 1.25;
+  color: #000;
+  margin: 0;
+}
+
+/* --- Masthead ---------------------------------------------------------- */
+
+.masthead {
+  text-align: center;
+  margin-bottom: 4mm;
+}
+
+.masthead h1 {
+  font-family: "DejaVu Serif", serif;
+  font-size: 12pt;
+  margin: 0 0 1mm;
+  letter-spacing: 0.02em;
+}
+
+.masthead h2 {
+  font-family: "DejaVu Serif", serif;
+  font-size: 11pt;
+  font-weight: bold;
+  margin: 0;
+}
+
+.masthead h3 {
+  font-family: "DejaVu Serif", serif;
+  font-size: 9.5pt;
+  font-weight: bold;
+  margin: 0.5mm 0 0;
+}
+
+/* --- Identity block ---------------------------------------------------- */
+
+.identity {
+  display: flex;
+  gap: 8mm;
+  margin-bottom: 3mm;
+}
+
+.identity .column {
+  flex: 1;
+}
+
+.identity p {
+  margin: 0 0 1.6mm;
+  /* The paper has a ruled line after each label; the value sits on it. */
+  border-bottom: 0.4pt solid #000;
+  padding-bottom: 0.4mm;
+}
+
+.identity .label {
+  font-weight: bold;
+}
+
+.identity .value {
+  padding-left: 1mm;
+}
+
+/* --- Boxed tables ------------------------------------------------------ */
+
+.side-by-side {
+  display: flex;
+  gap: 6mm;
+  align-items: flex-start;
+  margin-bottom: 3mm;
+}
+
+table.boxed {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table.boxed caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: bold;
+  padding-bottom: 1mm;
+}
+
+table.boxed th,
+table.boxed td {
+  border: 0.4pt solid #000;
+  padding: 0.8mm 1.2mm;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.attendance {
+  width: 62mm;
+}
+
+.attendance th[scope="row"] {
+  text-align: left;
+  font-weight: normal;
+}
+
+.growth th {
+  font-weight: normal;
+  font-size: 6.5pt;
+}
+
+/* --- The score table --------------------------------------------------- */
+
+.cognitive h4,
+.key h4,
+.assessment h4 {
+  font-weight: bold;
+  margin: 0 0 1mm;
+  font-size: 8pt;
+}
+
+table.scores {
+  font-size: 6.3pt;
+  table-layout: fixed;
+}
+
+table.scores th,
+table.scores td {
+  padding: 0.7mm 0.4mm;
+  word-wrap: break-word;
+}
+
+table.scores thead th {
+  font-weight: bold;
+  /* The column headings are tall and narrow on the paper; keeping them short
+     here means the table still fits eight to thirteen columns across A4. */
+  font-size: 5.8pt;
+  line-height: 1.1;
+}
+
+table.scores .subject {
+  text-align: left;
+  width: 30mm;
+  font-weight: normal;
+}
+
+table.scores thead .subject {
+  font-weight: bold;
+}
+
+/* The rail carrying the spanning heading's stacked letters. */
+table.scores .group-rail {
+  width: 4mm;
+  font-weight: bold;
+  font-size: 6pt;
+  line-height: 1.05;
+  vertical-align: top;
+  padding-top: 1mm;
+}
+
+table.scores .maxima th[scope="row"],
+table.scores .grand-total th[scope="row"] {
+  font-weight: bold;
+}
+
+table.scores .grade {
+  font-weight: bold;
+}
+
+/* --- The key ----------------------------------------------------------- */
+
+.key {
+  margin: 3mm 0;
+  text-align: center;
+}
+
+.key ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1mm 6mm;
+}
+
+.key .letter {
+  font-weight: bold;
+  display: inline-block;
+  min-width: 5mm;
+}
+
+/* --- The assessment pages ---------------------------------------------- */
+
+.assessment {
+  /* §9 puts the narrative on its own pages, after the score sheet. */
+  break-before: page;
+}
+
+.assessment .group {
+  font-weight: bold;
+  margin: 2mm 0 1mm;
+}
+
+.assessment dl {
+  margin: 0 0 2mm;
+}
+
+.assessment dl.indented {
+  margin-left: 5mm;
+}
+
+.assessment dt {
+  font-weight: bold;
+  margin-top: 1.5mm;
+}
+
+.assessment dd {
+  margin: 0.4mm 0 0;
+  padding-bottom: 0.6mm;
+  /* A written passage sits on a ruled line, as it does on the paper; an
+     empty one still shows the line, so a blank section is visible rather
+     than invisible. */
+  border-bottom: 0.4pt solid #000;
+  min-height: 4mm;
+}
+
+/* --- The footer -------------------------------------------------------- */
+
+.footer {
+  margin-top: 4mm;
+  /* Never split the comments and signatures across a page break: a signature
+     line on its own page is the kind of thing a school notices. */
+  break-inside: avoid;
+}
+
+.footer dt {
+  font-weight: bold;
+  margin-top: 2mm;
+}
+
+.footer dd {
+  margin: 0.4mm 0 0;
+  border-bottom: 0.4pt solid #000;
+  min-height: 4mm;
+}
+
+.footer .signatures {
+  margin: 3mm 0 0;
+}
+
+.footer .return {
+  margin-top: 3mm;
+  font-style: italic;
+}

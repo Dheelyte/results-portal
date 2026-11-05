@@ -61,3 +61,19 @@ def password_hash() -> str:
     to the suite for no coverage.
     """
     return hash_password(TEST_PASSWORD)
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """`--golden-update` rewrites the committed card text (§9).
+
+    Deliberately a flag rather than an environment variable or an automatic
+    rewrite-on-mismatch: a golden file that updates itself asserts nothing,
+    and the point of committing the card's text is that a change to it shows
+    up in a diff somebody reads.
+    """
+    parser.addoption(
+        "--golden-update",
+        action="store_true",
+        default=False,
+        help="Rewrite the golden report-card text files instead of comparing.",
+    )

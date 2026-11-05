@@ -10,6 +10,7 @@ login must persist its attempt counter even though the request fails — and a
 harness that swallowed commits would hide exactly that.
 """
 
+import pathlib
 import uuid
 from collections.abc import AsyncIterator
 
@@ -19,6 +20,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import make_url, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
+from app import config
 from app.config import settings
 from app.db import SessionLocal, engine
 from app.main import app
@@ -56,6 +58,26 @@ async def migrated_database() -> None:
         await admin.dispose()
 
     await run_alembic(alembic_config(settings.dsn), command.upgrade, "head")
+
+
+@pytest.fixture(autouse=True)
+def clean_report_store(tmp_path, monkeypatch) -> pathlib.Path:
+    """A fresh report-card store per test (ARCHITECTURE.md §9).
+
+    The same reason the suite has its own database (D46), and the same shape.
+    §9's object key is deliberately stable —
+    `reports/{session}/{term}/{admission}-{version}.pdf` — so two tests using
+    the same fixture names produce the same key, and the second one reads the
+    first one's PDF out of the cache. That is correct in production and
+    useless in a test: "was this generated or served" stops being answerable.
+
+    `monkeypatch` restores the setting afterwards, so a test that renders a
+    card cannot leave one behind in the development volume either.
+    """
+    store = tmp_path / "reports"
+    store.mkdir()
+    monkeypatch.setattr(config.settings, "report_store", str(store))
+    return store
 
 
 @pytest.fixture(autouse=True)

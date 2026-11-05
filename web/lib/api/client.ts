@@ -158,6 +158,34 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return (await response.json()) as T;
 }
 
+/**
+ * A binary response as an object URL — the report card PDF (§9).
+ *
+ * The card's endpoint answers with a 302 to a short-lived signed URL, and
+ * `fetch` follows it: the first hop needs the Authorization header this adds,
+ * the second needs only the token in the path. The result is a blob the
+ * browser can open, print or save.
+ *
+ * The caller must `URL.revokeObjectURL` when done, or the page holds the
+ * whole PDF in memory until it is unloaded.
+ */
+export async function requestBlob(path: string, options: RequestOptions = {}): Promise<string> {
+  const { query, token, signal } = options;
+
+  const response = await fetch(url(path, query), {
+    signal,
+    credentials: "include",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const failure = await failureFrom(response);
+    throw new ApiError(response.status, failure.message, failure.rows, failure.outstanding);
+  }
+
+  return URL.createObjectURL(await response.blob());
+}
+
 /* -------------------------------------------------------------------------
  * Authentication (§5.1)
  * ---------------------------------------------------------------------- */

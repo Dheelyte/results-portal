@@ -1677,3 +1677,135 @@ assert that, and this is the one place they do not.
 §5.2 marks the head teacher's access "read-only". In a GET-only resource that
 is the same rows; what makes it read-only is that no endpoint writes or
 deletes one, and `services/audit.py` is the only writer in the codebase.
+
+---
+
+## Milestone 11 — the report card PDF
+
+### D79 — Two approved dependencies, and one test-only one
+
+WeasyPrint and Jinja2 are named in §2's stack table and in CLAUDE.md, so they
+are the approved choice rather than an addition; the Dockerfile has carried a
+comment since milestone 1 saying their native libraries would arrive here.
+
+`pypdf` is new and is **dev-only**. §9's own criterion is a golden-file test
+comparing the PDF's *extracted text*, and WeasyPrint writes PDFs without
+being able to read one back. Nothing the application ships imports it.
+
+### D80 — The fonts are pinned in the image
+
+`fonts-dejavu-core`, and the stylesheet names only DejaVu families.
+
+§9 requires byte-identical output from identical data, and a PDF's text
+layout is a function of the exact font metrics the renderer finds. A machine
+with a different font set renders a different file from the same data, and
+the golden file then fails for a reason nobody can see in the diff.
+
+### D81 — The signed download sits outside `/api/v1`
+
+`GET /reports/download/{token}` carries no session and declares no
+capability, because the token **is** the authority. That is what makes the
+link usable by a browser's download manager, a print dialog and a PDF viewer,
+none of which send an Authorization header.
+
+Mounting it outside the versioned prefix keeps it out of
+`test_route_coverage.py`'s capability scan **by construction** rather than by
+an exemption somebody could widen. Everything inside `/api/v1` still needs a
+gate, and the scan still says so.
+
+### D82 — Cards are cached on the host, not in a bucket
+
+§9 fixes the object key and §11's diagram puts it in R2.
+`app/pdf/storage.py` writes to a directory instead, and is the whole seam an
+R2 implementation would have to satisfy: `put`, `get`, `exists`.
+
+§0 is a single host; §2.1 says to generate on demand and cache the artifact.
+A bucket adds an account, a credential and a network dependency on the
+results-night path, and in development a MinIO container nobody asked for
+(rule 8). The key is still versioned, because R13 requires it: a correction
+writes `-2.pdf` beside `-1.pdf` and the card the parent already has is
+retained.
+
+**Cost to move:** one class and one setting (§14 A31). The backup story
+changes with it — §11 already sends nightly dumps to R2, and a host directory
+needs to be in that.
+
+### D83 — The school needs its own copy, so there is a staff route
+
+§7 gives the PDF only to a parent. §9 says the school "will compare your
+output to the paper line by line", and publication is the admin's — so
+without `GET /pupils/{id}/card` an administrator would have to sign in as a
+parent to see what a parent gets.
+
+It does **not** require publication, deliberately: the point of checking a
+card is to check it before it goes out.
+
+The same missing half as D37, D51, D57 and D75, and the fifth time it has
+been the admin-versus-parent-or-teacher boundary that hid it.
+
+### D84 — The stylesheet was being HTML-escaped, and the card rendered unstyled
+
+Found by a CSS parse warning, not by a failing test. The template inlines the
+stylesheet, Jinja2's autoescaping is on — correctly, because a narrative
+passage is free text a teacher typed — and `font-family: "DejaVu Sans"`
+arrived as `font-family: &#34;DejaVu Sans&#34;`.
+
+WeasyPrint reported it, dropped the rule and carried on. The card still
+rendered: right content, default font, default sizes, no table borders. It
+would have passed every test that checked *what* the card said, and the
+school would have found it.
+
+Fixed by wrapping the stylesheet in `markupsafe.Markup` — it is a file in
+this repository, not user input — and the golden files were regenerated
+afterwards. Worth remembering as a shape: autoescaping protects the data and
+silently breaks anything that is deliberately markup.
+
+### D85 — `SOURCE_DATE_EPOCH`, because fonts carry a clock
+
+§9: "same data renders byte-identically, so regeneration is verifiable". It
+did not, and finding out why took three wrong guesses:
+
+- the difference sat inside a **compressed stream**, which looked like a
+  compression artefact — `uncompressed_pdf=True` made no difference;
+- `PYTHONHASHSEED=0` made no difference, so it was not set-iteration order;
+- `full_fonts=True` **did** fix it, by embedding whole faces — and took a
+  20 KB card to 420 KB, past §9's own 300 KB budget.
+
+The cause is the embedded font **subset**: fontTools writes its
+`head.modified` timestamp from the clock, so two renders a second apart
+differ. fontTools honours `SOURCE_DATE_EPOCH`, the reproducible-builds
+convention, and with it set the same card renders to the same bytes across
+processes.
+
+Set in `app/pdf/render.py` rather than the Dockerfile, so it holds wherever
+the code runs, and with `setdefault`, so an operator who has set their own
+value keeps it. `test_the_card_is_deterministic` is what would notice if a
+future WeasyPrint reintroduced a clock.
+
+### D86 — The golden file is extracted text, and never updates itself
+
+`--golden-update` is a flag somebody types. A golden file that rewrote itself
+on mismatch would assert nothing, and the reason to commit the card's text is
+that a change to it appears in a diff a person reads.
+
+Text rather than bytes for the same reason: a reviewer can see that the
+Marks Obtainable row moved or a column vanished. The byte-level guarantee is
+a separate test.
+
+Two artefacts of PDF text extraction survive into the committed files, and
+are left there: `Beginning of T erm` (kerning between T and e) and
+`CA TESTTOTAL` (a heading wrapped across two lines in a narrow cell). Both
+are stable, both are what the PDF actually contains, and "tidying" them would
+mean the golden file no longer matched the document.
+
+### D87 — The suite gets its own report store
+
+The same shape as D46's database, and for a sharper reason. §9's object key
+is deliberately stable — `reports/{session}/{term}/{admission}-{version}.pdf`
+— so two tests using the same fixture names produce the same key, and the
+second reads the first's PDF out of the cache. "Was this generated or
+served" then stops being answerable, which is exactly what the caching test
+asks.
+
+An autouse fixture points `report_store` at a `tmp_path` per test, which also
+means a test run cannot leave cards behind in the development volume.
