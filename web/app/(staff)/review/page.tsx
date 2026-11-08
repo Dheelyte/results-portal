@@ -8,9 +8,17 @@
  * longest is the one holding up the release.
  */
 
-import Link from "next/link";
+import { ClipboardCheck, Inbox } from "lucide-react";
 
-import { Badge, Notice, Panel, Spinner } from "@/components/ui";
+import {
+  Badge,
+  ButtonLink,
+  EmptyState,
+  Notice,
+  PageHeader,
+  Panel,
+  SkeletonPanel,
+} from "@/components/ui";
 import { useHeadApi } from "@/lib/api/use-head";
 import { formatDateTime } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
@@ -36,7 +44,15 @@ export default function ReviewQueuePage() {
     enabled: Boolean(api),
   });
 
-  if (queue.loading) return <Spinner label="Loading the queue…" />;
+  if (!api || queue.loading) {
+    return (
+      <>
+        <PageHeader title="Classes for review" />
+        <SkeletonPanel rows={3} label="Loading the queue…" />
+        <SkeletonPanel rows={3} />
+      </>
+    );
+  }
   if (queue.error) return <Notice>{queue.error}</Notice>;
   if (!queue.data) return null;
 
@@ -44,44 +60,47 @@ export default function ReviewQueuePage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-lg font-semibold">Classes for review</h1>
-        <p className="text-sm text-[var(--muted)]">
-          {queue.data[0]?.term_label ?? "This term"} ·{" "}
-          {waiting.length === 0
+      <PageHeader
+        title="Classes for review"
+        description={`${queue.data[0]?.term_label ?? "This term"} · ${
+          waiting.length === 0
             ? "nothing is waiting for you"
-            : `${waiting.length} waiting for you`}
-        </p>
-      </div>
+            : `${waiting.length} waiting for you`
+        }`}
+      />
 
       {queue.data.length === 0 ? (
-        <Notice tone="info">
-          No class has been submitted for review yet. A class teacher sends one when
-          everything on it is complete.
-        </Notice>
+        <EmptyState
+          icon={Inbox}
+          title="No class has been submitted for review yet"
+          description="A class teacher sends one when everything on it is complete — every score, every narrative section, attendance, height and weight, and their own comment."
+        />
       ) : null}
 
       {queue.data.map((entry) => (
         <Panel
           key={entry.class_id}
           title={entry.class_name}
+          icon={ClipboardCheck}
           description={`${entry.roll} pupil${entry.roll === 1 ? "" : "s"}${
             entry.submitted_by ? ` · submitted by ${entry.submitted_by}` : ""
           }${entry.submitted_at ? ` · ${formatDateTime(entry.submitted_at)}` : ""}`}
+          actions={
+            <ButtonLink
+              href={`/review/${entry.class_id}?term=${entry.term_id}`}
+              variant={entry.state === "submitted" ? "primary" : "secondary"}
+            >
+              {entry.state === "submitted" ? "Review" : "Open"}
+            </ButtonLink>
+          }
         >
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge tone={STATE_TONES[entry.state] ?? "neutral"}>
               {STATE_LABELS[entry.state] ?? entry.state}
             </Badge>
             <Badge tone={entry.remarks_written >= entry.roll ? "good" : "neutral"}>
               {entry.remarks_written} of {entry.roll} remarks written
             </Badge>
-            <Link
-              href={`/review/${entry.class_id}?term=${entry.term_id}`}
-              className="rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-raised)]"
-            >
-              {entry.state === "submitted" ? "Review" : "Open"}
-            </Link>
           </div>
         </Panel>
       ))}

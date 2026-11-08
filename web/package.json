@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev --hostname 0.0.0.0",
+    "dev": "next dev --turbopack --hostname 0.0.0.0",
+    "dev:webpack": "next dev --hostname 0.0.0.0",
     "generate:api": "openapi-typescript openapi.json -o lib/api/schema.d.ts",
     "lint": "eslint .",
     "start": "next start --hostname 0.0.0.0",
@@ -14,6 +15,7 @@
     "e2e:ui": "playwright test --ui"
   },
   "dependencies": {
+    "lucide-react": "0.544.0",
     "next": "15.1.6",
     "react": "19.0.0",
     "react-dom": "19.0.0"

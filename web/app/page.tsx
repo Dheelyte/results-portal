@@ -1,6 +1,9 @@
+import { LogIn } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SubmitButton } from "@/components/submit-button";
+import { Card, Crest, Field, Input, Notice } from "@/components/ui";
 import { signInMessage } from "@/lib/sign-in-message";
 import { currentSession, signIn, signOut } from "@/lib/server/session";
 
@@ -12,9 +15,9 @@ import { currentSession, signIn, signOut } from "@/lib/server/session";
  * Android device."
  *
  * So this is a server component with a form that posts to a server action.
- * It works with JavaScript switched off, and it contributes nothing to the
- * client bundle. A parent already signed in is sent straight to their
- * children.
+ * It works with JavaScript switched off, and the only client code on it is
+ * the submit button's pending state. A parent already signed in is sent
+ * straight to their children.
  *
  * Staff sign in at `/login`, which is a client component for the reason D41
  * records: those screens are interactive and their session lives in memory.
@@ -51,59 +54,59 @@ export default async function Home({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-6 py-16">
-      <header className="flex flex-col gap-2">
-        <p className="text-sm uppercase tracking-widest text-[var(--muted)]">
-          Self-Starters House Montessori School
-        </p>
-        <h1 className="text-2xl font-semibold tracking-tight">Results Portal</h1>
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center gap-5 px-5 py-12">
+      <header className="flex flex-col items-center gap-3 text-center">
+        <Crest size="lg" />
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Results Portal</h1>
+          <p className="text-sm text-[var(--muted)]">
+            Self-Starters House Montessori School
+          </p>
+        </div>
+      </header>
+
+      <Card className="flex flex-col gap-4 px-5 py-6">
         <p className="text-sm text-[var(--muted)]">
           Sign in to see your child&rsquo;s result.
         </p>
-      </header>
 
-      {error ? (
-        <p role="alert" className="rounded-md border border-[var(--danger)] px-3 py-2 text-sm text-[var(--danger)]">
-          {error}
-        </p>
-      ) : null}
+        {error ? <Notice tone="error">{error}</Notice> : null}
 
-      <form action={submit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Email address or phone number</span>
-          <input
-            name="identifier"
-            required
-            autoComplete="username"
-            autoCapitalize="none"
-            className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-base"
-          />
-        </label>
+        <form action={submit} className="flex flex-col gap-4">
+          <Field label="Email address or phone number" required>
+            <Input
+              name="identifier"
+              required
+              autoComplete="username"
+              autoCapitalize="none"
+              className="py-2.5 text-base"
+            />
+          </Field>
 
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Password</span>
-          <input
-            name="password"
-            type="password"
-            required
-            autoComplete="current-password"
-            className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-2 text-base"
-          />
-        </label>
+          <Field label="Password" required>
+            <Input
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              className="py-2.5 text-base"
+            />
+          </Field>
 
-        <button
-          type="submit"
-          className="rounded-md bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white"
-        >
-          Sign in
-        </button>
-      </form>
+          <SubmitButton
+            icon={<LogIn aria-hidden className="size-4 shrink-0" />}
+            className="justify-center py-2.5"
+          >
+            Sign in
+          </SubmitButton>
+        </form>
+      </Card>
 
-      <footer className="flex flex-col gap-1 text-sm text-[var(--muted)]">
-        <Link href="/login" className="hover:underline">
+      <footer className="flex flex-col items-center gap-1 text-sm text-[var(--muted)]">
+        <Link href="/login" className="text-[var(--brand)] hover:underline">
           Staff sign in
         </Link>
-        <span>Built by HSD Technologies.</span>
+        <span className="text-xs">Built by HSD Technologies.</span>
       </footer>
     </main>
   );

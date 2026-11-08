@@ -8,29 +8,35 @@
  * logged and not audited — so this screen is deliberate about making the
  * admin acknowledge it before it disappears.
  *
- * Attaching children to a parent is the record §5.2's most important filter
- * rests on: a parent sees exactly the pupils named there and no others.
+ * Attaching children to a parent is `/admin/accounts/[userId]` (D104). It is
+ * the record §5.2's most important filter rests on — a parent sees exactly
+ * the pupils named there and no others — and it belongs on a page of its own
+ * rather than unfolding under a table of forty accounts.
  */
 
+import { KeyRound, Plus, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 
 import {
+  Avatar,
   Badge,
   Button,
+  ButtonLink,
   Cell,
   Field,
   Input,
   Notice,
   OneTimeSecret,
+  PageHeader,
   Panel,
   Row,
   Select,
-  Spinner,
+  SkeletonTable,
   Table,
 } from "@/components/ui";
-import type { Account, CreatedAccount, Role } from "@/lib/api/admin";
+import type { CreatedAccount, Role } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
-import { formatDateTime, pupilName, ROLE_LABELS } from "@/lib/format";
+import { formatDateTime, ROLE_LABELS } from "@/lib/format";
 import { useAction, useResource } from "@/lib/use-async";
 
 const ROLES: Role[] = ["admin", "head_teacher", "teacher", "parent"];
@@ -45,7 +51,8 @@ export default function AccountsPage() {
   );
 
   const [secret, setSecret] = useState<CreatedAccount | null>(null);
-  const [openParentId, setOpenParentId] = useState<string | null>(null);
+  // Which row's reset is running, so only that button spins.
+  const [resetting, setResetting] = useState<string | null>(null);
 
   const action = useAction(accounts.reload);
   const [form, setForm] = useState({
@@ -55,10 +62,13 @@ export default function AccountsPage() {
     phone: "",
   });
 
-  if (!api) return <Spinner />;
-
   return (
     <>
+      <PageHeader
+        title="Accounts"
+        description="Nobody can register themselves. Every account starts here."
+      />
+
       {secret ? (
         <OneTimeSecret value={secret.temporary_password} onDismiss={() => setSecret(null)}>
           Temporary password for {secret.user.full_name}
@@ -66,77 +76,98 @@ export default function AccountsPage() {
       ) : null}
 
       <Panel
-        title="Accounts"
-        description="Nobody can register themselves. Every account starts here."
+        title="Everyone with an account"
+        icon={Users}
         actions={
-          <Field label="Role">
-            <Select
-              value={filterRole}
-              onChange={(event) => setFilterRole(event.target.value as "" | Role)}
-            >
-              <option value="">Everyone</option>
-              {ROLES.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
-                </option>
-              ))}
-            </Select>
-          </Field>
+          <div className="w-44">
+            <Field label="Role">
+              <Select
+                value={filterRole}
+                onChange={(event) => setFilterRole(event.target.value as "" | Role)}
+              >
+                <option value="">Everyone</option>
+                {ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {ROLE_LABELS[role]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
         }
       >
-        {accounts.loading ? <Spinner /> : null}
-        {accounts.error ? <Notice>{accounts.error}</Notice> : null}
+        {!api || accounts.loading ? (
+          <SkeletonTable rows={8} columns={5} label="Loading the accounts…" />
+        ) : (
+          <>
+            {accounts.error ? <Notice>{accounts.error}</Notice> : null}
 
-        <Table head={["Name", "Role", "Signs in with", "Last signed in", ""]} empty="No accounts.">
-          {(accounts.data ?? []).map((account) => (
-            <Row key={account.id}>
-              <Cell>
-                {account.full_name}
-                {account.must_change_password ? (
-                  <Badge tone="warn">Password not changed</Badge>
-                ) : null}
-                {account.is_active ? null : <Badge tone="bad">Deactivated</Badge>}
-              </Cell>
-              <Cell>{ROLE_LABELS[account.role] ?? account.role}</Cell>
-              <Cell>{account.email ?? account.phone ?? "—"}</Cell>
-              <Cell>{formatDateTime(account.last_login_at)}</Cell>
-              <Cell className="whitespace-nowrap">
-                <Button
-                  variant="ghost"
-                  disabled={action.busy}
-                  onClick={async () => {
-                    await action.run(async () => {
-                      setSecret(await api.resetPassword(account.id));
-                    });
-                  }}
-                >
-                  Reset password
-                </Button>
-                {account.role === "parent" ? (
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      setOpenParentId(openParentId === account.id ? null : account.id)
-                    }
-                  >
-                    Children
-                  </Button>
-                ) : null}
-              </Cell>
-            </Row>
-          ))}
-        </Table>
+            <Table
+              head={["Name", "Role", "Signs in with", "Last signed in", ""]}
+              empty="No accounts."
+            >
+              {(accounts.data ?? []).map((account) => (
+                <Row key={account.id}>
+                  <Cell>
+                    <span className="flex items-center gap-2.5">
+                      <Avatar name={account.full_name} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block font-medium">{account.full_name}</span>
+                        <span className="flex flex-wrap gap-1">
+                          {account.must_change_password ? (
+                            <Badge tone="warn">Password not changed</Badge>
+                          ) : null}
+                          {account.is_active ? null : <Badge tone="bad">Deactivated</Badge>}
+                        </span>
+                      </span>
+                    </span>
+                  </Cell>
+                  <Cell className="text-[var(--muted)]">
+                    {ROLE_LABELS[account.role] ?? account.role}
+                  </Cell>
+                  <Cell className="text-[var(--muted)]">
+                    {account.email ?? account.phone ?? "—"}
+                  </Cell>
+                  <Cell className="text-[var(--muted)]">
+                    {formatDateTime(account.last_login_at)}
+                  </Cell>
+                  <Cell className="whitespace-nowrap text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      icon={KeyRound}
+                      loading={resetting === account.id}
+                      disabled={action.busy}
+                      onClick={async () => {
+                        setResetting(account.id);
+                        await action.run(async () => {
+                          setSecret(await api!.resetPassword(account.id));
+                        });
+                        setResetting(null);
+                      }}
+                    >
+                      Reset password
+                    </Button>
+                    {account.role === "parent" ? (
+                      <ButtonLink
+                        href={`/admin/accounts/${account.id}`}
+                        size="sm"
+                        className="ml-1.5"
+                      >
+                        Children
+                      </ButtonLink>
+                    ) : null}
+                  </Cell>
+                </Row>
+              ))}
+            </Table>
+          </>
+        )}
       </Panel>
-
-      {openParentId ? (
-        <ChildrenPanel
-          key={openParentId}
-          parent={(accounts.data ?? []).find((item) => item.id === openParentId)!}
-        />
-      ) : null}
 
       <Panel
         title="Create an account"
+        icon={UserPlus}
         description="An email address or a phone number — either one signs in, against the same password."
       >
         <form
@@ -145,7 +176,7 @@ export default function AccountsPage() {
             event.preventDefault();
             const created = await action.run(async () => {
               setSecret(
-                await api.createUser({
+                await api!.createUser({
                   role: form.role,
                   full_name: form.full_name,
                   email: form.email || null,
@@ -194,7 +225,12 @@ export default function AccountsPage() {
             />
           </Field>
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={action.busy}>
+            <Button
+              type="submit"
+              icon={Plus}
+              loading={action.busy && resetting === null}
+              disabled={!api}
+            >
               Create account
             </Button>
           </div>
@@ -205,76 +241,5 @@ export default function AccountsPage() {
         </div>
       </Panel>
     </>
-  );
-}
-
-function ChildrenPanel({ parent }: { parent: Account }) {
-  const api = useAdminApi()!;
-  const children = useResource(() => api.children(parent.id), [api, parent.id]);
-  const [search, setSearch] = useState("");
-  const candidates = useResource(
-    () => api.pupils({ search: search || undefined, limit: 10 }),
-    [api, search],
-  );
-  const action = useAction(children.reload);
-
-  return (
-    <Panel
-      title={`${parent.full_name}'s children`}
-      description="This is exactly what they will see when they sign in — nothing else."
-    >
-      {children.loading ? <Spinner /> : null}
-      {children.error ? <Notice>{children.error}</Notice> : null}
-
-      <ul className="flex flex-wrap gap-2">
-        {(children.data ?? []).map((child) => (
-          <li key={child.id}>
-            <Badge tone="good">
-              {pupilName(child)} ({child.admission_number})
-            </Badge>
-          </li>
-        ))}
-        {children.data?.length ? null : (
-          <p className="text-sm text-[var(--muted)]">
-            Nothing attached yet — this account would sign in and see an empty page.
-          </p>
-        )}
-      </ul>
-
-      <div className="mt-4 flex flex-col gap-3">
-        <Field label="Find a pupil" hint="Search by name or admission number.">
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} />
-        </Field>
-
-        <Table head={["Pupil", "Admission no.", ""]} empty="Start typing to find a pupil.">
-          {(candidates.data?.items ?? []).map((pupil) => (
-            <Row key={pupil.id}>
-              <Cell>{pupilName(pupil)}</Cell>
-              <Cell>{pupil.admission_number}</Cell>
-              <Cell>
-                <Button
-                  variant="ghost"
-                  disabled={action.busy}
-                  onClick={() =>
-                    void action.run(
-                      () =>
-                        api.linkChildren(parent.id, {
-                          children: [{ pupil_id: pupil.id, is_primary: false }],
-                        }),
-                      `${pupilName(pupil)} attached.`,
-                    )
-                  }
-                >
-                  Attach
-                </Button>
-              </Cell>
-            </Row>
-          ))}
-        </Table>
-
-        <Notice>{action.error}</Notice>
-        <Notice tone="success">{action.success}</Notice>
-      </div>
-    </Panel>
   );
 }

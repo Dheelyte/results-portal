@@ -10,32 +10,70 @@
  * Android phones, where the system theme is whatever they have set, and §8.1
  * assumes a low-end device on patchy data — so the theme follows the device
  * rather than shipping a toggle nobody asked for.
+ *
+ * The scheme is navy and gold: the school's own report card is printed black
+ * on white (`api/src/app/pdf/templates`), so there was no brand palette to
+ * take, and navy/gold is the register a school is already read in. Green is
+ * kept for one job only — something succeeded — so a green badge never has to
+ * be disambiguated from the house colours.
+ *
+ * `--accent` survives as the name of the primary, because every screen built
+ * before this redesign reaches for it. It is now the navy.
  */
 :root {
-  --background: #ffffff;
+  --background: #f5f7fa;
   --surface: #ffffff;
-  --surface-raised: #f4f4f5;
-  --foreground: #18181b;
-  --muted: #71717a;
-  --border: #e4e4e7;
-  --accent: #1d4ed8;
-  --danger: #b91c1c;
-  --success: #15803d;
-  --warning: #b45309;
+  --surface-raised: #eceff4;
+  --foreground: #16202c;
+  --muted: #5c6b7d;
+  --border: #dbe1e9;
+
+  --brand: #16406e;
+  --brand-strong: #0e2d50;
+  --brand-soft: #e7eef7;
+  --brand-contrast: #ffffff;
+  --accent: var(--brand);
+
+  --gold: #a8780c;
+  --gold-soft: #fbf2dc;
+
+  --danger: #b42318;
+  --danger-soft: #fdeceb;
+  --success: #15713f;
+  --success-soft: #e6f4ec;
+  --warning: #9a5b06;
+  --warning-soft: #fdf0dd;
+
+  /* The sweep across a skeleton. */
+  --shimmer: rgb(22 32 44 / 0.07);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --surface: #111113;
-    --surface-raised: #1c1c1f;
-    --foreground: #fafafa;
-    --muted: #a1a1aa;
-    --border: #27272a;
-    --accent: #60a5fa;
-    --danger: #f87171;
-    --success: #4ade80;
-    --warning: #fbbf24;
+    --background: #0b1016;
+    --surface: #121a24;
+    --surface-raised: #1b2634;
+    --foreground: #e7eef6;
+    --muted: #93a4b8;
+    --border: #243242;
+
+    --brand: #7fb0e6;
+    --brand-strong: #a6c9f0;
+    --brand-soft: #16293d;
+    --brand-contrast: #0b1016;
+    --accent: var(--brand);
+
+    --gold: #e3b457;
+    --gold-soft: #2c2415;
+
+    --danger: #f3837a;
+    --danger-soft: #30191a;
+    --success: #5fcb8e;
+    --success-soft: #142a20;
+    --warning: #e8b263;
+    --warning-soft: #2c2113;
+
+    --shimmer: rgb(231 238 246 / 0.08);
   }
 }
 
@@ -48,8 +86,70 @@ body {
 /* Visible focus everywhere: the score grid is driven from the keyboard
    (§8.1), and a focus ring that only some controls have is worse than none. */
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+   Skeletons
+
+   A skeleton rather than a spinner wherever the shape of what is coming is
+   known, which on these screens is nearly everywhere: a table of thirty
+   pupils, a grid of class cards, a card's own header. The shimmer is a
+   background sweep rather than an opacity pulse, because a pulse on a
+   low-end Android repaints the whole block every frame.
+
+   `prefers-reduced-motion` stops the sweep and leaves the blocks, which is
+   still the right placeholder — it is the movement that is optional.
+   --------------------------------------------------------------------------- */
+
+@keyframes portal-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.skeleton {
+  border-radius: 0.375rem;
+  /* The block itself is a plain colour, so a browser that does not know the
+     gradient's colour function still shows a placeholder of the right shape.
+     `rgb(… / …)` rather than `color-mix`, for the §8.5 device. */
+  background-color: var(--surface-raised);
+  background-image: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0) 0%,
+    var(--shimmer) 50%,
+    rgb(255 255 255 / 0) 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: portal-shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* The button spinner and anything else that turns. */
+@keyframes portal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: portal-spin 0.7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 2s;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -88,7 +188,7 @@ body {
 
 .score-grid .computed {
   color: var(--muted);
-  background: var(--surface);
+  background: var(--surface-raised);
 }
 
 .score-grid .score-input {
@@ -129,7 +229,9 @@ body {
   .score-grid thead th,
   .score-grid thead td {
     position: sticky;
-    background: var(--background);
+    /* The surface the panel is drawn on, not the page's: the grid sits
+       inside a card, and the page background is now a tint. */
+    background: var(--surface);
     z-index: 2;
   }
 

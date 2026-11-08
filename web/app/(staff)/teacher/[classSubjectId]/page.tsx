@@ -9,11 +9,10 @@
  * save is one call.
  */
 
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { ScoreGrid } from "@/components/score-grid";
-import { Notice, Spinner } from "@/components/ui";
+import { Notice, PageHeader, Skeleton, SkeletonTable } from "@/components/ui";
 import { useTeacherApi } from "@/lib/api/use-teacher";
 import { HALF_LABELS, TERM_LABELS } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
@@ -44,8 +43,23 @@ export default function SheetPage() {
     { enabled: Boolean(api) && Boolean(periodId) },
   );
 
-  if (workload.loading || (periodId && sheet.loading)) {
-    return <Spinner label="Loading the sheet…" />;
+  const back = { href: "/teacher", label: "My sheets" };
+
+  if (!api || workload.loading || (periodId && sheet.loading)) {
+    return (
+      <>
+        <PageHeader
+          breadcrumbs={[{ label: "My sheets", href: "/teacher" }]}
+          back={back}
+          title="Sheet"
+        />
+        <div className="flex gap-2" aria-hidden>
+          <Skeleton className="h-8 w-32 rounded-lg" />
+          <Skeleton className="h-8 w-32 rounded-lg" />
+        </div>
+        <SkeletonTable rows={10} columns={8} label="Loading the sheet…" />
+      </>
+    );
   }
   if (workload.error) return <Notice>{workload.error}</Notice>;
   if (!periodId) {
@@ -56,49 +70,51 @@ export default function SheetPage() {
     );
   }
   if (sheet.error) return <Notice>{sheet.error}</Notice>;
-  if (!sheet.data || !api) return null;
+  if (!sheet.data) return null;
 
   const term = workload.data?.term;
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link href="/teacher" className="text-sm text-[var(--muted)] hover:underline">
-            ← My classes
-          </Link>
-          <h1 className="text-lg font-semibold">
-            {sheet.data.class_name} — {sheet.data.subject_name}
-          </h1>
-          <p className="text-sm text-[var(--muted)]">
-            {HALF_LABELS[sheet.data.half]}
-            {term ? `, ${TERM_LABELS[term.number] ?? term.number} ${term.academic_session_name}` : ""}
-          </p>
-        </div>
-
-        <nav aria-label="Which half" className="flex gap-1 text-sm">
-          {periods.map((period) => {
-            const active = period.id === periodId;
-            return (
-              <button
-                key={period.id}
-                type="button"
-                aria-current={active ? "page" : undefined}
-                onClick={() =>
-                  router.replace(`/teacher/${classSubjectId}?period=${period.id}`)
-                }
-                className={`rounded-md px-3 py-1.5 ${
-                  active
-                    ? "bg-[var(--surface-raised)] font-medium"
-                    : "text-[var(--muted)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {HALF_LABELS[period.half]}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "My sheets", href: "/teacher" },
+          { label: sheet.data.class_name },
+          { label: sheet.data.subject_name },
+        ]}
+        back={back}
+        title={`${sheet.data.class_name} — ${sheet.data.subject_name}`}
+        description={`${HALF_LABELS[sheet.data.half]}${
+          term ? `, ${TERM_LABELS[term.number] ?? term.number} ${term.academic_session_name}` : ""
+        }`}
+        actions={
+          <nav
+            aria-label="Which half"
+            className="flex overflow-hidden rounded-lg border border-[var(--border)] text-sm"
+          >
+            {periods.map((period) => {
+              const active = period.id === periodId;
+              return (
+                <button
+                  key={period.id}
+                  type="button"
+                  aria-current={active ? "page" : undefined}
+                  onClick={() =>
+                    router.replace(`/teacher/${classSubjectId}?period=${period.id}`)
+                  }
+                  className={`px-3 py-2 transition ${
+                    active
+                      ? "bg-[var(--brand)] font-medium text-[var(--brand-contrast)]"
+                      : "text-[var(--muted)] hover:bg-[var(--surface-raised)]"
+                  }`}
+                >
+                  {HALF_LABELS[period.half]}
+                </button>
+              );
+            })}
+          </nav>
+        }
+      />
 
       {/* Keyed on the sheet, so switching halves rebuilds the grid's state
           rather than carrying one half's dirty cells into the other. */}

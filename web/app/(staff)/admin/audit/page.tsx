@@ -13,9 +13,19 @@
  * teacher, who already see every card.
  */
 
+import { ChevronLeft, ChevronRight, Filter, ScrollText } from "lucide-react";
 import { useState } from "react";
 
-import { Badge, Button, Notice, Panel, Select, Spinner } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Field,
+  Notice,
+  PageHeader,
+  Panel,
+  Select,
+  SkeletonPanel,
+} from "@/components/ui";
 import type { AuditEntry } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { formatDateTime } from "@/lib/format";
@@ -58,38 +68,37 @@ export default function AuditPage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-lg font-semibold">Audit log</h1>
-        <p className="text-sm text-[var(--muted)]">
-          Every publication, every change after approval, every account created and every
-          failed sign-in. Newest first.
-        </p>
-      </div>
+      <PageHeader
+        title="Audit log"
+        description="Every publication, every change after approval, every account created and every failed sign-in. Newest first."
+      />
 
-      <Panel title="Filter">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium">Kind of record</span>
-          <Select
-            value={entityType}
-            onChange={(event) => {
-              setEntityType(event.target.value);
-              setOffset(0);
-            }}
-          >
-            {ENTITY_TYPES.map((kind) => (
-              <option key={kind} value={kind}>
-                {kind === "" ? "Everything" : kind.replace(/_/g, " ")}
-              </option>
-            ))}
-          </Select>
-        </label>
+      <Panel title="Filter" icon={Filter}>
+        <div className="max-w-xs">
+          <Field label="Kind of record">
+            <Select
+              value={entityType}
+              onChange={(event) => {
+                setEntityType(event.target.value);
+                setOffset(0);
+              }}
+            >
+              {ENTITY_TYPES.map((kind) => (
+                <option key={kind} value={kind}>
+                  {kind === "" ? "Everything" : kind.replace(/_/g, " ")}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       </Panel>
 
-      {page.loading ? <Spinner label="Loading the log…" /> : null}
+      {!api || page.loading ? <SkeletonPanel rows={10} label="Loading the log…" /> : null}
       {page.error ? <Notice>{page.error}</Notice> : null}
 
-      {page.data ? (
+      {page.data && !page.loading ? (
         <Panel
+          icon={ScrollText}
           title={`${page.data.total} record${page.data.total === 1 ? "" : "s"}`}
           description={
             page.data.total > PAGE
@@ -107,6 +116,8 @@ export default function AuditPage() {
             <div className="flex gap-2 pt-3">
               <Button
                 variant="secondary"
+                size="sm"
+                icon={ChevronLeft}
                 disabled={offset === 0}
                 onClick={() => setOffset(Math.max(0, offset - PAGE))}
               >
@@ -114,6 +125,8 @@ export default function AuditPage() {
               </Button>
               <Button
                 variant="secondary"
+                size="sm"
+                icon={ChevronRight}
                 disabled={offset + PAGE >= page.data.total}
                 onClick={() => setOffset(offset + PAGE)}
               >
@@ -161,7 +174,7 @@ function Row({ entry }: { entry: AuditEntry }) {
       ) : null}
 
       {open ? (
-        <pre className="overflow-x-auto rounded-md bg-[var(--surface)] p-2 text-xs">
+        <pre className="overflow-x-auto rounded-lg bg-[var(--surface-raised)] p-2 text-xs">
           {JSON.stringify({ before: entry.before, after: entry.after }, null, 2)}
         </pre>
       ) : null}

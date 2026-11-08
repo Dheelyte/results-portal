@@ -9,19 +9,22 @@
  * paged rather than returning the whole roll.
  */
 
+import { ChevronLeft, ChevronRight, GraduationCap, Plus, UserPlus } from "lucide-react";
 import { useState } from "react";
 
 import {
+  Avatar,
   Badge,
   Button,
   Cell,
   Field,
   Input,
   Notice,
+  PageHeader,
   Panel,
   Row,
   Select,
-  Spinner,
+  SkeletonTable,
   Table,
 } from "@/components/ui";
 import { useAdminApi } from "@/lib/api/use-admin";
@@ -63,16 +66,20 @@ export default function PupilsPage() {
     class_id: "",
   });
 
-  if (!api) return <Spinner />;
-
   const total = pupils.data?.total ?? 0;
   const classNameOf = (id: string) =>
     (classes.data ?? []).find((item) => item.id === id)?.name ?? "";
 
   return (
     <>
-      <Panel
+      <PageHeader
         title="Pupils"
+        description="Typed in by hand — there is no import, by decision (N8). The form below keeps the class and house between entries."
+      />
+
+      <Panel
+        title="The roll"
+        icon={GraduationCap}
         description={`${total} ${total === 1 ? "pupil" : "pupils"} matching.`}
         actions={
           <div className="flex flex-wrap items-end gap-2">
@@ -105,41 +112,58 @@ export default function PupilsPage() {
           </div>
         }
       >
-        {pupils.loading ? <Spinner /> : null}
-        {pupils.error ? <Notice>{pupils.error}</Notice> : null}
+        {!api || pupils.loading ? (
+          <SkeletonTable rows={8} columns={6} label="Loading the roll…" />
+        ) : (
+          <>
+            {pupils.error ? <Notice>{pupils.error}</Notice> : null}
 
-        <Table
-          head={["Admission no.", "Name", "Sex", "Born", "House", "Class"]}
-          empty="No pupils match."
-        >
-          {(pupils.data?.items ?? []).map((pupil) => (
-            <Row key={pupil.id}>
-              <Cell>{pupil.admission_number}</Cell>
-              <Cell>
-                {pupilName(pupil)}
-                {pupil.is_active ? null : <Badge tone="bad">Inactive</Badge>}
-              </Cell>
-              <Cell>{pupil.sex ?? "—"}</Cell>
-              <Cell>{formatDate(pupil.date_of_birth)}</Cell>
-              <Cell>
-                {(houses.data ?? []).find((house) => house.id === pupil.house_id)?.name ?? "—"}
-              </Cell>
-              <Cell>
-                <EnrollmentCell
-                  pupilId={pupil.id}
-                  classes={classes.data ?? []}
-                  currentClassName={filterClass ? classNameOf(filterClass) : null}
-                  onChanged={pupils.reload}
-                />
-              </Cell>
-            </Row>
-          ))}
-        </Table>
+            <Table
+              head={["Admission no.", "Name", "Sex", "Born", "House", "Class"]}
+              empty="No pupils match."
+            >
+              {(pupils.data?.items ?? []).map((pupil) => (
+                <Row key={pupil.id}>
+                  <Cell className="tabular-nums text-[var(--muted)]">
+                    {pupil.admission_number}
+                  </Cell>
+                  <Cell>
+                    <span className="flex items-center gap-2.5">
+                      <Avatar name={pupilName(pupil)} size="sm" />
+                      <span className="min-w-0">
+                        <span className="block font-medium">{pupilName(pupil)}</span>
+                        {pupil.is_active ? null : <Badge tone="bad">Inactive</Badge>}
+                      </span>
+                    </span>
+                  </Cell>
+                  <Cell className="text-[var(--muted)]">{pupil.sex ?? "—"}</Cell>
+                  <Cell className="text-[var(--muted)]">
+                    {formatDate(pupil.date_of_birth)}
+                  </Cell>
+                  <Cell className="text-[var(--muted)]">
+                    {(houses.data ?? []).find((house) => house.id === pupil.house_id)?.name ??
+                      "—"}
+                  </Cell>
+                  <Cell>
+                    <EnrollmentCell
+                      pupilId={pupil.id}
+                      classes={classes.data ?? []}
+                      currentClassName={filterClass ? classNameOf(filterClass) : null}
+                      onChanged={pupils.reload}
+                    />
+                  </Cell>
+                </Row>
+              ))}
+            </Table>
+          </>
+        )}
 
         {total > PAGE_SIZE ? (
           <div className="mt-4 flex items-center gap-3 text-sm">
             <Button
               variant="secondary"
+              size="sm"
+              icon={ChevronLeft}
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             >
@@ -150,6 +174,8 @@ export default function PupilsPage() {
             </span>
             <Button
               variant="secondary"
+              size="sm"
+              icon={ChevronRight}
               disabled={offset + PAGE_SIZE >= total}
               onClick={() => setOffset(offset + PAGE_SIZE)}
             >
@@ -161,6 +187,7 @@ export default function PupilsPage() {
 
       <Panel
         title="Add a pupil"
+        icon={UserPlus}
         description="The class and house stay as you set them, so a whole class can be typed in without resetting the form each time."
       >
         <form
@@ -169,7 +196,7 @@ export default function PupilsPage() {
             event.preventDefault();
             const created = await action.run(
               () =>
-                api.createPupil({
+                api!.createPupil({
                   admission_number: form.admission_number,
                   first_name: form.first_name,
                   middle_name: form.middle_name || null,
@@ -270,7 +297,7 @@ export default function PupilsPage() {
             </Select>
           </Field>
           <div className="flex items-end">
-            <Button type="submit" disabled={action.busy}>
+            <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
               Add pupil
             </Button>
           </div>

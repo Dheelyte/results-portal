@@ -2275,3 +2275,304 @@ really is taken — three runs, three `*-pre-publish.dump` files beside the
 drill's — the ten reports really do reach `published`, and a parent really
 can open the card, download the PDF and acknowledge it from a phone-sized
 browser.
+
+---
+
+## The interface — sidebar, loading states, a route per view (2026-11-07)
+
+Not a milestone: §12's build order finished at 13. This is a round of work on
+the interface, asked for in three parts — a navigation shell with a real
+visual identity, loading states everywhere, and a route per view instead of
+components stacked on one page. The rules did not change; §13's open
+questions did not move.
+
+### D102 — Navy and gold, and `--accent` kept its name
+
+The school's own report card is printed black on white
+(`api/src/app/pdf/templates`), so there was no brand palette to inherit and
+no logo file to use. The scheme is **navy with gold**: the register a school
+is already read in, and distinct from the generic blue that was there before.
+Green now has exactly one job — something succeeded — so a green badge never
+has to be told apart from a house colour.
+
+Every token gained a *soft* counterpart (`--brand-soft`, `--danger-soft`, and
+so on) so a badge or a notice can have a background rather than only a
+border, in both themes.
+
+`--accent` survives as an alias of `--brand` rather than being renamed. Every
+screen built before this round reaches for it, and a rename would have been
+a hundred-line diff whose only effect was to make the diff bigger.
+
+### D103 — The staff screens got a sidebar; the parent's pages did not
+
+`components/shell/app-shell.tsx` is one shell for all three staff roles:
+collapsible icon rail from `lg` up, drawer below it, header with the signed-in
+name and an avatar. The collapsed/expanded choice is remembered in
+`localStorage`, which is the right home for it — a per-browser convenience,
+not state the server has any business knowing, and a read that throws in a
+private window simply leaves it expanded. Admin, teacher and head teacher had
+three near-identical layouts; they are now one `StaffShell` and a list of
+links.
+
+The teacher's and the head teacher's sidebars are populated from
+`/my/assignments` and `/review/queue` respectively — one extra request per
+shell, spent so that the sidebar is navigation rather than decoration. §8.3's
+class page is where attendance, growth and the comment live, and reaching it
+used to mean going back to the landing page first.
+
+**The parent's pages deliberately have no sidebar.** §8.5 is the one hard
+number in §8 — under 150 KB of first load, 3G, a low-end Android device — and
+a collapsible sidebar is client state. It would buy a drawer for a journey
+three screens long that breadcrumbs and a back button cover without a byte of
+JavaScript. Those pages get the same palette, the same cards and badges and
+the same header, so it is visibly the same portal; only the navigation is
+sized to the journey. What the budget looks like after the change is in D106.
+
+### D104 — A route per view
+
+Every list that opened a detail beneath itself now navigates to it. Each of
+these was a page you could not link to, could not reload, and could not leave
+with the back button:
+
+| Was | Is |
+|---|---|
+| `/children` listing each child *and* their terms | `/children` → `/children/[pupilId]` → `/children/[pupilId]/[termId]` |
+| `/admin/classes` with a `ClassDetail` panel under the table | `/admin/classes/[classId]` |
+| `/admin/calendar` with a term panel inside a table inside a panel | `/admin/calendar/[termId]` |
+| `/admin/accounts` with a children panel under forty rows | `/admin/accounts/[userId]` |
+| `/admin/publish`, two selects and the class below them | `/admin/publish/[classId]`, and R13's correction at `/admin/publish/[classId]/[pupilId]` |
+| `/teacher/class/[classId]?tab=…`, five tabs switched by `router.replace` | five routes under `/teacher/class/[classId]/` |
+
+Three of those are worth their own sentence.
+
+**Publishing** is the one irreversible action on the admin's screens, and it
+used to happen at a URL that said nothing about what was about to be
+published. It now happens at `/admin/publish/{classId}`.
+
+**R13's correction** — changing a score after approval, reason required and
+audited — used to expand inside a row of forty. It has a page.
+
+**The parent's list page got faster by losing work.** It used to fetch every
+child *and* a reports call per child, and wait for all of it before painting.
+The terms moved down a level, so the page §8.5 is strictest about makes one
+request instead of `1 + n`.
+
+The five class views stayed visually tabs. What changed is that each is a
+real route, so each code-splits, streams its own skeleton, and can be linked
+to; the term and the class summary are fetched once in the layout and handed
+down through context, which is what keeps five routes from being five
+duplicate fetches.
+
+### D105 — Loading states: skeletons where the shape is known
+
+A spinner says "wait". A skeleton says "wait, and here is what is coming",
+which on §8.1's patchy data is the more useful sentence — so `SkeletonTable`,
+`SkeletonCards`, `SkeletonPanel` and `SkeletonPage` replaced `<Spinner/>`
+nearly everywhere. `Spinner` survives for the few places that genuinely do
+not know the shape: a blob being fetched, a session being checked.
+
+Three mechanisms, each doing a different job:
+
+- **`loading.tsx` per route segment.** This is the App Router's own
+  code-splitting boundary: the route below it is fetched lazily and the
+  skeleton shows while its chunk *and* its data are on the way. Twelve of
+  them now.
+- **`resource.loading` inside client pages**, for data arriving after the
+  chunk.
+- **`loading` on `Button`**, which disables it, marks it `aria-busy` and
+  swaps the leading icon for a spinner — **without changing the label**. A
+  label that becomes "Saving…" moves the button under the finger still on
+  it, and makes every test that finds the button by name race the request.
+  Both of those were real: the old buttons did change their labels, and the
+  E2E had to work around it.
+
+The shell has a skeleton of its own shape, drawn while the session is being
+restored. A spinner in the middle of an empty page used to be the first thing
+a teacher saw on every cold load.
+
+### D106 — One client component on the parent's pages, and what it cost
+
+`components/submit-button.tsx` uses React's `useFormStatus` so that tapping
+"I have seen this result" or "Sign in" shows a spinner. It is the only client
+component on §8.5's pages and it is there for a reason specific to the
+connection §8.5 names: on 3G, a tap with no acknowledgement for four seconds
+reads as a tap that missed, so the parent taps again.
+
+It degrades exactly as the rest of those pages do. With JavaScript switched
+off it is an ordinary `<button type="submit">` in an ordinary `<form>` posting
+to a server action — what was there before — and the only thing lost is the
+spinner.
+
+**What it cost.** From `next build` in the production image
+(`docker build --target prod ./web`), First Load JS per route:
+
+| Route | First Load JS |
+|---|---|
+| shared by every route | 105 kB |
+| `/` — the parent's sign-in | 114 kB |
+| `/children` | 109 kB |
+| `/children/[pupilId]` | 109 kB |
+| `/children/[pupilId]/[termId]` — the card | 114 kB |
+
+So the one client component is **about 4 kB** over the shared baseline: that
+is the whole of §8.5's cost for the spinner. The stylesheet is one file for
+the entire portal, 25 kB raw and 6.0 kB gzipped, shared with the staff
+screens. §8.5's 150 KB still has room, and the busiest staff route
+(`/teacher/[classSubjectId]`, the score grid) is 121 kB.
+
+These are JS-payload figures from the build, which is the denominator §8.5's
+"150 KB first load" is normally read against. Milestone 12 measured something
+different — total *transferred* bytes, 118 kB and 123 kB — so the two numbers
+are not comparable and neither supersedes the other.
+
+### D107 — `components/ui.tsx` stopped being a client component
+
+It carried `"use client"`, which put the whole kit out of reach of the
+parent's server-rendered pages: a `<Badge>` on a report card would have cost
+a JavaScript chunk. Nothing in the file uses a hook, so nothing in it needs
+the directive — a client page importing `Button` and handing it an `onClick`
+still works, because the *page* is the boundary. That is what let the parent's
+pages be rebuilt out of the same pieces as the staff screens instead of a
+second set of hand-written ones.
+
+### D108 — `lucide-react`, pinned
+
+One icon library, as asked, and the only dependency this round adds (CLAUDE.md
+rule 7 — the user named it). Pinned exactly, like everything else in
+`package.json`. It tree-shakes per icon and its icons are plain SVG function
+components, so the ones on the parent's server-rendered pages cost nothing at
+all at runtime: they render to HTML on the server.
+
+### D109 — `navigation.spec.ts`, and why it is a second spec
+
+§8.0's shell and every route behind it are covered by a spec of their own
+(`web/e2e/navigation.spec.ts`, 19 tests), separate from §10's journey, because
+the two want different things from the database:
+
+- The journey needs a **freshly seeded** one. A class publishes once, so a
+  second run against the same stack fails at submit — correctly.
+- This one needs only a *seeded* one, in any state. Which makes it the spec to
+  reach for after a change to the interface, since that is exactly when the
+  journey cannot run.
+
+They are **independent** tests rather than a story, so one failure names one
+broken route instead of stopping the rest.
+
+Three things it found, all of them real:
+
+**A drawer that would not close.** Tapping the sidebar link for the page you
+are already on left the drawer covering that page. The close was driven by a
+`usePathname()` effect, and the pathname does not change when you navigate to
+where you already are. The drawer's links now close it on click as well; the
+effect stays, because it is what handles the back button.
+
+**A click that lands and does nothing.** The same flake D101 documents for the
+sign-in button — the development Next server compiles a route on first request,
+and a link is clickable before React has wired it. `clickThrough` in
+`e2e/sign-in.ts` clicks, checks the URL moved, and tries up to three times. It
+takes a locator *factory* rather than a locator, so a retry re-opens the drawer
+the failed attempt closed, and it is bounded, so a genuinely broken link still
+fails rather than hanging.
+
+**Two bugs in my own test.** Matching a term by its badge (`/^seen$/`) when the
+link's accessible name is "Third Term Report card and PDF Seen"; and
+`page.goBack()` from a child's page, which lands somewhere that depends on
+whether the access cookie happened to be stale and the session bounced through
+`/api/session` (D89). The first matches on the subtitle every released term
+carries, the second is a plain `goto`.
+
+The helpers all moved to `e2e/sign-in.ts` — sign-in for both roles, the
+sidebar, the retrying click, and finding a released term whichever of the test
+parent's two children it belongs to.
+
+### D110 — `NEXT_PUBLIC_API_URL` never reached the production bundle
+
+Found while measuring navigation, and nothing to do with the redesign.
+
+`docker-compose.prod.yml` has been passing `NEXT_PUBLIC_API_URL` as a build
+arg since milestone 1. `web/Dockerfile`'s `builder` stage declared only
+`ARG NEXT_PUBLIC_SITE_URL` — and an **undeclared build arg is silently
+dropped**, so the value never reached `next build`. A `NEXT_PUBLIC_*` variable
+is inlined into the client bundle at build time, so a production image shipped
+`lib/api/client.ts`'s development fallback:
+
+```ts
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://api.localhost:8080";
+```
+
+Every browser-side call from the staff screens would have gone to
+`api.localhost` — which on the school's machines resolves to their own
+loopback, so sign-in on the admin, teacher and head-teacher screens would have
+failed outright on the first real deployment.
+
+Nothing caught it because the two halves of the app reach the API differently
+(A16): §8.5's parent pages are server-rendered and use `INTERNAL_API_URL`,
+read at **run** time and always correct, while the staff screens call from the
+browser. The E2E runs against the development stack, where the fallback
+happens to be the right value.
+
+Fixed by declaring both args in the builder stage. The comment there says why,
+because the failure is invisible — the build succeeds and the bug ships.
+
+**Worth doing before go-live:** a check that the built bundle contains the
+expected API origin. One `grep` over `.next/static` would have caught this.
+
+### D111 — The sidebar felt slow, and it was the development server
+
+Reported as 2–4 seconds before a sidebar click did anything at all, including
+the URL bar. Measured, three ways, as the time from the click to the URL
+committing and then to the page's own `<h1>` being on screen:
+
+| | first visit to a route | revisit |
+|---|---|---|
+| `next dev` (webpack) | **572–4990 ms** | 132–270 ms |
+| `next dev --turbopack` | 672–815 ms | 241–298 ms |
+| production build | **77–95 ms** | 87–133 ms |
+
+The cause is `next dev` compiling each route the first time it is asked for —
+the server's own log says so (`✓ Compiled /admin/subjects in 3.2s`) — and
+`<Link>` does not prefetch in development, so every first visit pays it in
+full. Production shows **no cold/revisit difference at all**, because the
+chunks are built and prefetched.
+
+The redesign made this *more* visible without making any page slower: §8.0 put
+nine admin destinations one tap away, and D104 split six stacked panels and
+five tabs into routes, so there are simply more routes to visit for the first
+time. Each one is still ~100 ms in production.
+
+**What changed:** `npm run dev` now passes `--turbopack`, which takes the worst
+case from five seconds to under one. The cost is a one-off ~15 s cache build on
+the first request after the server starts. `npm run dev:webpack` keeps the old
+path, because "does this also happen on webpack?" is worth being able to answer
+in one command.
+
+**What did not change:** no application code. There was nothing to fix in it —
+production was already an order of magnitude faster than the threshold where
+anyone notices.
+
+### D112 — Turbopack found a 404 boundary that was only working by luck
+
+Switching `npm run dev` to Turbopack (D111) turned one navigation test red,
+and the test was right.
+
+`app/not-found.tsx` handles URLs that match no route — under either bundler,
+checked both ways. But `(parent)/children/[pupilId]/page.tsx` calls
+`notFound()` for a pupil id that is not one of this guardian's children, and
+for that Next looks for the nearest `not-found.tsx` **boundary**: webpack
+walked up to the root one, Turbopack rendered Next's own built-in "404 — This
+page could not be found." instead.
+
+So the root boundary was serving a nested `notFound()` by luck. The group has
+its own now, `app/(parent)/not-found.tsx`, which is both bundler-independent
+and the better page — the parent keeps their header and is one tap from their
+children rather than being dropped onto a bare screen.
+
+It stays **incurious**, like `services/parents.py`'s R12 message: nothing on
+it distinguishes "no such child" from "not your child" from "not published
+yet" from "held back for this pupil". That is the whole point of the test that
+caught this, which asks for a well-formed id belonging to nobody and expects
+the same page a stranger's child would produce.
+
+The lesson is about the test, not the bundler: a boundary that resolves by
+walking up a tree is worth asserting on, because the walk is an
+implementation detail and it changed.

@@ -18,11 +18,21 @@
  *   scale, after it the letter is what the card says for ever.
  */
 
-import Link from "next/link";
+import { Check, CornerUpLeft } from "lucide-react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { Badge, Button, Notice, Panel, Spinner, TextArea } from "@/components/ui";
+import {
+  Avatar,
+  Badge,
+  Button,
+  Input,
+  Notice,
+  PageHeader,
+  Panel,
+  SkeletonPanel,
+  TextArea,
+} from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import type { Approval, Card, CardSubjectRow } from "@/lib/api/head";
 import { useHeadApi } from "@/lib/api/use-head";
@@ -57,9 +67,21 @@ export default function ClassReviewPage() {
     { enabled: Boolean(api) },
   );
 
-  if (review.loading) return <Spinner label="Loading the class…" />;
+  if (!api || review.loading) {
+    return (
+      <>
+        <PageHeader
+          breadcrumbs={[{ label: "Review queue", href: "/review" }]}
+          back={{ href: "/review", label: "Review queue" }}
+          title="Class"
+        />
+        <SkeletonPanel rows={10} label="Loading the class…" />
+        <SkeletonPanel rows={6} />
+      </>
+    );
+  }
   if (review.error) return <Notice>{review.error}</Notice>;
-  if (!review.data || !api) return null;
+  if (!review.data) return null;
 
   const data = review.data;
   const cards = data.cards ?? [];
@@ -87,15 +109,26 @@ export default function ClassReviewPage() {
 
   return (
     <>
-      <div>
-        <Link href="/review" className="text-sm text-[var(--muted)] hover:underline">
-          ← Review queue
-        </Link>
-        <h1 className="text-lg font-semibold">{data.class_name}</h1>
-        <p className="text-sm text-[var(--muted)]">
-          {data.term_label} · {cards.length} pupil{cards.length === 1 ? "" : "s"}
-        </p>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Review queue", href: "/review" },
+          { label: data.class_name },
+        ]}
+        back={{ href: "/review", label: "Review queue" }}
+        title={data.class_name}
+        description={`${data.term_label} · ${cards.length} pupil${
+          cards.length === 1 ? "" : "s"
+        }`}
+        badge={
+          <Badge
+            tone={
+              data.state === "approved" ? "good" : data.state === "returned" ? "bad" : "warn"
+            }
+          >
+            {data.state.replace(/_/g, " ")}
+          </Badge>
+        }
+      />
 
       {failure ? <Notice tone="error">{failure}</Notice> : null}
 
@@ -148,18 +181,31 @@ export default function ClassReviewPage() {
                     keep saying what they say today — that is deliberate, and it cannot be
                     undone here.
                   </span>
-                  <span className="flex gap-2">
-                    <Button onClick={() => void run("approve")} disabled={busy !== null}>
-                      {busy === "approve" ? "Approving…" : "Yes, approve and freeze the grades"}
+                  <span className="flex flex-wrap gap-2">
+                    <Button
+                      icon={Check}
+                      loading={busy === "approve"}
+                      onClick={() => void run("approve")}
+                    >
+                      Yes, approve and freeze the grades
                     </Button>
-                    <Button variant="secondary" onClick={() => setConfirming(false)}>
+                    <Button
+                      variant="secondary"
+                      disabled={busy !== null}
+                      onClick={() => setConfirming(false)}
+                    >
                       Cancel
                     </Button>
                   </span>
                 </div>
               </Notice>
             ) : (
-              <Button onClick={() => setConfirming(true)} disabled={busy !== null}>
+              <Button
+                icon={Check}
+                onClick={() => setConfirming(true)}
+                disabled={busy !== null}
+                className="self-start"
+              >
                 Approve this class
               </Button>
             )}
@@ -177,11 +223,13 @@ export default function ClassReviewPage() {
               />
               <Button
                 variant="secondary"
+                icon={CornerUpLeft}
+                loading={busy === "return"}
                 onClick={() => void run("return")}
                 disabled={busy !== null || note.trim() === ""}
                 className="self-start"
               >
-                {busy === "return" ? "Returning…" : "Return to the class teacher"}
+                Return to the class teacher
               </Button>
             </div>
           </div>
@@ -221,6 +269,7 @@ function PupilCard({
       description={`${card.admission_number}${card.house_name ? ` · ${card.house_name} House` : ""}${
         card.no_in_class ? ` · ${card.no_in_class} in class` : ""
       }`}
+      actions={<Avatar name={pupilName(card)} />}
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2 text-xs">
@@ -304,7 +353,7 @@ function PupilCard({
           <div className="flex flex-wrap gap-3">
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium">Position (in grades)</span>
-              <input
+              <Input
                 value={position}
                 onChange={(event) => {
                   setPosition(event.target.value);
@@ -312,14 +361,13 @@ function PupilCard({
                 }}
                 disabled={!editable}
                 placeholder="Optional"
-                className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm"
               />
             </label>
 
             {promotionApplies ? (
               <label className="flex flex-col gap-1 text-sm">
                 <span className="font-medium">Promotion</span>
-                <input
+                <Input
                   value={promotion}
                   onChange={(event) => {
                     setPromotion(event.target.value);
@@ -327,7 +375,6 @@ function PupilCard({
                   }}
                   disabled={!editable}
                   placeholder="Third term only"
-                  className="rounded-md border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm"
                 />
               </label>
             ) : null}
@@ -336,7 +383,8 @@ function PupilCard({
           <div className="flex items-center gap-3">
             <Button
               variant="secondary"
-              disabled={!editable || saving}
+              loading={saving}
+              disabled={!editable}
               onClick={async () => {
                 setSaving(true);
                 try {
@@ -354,7 +402,7 @@ function PupilCard({
                 }
               }}
             >
-              {saving ? "Saving…" : "Save"}
+              Save
             </Button>
             {saved ? <span className="text-xs text-[var(--success)]">Saved</span> : null}
           </div>

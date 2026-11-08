@@ -54,12 +54,17 @@ docker compose exec api python -m app.recompute_averages --dry-run   # R3
 docker compose exec api pytest tests/integration/test_report_card.py \
     --golden-update                               # rewrite the card's golden text (§9)
 docker compose exec api python -m app.backup      # §11's dump; --prune-only for retention
-cd web && npm run dev                             # frontend
+cd web && npm run dev                             # frontend (Turbopack; D111)
+cd web && npm run dev:webpack                     # the same on webpack
 cd web && npm run typecheck && npm run lint && npm test
 
 # §10's E2E journey. Needs a freshly seeded database and its own container,
 # behind a compose profile — docs/RUNBOOK.md §4 has the whole sequence.
 docker compose --profile e2e run --rm e2e
+
+# §8.0's shell and every route behind it. Re-runnable against any seeded
+# stack, which is what to reach for after a change to the interface.
+docker compose --profile e2e run --rm e2e npx playwright test e2e/navigation.spec.ts
 ```
 
 ## Conventions

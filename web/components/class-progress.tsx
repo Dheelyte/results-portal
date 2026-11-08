@@ -14,10 +14,11 @@
  * different stories. Nothing here re-derives completeness.
  */
 
+import { ChevronRight, Send } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
-import { Badge, Notice, Panel } from "@/components/ui";
+import { Badge, Button, Notice, Panel, SkeletonPanel } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import type { OutstandingItem, Progress, TeacherApi } from "@/lib/api/teacher";
 import { HALF_LABELS } from "@/lib/format";
@@ -66,7 +67,14 @@ export function ClassProgress({
     [api, classId, termId],
   );
 
-  if (progress.loading) return <p className="text-sm text-[var(--muted)]">Loading progress…</p>;
+  if (progress.loading) {
+    return (
+      <>
+        <SkeletonPanel rows={6} label="Loading the class's progress…" />
+        <SkeletonPanel rows={8} />
+      </>
+    );
+  }
   if (progress.error) return <Notice>{progress.error}</Notice>;
   if (!progress.data) return null;
 
@@ -132,17 +140,18 @@ export function ClassProgress({
       <Panel
         title="Subjects"
         description="Every subject offered to this class, on both of the term's sheets"
+        bare
       >
         <ul className="flex flex-col divide-y divide-[var(--border)]">
           {sheets.length === 0 ? (
-            <li className="py-2 text-sm text-[var(--muted)]">
+            <li className="px-5 py-3 text-sm text-[var(--muted)]">
               No scored subjects are offered to this class yet.
             </li>
           ) : null}
           {sheets.map((sheet) => (
             <li
               key={`${sheet.class_subject_id}:${sheet.half}`}
-              className="flex flex-wrap items-center justify-between gap-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5"
             >
               <div className="min-w-0">
                 <span className="block truncate text-sm font-medium">
@@ -167,30 +176,36 @@ export function ClassProgress({
         </ul>
       </Panel>
 
-      <Panel title="Pupils" description="Narrative, comment, attendance, height and weight">
+      <Panel
+        title="Pupils"
+        description="Narrative, comment, attendance, height and weight"
+        bare
+      >
         <ul className="flex flex-col divide-y divide-[var(--border)]">
           {pupils.map((pupil) => (
-            <li
-              key={pupil.pupil_id}
-              className="flex flex-wrap items-center justify-between gap-3 py-2"
-            >
+            <li key={pupil.pupil_id}>
               <Link
                 href={`/teacher/narrative/${pupil.pupil_id}`}
-                className="min-w-0 hover:underline"
+                className="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5 transition hover:bg-[var(--surface-raised)]"
               >
-                <span className="block truncate text-sm font-medium">{pupil.name}</span>
-                <span className="block text-xs text-[var(--muted)]">
-                  {pupil.admission_number}
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{pupil.name}</span>
+                  <span className="block text-xs text-[var(--muted)]">
+                    {pupil.admission_number}
+                  </span>
+                </span>
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    tone={pupil.sections_written >= pupil.sections_total ? "good" : "neutral"}
+                  >
+                    narrative {pupil.sections_written}/{pupil.sections_total}
+                  </Badge>
+                  <Badge tone={pupil.has_comment ? "good" : "warn"}>comment</Badge>
+                  <Badge tone={pupil.has_attendance ? "good" : "warn"}>attendance</Badge>
+                  <Badge tone={pupil.has_growth ? "good" : "warn"}>height &amp; weight</Badge>
+                  <ChevronRight aria-hidden className="size-4 shrink-0 text-[var(--muted)]" />
                 </span>
               </Link>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <Badge tone={pupil.sections_written >= pupil.sections_total ? "good" : "neutral"}>
-                  narrative {pupil.sections_written}/{pupil.sections_total}
-                </Badge>
-                <Badge tone={pupil.has_comment ? "good" : "warn"}>comment</Badge>
-                <Badge tone={pupil.has_attendance ? "good" : "warn"}>attendance</Badge>
-                <Badge tone={pupil.has_growth ? "good" : "warn"}>height &amp; weight</Badge>
-              </div>
             </li>
           ))}
         </ul>
@@ -199,14 +214,15 @@ export function ClassProgress({
       {!sent ? (
         <Panel title="Send to the head teacher">
           <div className="flex flex-col gap-3">
-            <button
-              type="button"
+            <Button
+              icon={Send}
               onClick={() => void send()}
-              disabled={!data.ready || !data.may_submit || submitting}
-              className="self-start rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              loading={submitting}
+              disabled={!data.ready || !data.may_submit}
+              className="self-start"
             >
-              {submitting ? "Sending…" : "Send to head teacher"}
-            </button>
+              Send to head teacher
+            </Button>
 
             {!data.may_submit ? (
               <p className="text-sm text-[var(--muted)]">

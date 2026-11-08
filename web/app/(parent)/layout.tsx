@@ -6,13 +6,25 @@
  * load, no client-side fetching for the report itself. Assume a 3G
  * connection on a low-end Android device."
  *
- * Nothing here is a client component, so nothing here contributes to the
- * JavaScript bundle. The only interactive controls on the parent's pages are
- * form submissions, which work without JavaScript at all.
+ * **Why there is no sidebar here.** The staff screens got one in the
+ * redesign; this did not, and that is a decision rather than an omission
+ * (docs/DECISIONS.md D103). A collapsible sidebar is client state, and §8.5's
+ * budget is the one hard number in §8 — it would buy a drawer for a journey
+ * three screens long (children → child → card) that breadcrumbs and a back
+ * button cover without a byte of JavaScript. The palette, the cards, the
+ * badges and the header are the same as the staff shell's, so it is the same
+ * portal; it is only the navigation that is sized to the journey.
+ *
+ * The one client component on these pages is `SubmitButton`, and its own file
+ * says why.
  */
 
+import Link from "next/link";
+import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { SubmitButton } from "@/components/submit-button";
+import { Avatar, Crest } from "@/components/ui";
 import { currentSession, signOut } from "@/lib/server/session";
 
 export default async function ParentLayout({ children }: { children: ReactNode }) {
@@ -27,31 +39,45 @@ export default async function ParentLayout({ children }: { children: ReactNode }
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-[var(--border)]">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest text-[var(--muted)]">
-              Self-Starters House Montessori School
-            </p>
-            <p className="truncate text-sm font-semibold">Results</p>
-          </div>
-          {session ? (
-            <form action={endSession}>
-              <span className="mr-3 hidden text-sm text-[var(--muted)] sm:inline">
-                {session.user.full_name}
+      <header className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5">
+          <Link href="/children" className="flex min-w-0 items-center gap-2.5">
+            <Crest />
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold leading-tight">
+                Results Portal
               </span>
-              <button
-                type="submit"
-                className="rounded-md border border-[var(--border)] px-3 py-1.5 text-sm"
-              >
-                Sign out
-              </button>
-            </form>
+              <span className="block truncate text-[0.7rem] text-[var(--muted)]">
+                Self-Starters House Montessori School
+              </span>
+            </span>
+          </Link>
+
+          {session ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden min-w-0 text-right sm:block">
+                <span className="block truncate text-sm font-medium leading-tight">
+                  {session.user.full_name}
+                </span>
+                <span className="block text-xs text-[var(--muted)]">Parent</span>
+              </span>
+              <Avatar name={session.user.full_name} />
+              <form action={endSession}>
+                <SubmitButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<LogOut aria-hidden className="size-4 shrink-0" />}
+                >
+                  <span className="hidden sm:inline">Sign out</span>
+                  <span className="sr-only sm:hidden">Sign out</span>
+                </SubmitButton>
+              </form>
+            </div>
           ) : null}
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-5 py-6">{children}</main>
+      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
     </div>
   );
 }

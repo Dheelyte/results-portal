@@ -9,6 +9,7 @@
  * be asking them to know something about our schema.
  */
 
+import { LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -73,8 +74,18 @@ export default function LoginPage() {
 
       <Notice>{action.error}</Notice>
 
-      <Button type="submit" disabled={action.busy || loading}>
-        {action.busy ? "Signing in…" : "Sign in"}
+      {/* The label does not change while the request is in flight: a button
+          that becomes "Signing in…" moves under the finger still on it, and
+          every test that finds it by name has to race the request. The
+          spinner says the same thing without either cost. */}
+      <Button
+        type="submit"
+        icon={LogIn}
+        loading={action.busy}
+        disabled={loading}
+        className="justify-center py-2.5"
+      >
+        Sign in
       </Button>
 
       <p className="text-xs text-[var(--muted)]">

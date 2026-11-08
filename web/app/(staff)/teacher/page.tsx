@@ -8,10 +8,19 @@
  * finished — the counts come from the same request.
  */
 
+import { BookOpen, ChevronRight, UsersRound } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
-import { Badge, Notice, Panel, Spinner } from "@/components/ui";
+import {
+  Badge,
+  EmptyState,
+  Notice,
+  PageHeader,
+  Panel,
+  SkeletonCards,
+  SkeletonPanel,
+} from "@/components/ui";
 import { useTeacherApi } from "@/lib/api/use-teacher";
 import { HALF_LABELS, TERM_LABELS } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
@@ -43,41 +52,51 @@ export default function TeacherHomePage() {
 
   const periods = useMemo(() => workload.data?.periods ?? [], [workload.data]);
 
-  if (workload.loading) return <Spinner label="Loading your classes…" />;
+  if (!api || workload.loading) {
+    return (
+      <>
+        <div className="flex flex-col gap-2">
+          <SkeletonPanel rows={1} label="Loading your classes…" />
+        </div>
+        <SkeletonCards count={4} />
+      </>
+    );
+  }
   if (workload.error) return <Notice>{workload.error}</Notice>;
   if (!workload.data) return null;
 
   const { term, assignments } = workload.data;
   const myClasses = workload.data.class_teacher_of ?? [];
+  const count = assignments?.length ?? 0;
 
   return (
     <>
-      <div>
-        <h1 className="text-lg font-semibold">
-          {TERM_LABELS[term.number] ?? term.number}, {term.academic_session_name}
-        </h1>
-        <p className="text-sm text-[var(--muted)]">
-          {assignments?.length ?? 0} subject{assignments?.length === 1 ? "" : "s"} to enter.
-          Everything is saved as you type.
-        </p>
-      </div>
+      <PageHeader
+        title={`${TERM_LABELS[term.number] ?? term.number}, ${term.academic_session_name}`}
+        description={`${count} subject${count === 1 ? "" : "s"} to enter. Everything is saved as you type.`}
+      />
 
       {myClasses.length > 0 ? (
         <Panel
-          title="My classes"
+          title={myClasses.length === 1 ? "My class" : "My classes"}
+          icon={UsersRound}
           description="The written assessment, attendance, height and weight, and your comment"
         >
-          <div className="flex flex-wrap gap-2">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {myClasses.map((klass) => (
-              <Link
-                key={klass.class_id}
-                href={`/teacher/class/${klass.class_id}`}
-                className="rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-raised)]"
-              >
-                {klass.class_name}
-              </Link>
+              <li key={klass.class_id}>
+                <Link
+                  href={`/teacher/class/${klass.class_id}`}
+                  className="flex items-center gap-3 rounded-lg border border-[var(--border)] px-3 py-2.5 text-sm transition hover:border-[var(--brand)] hover:bg-[var(--brand-soft)]"
+                >
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {klass.class_name}
+                  </span>
+                  <ChevronRight aria-hidden className="size-4 shrink-0 text-[var(--muted)]" />
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         </Panel>
       ) : null}
 
@@ -88,42 +107,53 @@ export default function TeacherHomePage() {
         </Notice>
       ) : null}
 
-      {(assignments?.length ?? 0) === 0 ? (
-        <Notice tone="info">
-          You have no subjects assigned for this term. If that looks wrong, the administrator
-          assigns teachers to classes and subjects.
-        </Notice>
+      {count === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="You have no subjects assigned for this term"
+          description="If that looks wrong, the administrator assigns teachers to classes and subjects."
+        />
       ) : null}
 
       {(assignments ?? []).map((assignment) => (
         <Panel
           key={assignment.class_subject_id}
           title={`${assignment.class_name} — ${assignment.subject_name}`}
+          icon={BookOpen}
           description={`${assignment.pupil_count} pupil${
             assignment.pupil_count === 1 ? "" : "s"
           } on the roll`}
-        >
-          <div className="flex flex-wrap items-center gap-3">
+          actions={
             <Badge tone={STATE_TONES[assignment.state] ?? "neutral"}>
               {STATE_LABELS[assignment.state] ?? assignment.state}
             </Badge>
-
+          }
+        >
+          <ul className="grid gap-3 sm:grid-cols-2">
             {periods.map((period) => {
               const entered = assignment.entered_count?.[period.half] ?? 0;
+              const full = entered >= assignment.pupil_count && assignment.pupil_count > 0;
               return (
-                <Link
-                  key={period.id}
-                  href={`/teacher/${assignment.class_subject_id}?period=${period.id}`}
-                  className="rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-raised)]"
-                >
-                  <span className="block font-medium">{HALF_LABELS[period.half]}</span>
-                  <span className="block text-xs text-[var(--muted)]">
-                    {entered} of {assignment.pupil_count} entered
-                  </span>
-                </Link>
+                <li key={period.id}>
+                  <Link
+                    href={`/teacher/${assignment.class_subject_id}?period=${period.id}`}
+                    className="flex items-center gap-3 rounded-lg border border-[var(--border)] px-3 py-2.5 transition hover:border-[var(--brand)] hover:bg-[var(--brand-soft)]"
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">
+                        {HALF_LABELS[period.half]}
+                      </span>
+                      <span className="block text-xs text-[var(--muted)]">
+                        {entered} of {assignment.pupil_count} entered
+                      </span>
+                    </span>
+                    {full ? <Badge tone="good">Complete</Badge> : null}
+                    <ChevronRight aria-hidden className="size-4 shrink-0 text-[var(--muted)]" />
+                  </Link>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </Panel>
       ))}
     </>

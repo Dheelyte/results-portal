@@ -212,6 +212,25 @@ docker compose exec api python -m app.seed
 docker compose --profile e2e run --rm e2e
 ```
 
+### There are two specs, and they want different things
+
+| Spec | Needs | Proves |
+|---|---|---|
+| `full-term.spec.ts` | a **freshly seeded** database | the work of a term can be done |
+| `navigation.spec.ts` | a seeded database, in any state | §8.0's shell and every route behind it can be reached |
+
+The second is the one to reach for after a change to the interface: it is
+re-runnable against a stack that has already been through the journey, which
+is exactly when the journey cannot run (a class publishes once). Run it alone
+with
+
+```bash
+docker compose --profile e2e run --rm e2e npx playwright test e2e/navigation.spec.ts
+```
+
+It signs in about twenty times, so it needs the same raised per-IP limit as
+the journey — see below.
+
 ### Give it room to sign in
 
 The journey signs in at every step, from one address, and §5.1's per-IP limit
@@ -225,6 +244,35 @@ LOGIN_IP_MAX_ATTEMPTS=200 docker compose up -d --force-recreate api
 ```
 
 A run that ends in `429` on a sign-in has hit this, not a bug.
+
+### Another project on 5432
+
+`docker compose up -d` fails with *Bind for 0.0.0.0:5432 failed: port is
+already allocated* when something else on the machine is using Postgres's
+port. The portal's own containers do not need the mapping — the api reaches
+the database at `postgres:5432` over the Docker network — so the quickest way
+past it is an override that drops the published port:
+
+```yaml
+# /tmp/no-pgport.yml
+services:
+  postgres:
+    ports: !reset []
+```
+
+```bash
+docker compose -f docker-compose.yml -f /tmp/no-pgport.yml     up -d --force-recreate postgres --wait
+docker compose restart api        # its connection pool is holding dead sockets
+```
+
+`!reset` matters: Compose **appends** to a sequence like `ports` when it
+merges files, so a bare `ports: []` changes nothing. And a container whose
+start failed on the port is left with no network attached, which looks like
+*database unreachable* even once the port is free — hence
+`--force-recreate` rather than `start`.
+
+What is lost is `psql` from the host; `docker compose exec postgres psql`
+still works, and that is what every command in this runbook uses.
 
 ### Development is stricter than production here
 
@@ -257,9 +305,117 @@ The browser lives in Microsoft's Playwright image, under a compose profile,
 so `docker compose up -d` never starts it. The image tag and
 `web/package.json`'s `@playwright/test` version must match.
 
+### The nav is behind a menu button at this viewport
+
+The journey runs at a phone viewport, where §8.0's sidebar is a drawer. The
+spec has `openMenu(page)` and `navigate(page, /…/)` for that, and clicks
+scoped to `getByRole("main")` wherever the sidebar now shows the same name as
+the page body — a teacher's own classes, and the review queue. A step that
+cannot find a link it used to find is usually one of those two things and not
+a regression.
+
 ---
 
 ## 5. Things that go wrong
+
+### The suite fails everywhere at once, for no reason in the diff
+
+Two `pytest` runs are sharing the test database. `clean_database` empties
+every table between tests, so a second run truncates the first one's fixtures
+mid-test and both collapse into a wall of `E`s and `F`s.
+
+The usual cause is a **`timeout` wrapped around `docker compose exec`**:
+
+```bash
+timeout 200 docker compose exec api pytest -q      # don't
+```
+
+That kills the local client. The `pytest` inside the container keeps going,
+unsupervised, and the next run collides with it. `ps` and `pgrep` are not in
+the api image, so the obvious check for a stray process silently reports
+nothing:
+
+```bash
+# Does not work — prints an empty line, which is not the same as "none"
+docker compose exec api sh -c 'ps ax | grep -c pytest'
+
+# Works. `[p]ytest` so the scan does not match its own command line, which
+# it otherwise does — that pattern is in it.
+docker compose exec api sh -c \
+  'ls /proc | grep -E "^[0-9]+$" | while read p; do
+     tr "\0" " " < /proc/$p/cmdline 2>/dev/null | grep -q "[p]ytest" && echo "$p"
+   done'
+docker compose exec api sh -c 'kill -9 <pid>'
+```
+
+Run the suite without a client-side timeout — it takes about eight minutes —
+and let it finish.
+
+### A screen takes seconds to open, and the URL bar does not even change
+
+That is `next dev` compiling the route, not the application. The server's own
+log says which one:
+
+```bash
+docker compose logs web --tail=50 | grep -E "Compiling|Compiled"
+#  ○ Compiling /admin/subjects ...
+#  ✓ Compiled /admin/subjects in 3.2s (503 modules)
+```
+
+A first visit to a route costs seconds; a revisit costs ~150 ms, and `<Link>`
+does not prefetch in development, so every route pays it once per server
+start. `npm run dev` uses Turbopack, which holds the worst case under a
+second after a one-off ~15 s cache build on the first request.
+
+In a production build there is no difference between a first visit and a
+revisit — both about 100 ms (`docs/DECISIONS.md` D111 has the figures). To see
+that for yourself, build the image and run it behind the same Caddy:
+
+```bash
+docker build --target prod \
+  --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:8080 \
+  --build-arg NEXT_PUBLIC_API_URL=http://api.localhost:8080 \
+  -t portal-web-perf ./web
+
+cat > /tmp/web-prod.yml <<'YAML'
+services:
+  web:
+    image: portal-web-perf
+    build: !reset null
+    environment:
+      NODE_ENV: production
+      INTERNAL_API_URL: http://api:8000
+    volumes: !reset []
+YAML
+
+docker compose -f docker-compose.yml -f /tmp/web-prod.yml \
+    up -d --force-recreate --no-deps web
+docker compose up -d --force-recreate --no-deps web   # back to the dev server
+```
+
+**Both `--build-arg`s matter.** `NEXT_PUBLIC_*` values are inlined into the
+client bundle at build time, and an image built without them ships the
+development fallbacks (`docs/DECISIONS.md` D110).
+
+### `next build` fails with "`<Html>` should not be imported outside of pages/_document"
+
+The build ran with `NODE_ENV=development`, which the dev compose service sets
+(`docker-compose.yml`). Next then builds against the development react-dom and
+the error comes out of its pages-router fallback, naming a file nobody wrote.
+The real production build is unaffected: the Dockerfile's `builder` stage and
+CI both leave `NODE_ENV` alone.
+
+So build the way production does, which is also the only build worth
+believing:
+
+```bash
+docker build --target prod ./web
+```
+
+Running `next build` inside the dev container has a second problem anyway —
+`.next` is a named volume shared with the running dev server, and the two
+clobber each other mid-build ("Cannot find module for page …", or a missing
+`.nft.json` while collecting traces).
 
 ### A parent, teacher or admin cannot sign in: "too many sign-in attempts"
 

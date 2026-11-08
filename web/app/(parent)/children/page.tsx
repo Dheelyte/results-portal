@@ -5,11 +5,20 @@
  * Server-rendered. §10's seed calls out the multi-child parent as the
  * fixture that catches most bugs here, and §12's criterion says the same:
  * "multi-child parent sees both children".
+ *
+ * **Cards only.** This page used to list every child *and*, beneath each one,
+ * that child's terms — one request per child on top of its own, all of it
+ * waited for before anything painted. The terms moved to
+ * `/children/[pupilId]`, which is both the route structure the rest of the
+ * portal now follows and one request instead of `1 + n` on the page §8.5 is
+ * strictest about.
  */
 
+import { ChevronRight, GraduationCap } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Avatar, EmptyState, PageHeader } from "@/components/ui";
 import { apiGet, sessionState } from "@/lib/server/session";
 
 interface Child {
@@ -19,14 +28,6 @@ interface Child {
   middle_name?: string | null;
   last_name: string;
   class_name?: string | null;
-}
-
-interface Availability {
-  term_id: string;
-  term_label: string;
-  available: boolean;
-  acknowledged_at?: string | null;
-  message?: string | null;
 }
 
 export default async function ChildrenPage() {
@@ -41,70 +42,47 @@ export default async function ChildrenPage() {
 
   return (
     <>
-      <h1 className="text-lg font-semibold">
-        {children.length === 1 ? "Your child" : "Your children"}
-      </h1>
+      <PageHeader
+        title={children.length === 1 ? "Your child" : "Your children"}
+        description={
+          children.length > 0
+            ? "Open a child to see the terms the school has released."
+            : undefined
+        }
+      />
 
       {children.length === 0 ? (
-        <p className="rounded-md border border-[var(--border)] px-3 py-2 text-sm text-[var(--muted)]">
-          No children are linked to this account. Please contact the school.
-        </p>
-      ) : null}
-
-      {await Promise.all(
-        children.map(async (child) => {
-          const reports = await apiGet<{ terms: Availability[] }>(
-            session,
-            `/my/children/${child.pupil_id}/reports`,
-          );
-          const terms = reports?.terms ?? [];
-
-          return (
-            <section
-              key={child.pupil_id}
-              className="rounded-lg border border-[var(--border)] p-4"
-            >
-              <h2 className="text-base font-semibold">
-                {child.first_name} {child.last_name}
-              </h2>
-              <p className="text-sm text-[var(--muted)]">
-                {child.admission_number}
-                {child.class_name ? ` · ${child.class_name}` : ""}
-              </p>
-
-              {terms.length === 0 ? (
-                <p className="mt-3 text-sm text-[var(--muted)]">
-                  No results have been released for this child yet.
-                </p>
-              ) : null}
-
-              <ul className="mt-3 flex flex-col gap-2">
-                {terms.map((term) => (
-                  <li key={term.term_id}>
-                    {term.available ? (
-                      <Link
-                        href={`/children/${child.pupil_id}/${term.term_id}`}
-                        className="flex items-center justify-between rounded-md border border-[var(--border)] px-3 py-2 text-sm hover:bg-[var(--surface-raised)]"
-                      >
-                        <span className="font-medium">{term.term_label}</span>
-                        <span className="text-xs text-[var(--muted)]">
-                          {term.acknowledged_at ? "Seen" : "View result"}
-                        </span>
-                      </Link>
-                    ) : (
-                      <div className="rounded-md border border-[var(--border)] px-3 py-2 text-sm">
-                        <span className="font-medium">{term.term_label}</span>
-                        <br />
-                        {/* R12, verbatim and alone. */}
-                        <span className="text-[var(--muted)]">{term.message}</span>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          );
-        }),
+        <EmptyState
+          icon={GraduationCap}
+          title="No children are linked to this account"
+          description="Please contact the school office and they will attach your child to it."
+        />
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {children.map((child) => (
+            <li key={child.pupil_id}>
+              <Link
+                href={`/children/${child.pupil_id}`}
+                className="flex h-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm transition hover:border-[var(--brand)] hover:bg-[var(--brand-soft)]"
+              >
+                <Avatar name={`${child.first_name} ${child.last_name}`} size="lg" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-base font-semibold">
+                    {child.first_name} {child.last_name}
+                  </span>
+                  <span className="block truncate text-sm text-[var(--muted)]">
+                    {child.admission_number}
+                    {child.class_name ? ` · ${child.class_name}` : ""}
+                  </span>
+                  <span className="mt-1 block text-sm font-medium text-[var(--brand)]">
+                    View results
+                  </span>
+                </span>
+                <ChevronRight aria-hidden className="size-5 shrink-0 text-[var(--muted)]" />
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
     </>
   );

@@ -6,63 +6,57 @@
  * A client component for the same reason the admin shell is: the session
  * lives in an httpOnly cookie on `api.<domain>` (D13), which the Next.js
  * server cannot read. See docs/DECISIONS.md D41.
+ *
+ * The sidebar lists the classes this teacher leads, which costs one
+ * `GET /my/assignments` the shell would not otherwise make. It is worth it:
+ * §8.3's class page is where attendance, growth and the comment live, and
+ * reaching it used to mean going back to the landing page first. A teacher
+ * with no class of their own gets a sidebar of one item, which is honest —
+ * they only have sheets.
  */
 
-import Link from "next/link";
+import { BookOpenCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, Notice, Spinner } from "@/components/ui";
-import { useAuth, useRequireRole } from "@/lib/auth";
+import { classItem, TEACHER_ROOT, type NavSection } from "@/components/shell/nav";
+import { StaffShell } from "@/components/shell/staff-shell";
+import { useTeacherApi } from "@/lib/api/use-teacher";
+import { useResource } from "@/lib/use-async";
 
 export default function TeacherLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useRequireRole("teacher");
-  const { signOut } = useAuth();
+  const api = useTeacherApi();
+  const workload = useResource((signal) => api!.workload(undefined, signal), [api], {
+    enabled: Boolean(api),
+  });
 
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-5xl px-6 py-16">
-        <Spinner label="Checking your session…" />
-      </main>
-    );
-  }
+  const myClasses = workload.data?.class_teacher_of ?? [];
 
-  if (!user) return null; // the redirect in useRequireRole is in flight
-
-  if (user.role !== "teacher") {
-    return (
-      <main className="mx-auto max-w-xl px-6 py-16">
-        <Notice tone="info">
-          These pages are for class and subject teachers. Your account does not have access to
-          them.
-        </Notice>
-      </main>
-    );
-  }
+  const sections: NavSection[] = [
+    { items: [TEACHER_ROOT] },
+    ...(myClasses.length > 0
+      ? [
+          {
+            heading: myClasses.length === 1 ? "My class" : "My classes",
+            items: myClasses.map((klass) =>
+              classItem(klass.class_name, `/teacher/class/${klass.class_id}`),
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-[var(--border)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest text-[var(--muted)]">
-              Self-Starters House Montessori School
-            </p>
-            <Link href="/teacher" className="truncate text-sm font-semibold">
-              My classes
-            </Link>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden truncate text-[var(--muted)] sm:inline">
-              {user.full_name}
-            </span>
-            <Button variant="secondary" onClick={() => void signOut()}>
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-6">{children}</main>
-    </div>
+    <StaffShell
+      role="teacher"
+      roleLabel="Teacher"
+      area="My sheets"
+      areaHref="/teacher"
+      areaIcon={BookOpenCheck}
+      navLabel="Teaching sections"
+      sections={sections}
+      refusal="These pages are for class and subject teachers. Your account does not have access to them."
+    >
+      {children}
+    </StaffShell>
   );
 }

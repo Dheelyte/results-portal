@@ -12,6 +12,7 @@
  * cards still cite the subject.
  */
 
+import { BookOpen, Plus } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -21,10 +22,11 @@ import {
   Field,
   Input,
   Notice,
+  PageHeader,
   Panel,
   Row,
   Select,
-  Spinner,
+  SkeletonTable,
   Table,
 } from "@/components/ui";
 import type { Subject } from "@/lib/api/admin";
@@ -45,16 +47,20 @@ export default function SubjectsPage() {
     is_specialist: false,
   });
 
-  if (!api) return <Spinner />;
-
   const groups = (subjects.data ?? []).filter((subject) => subject.is_group);
   const ordered = orderForDisplay(subjects.data ?? []);
   const nextOrder = (subjects.data ?? []).length;
 
   return (
     <>
-      <Panel
+      <PageHeader
         title="Subjects"
+        description="English is a group heading over five scored sub-subjects. A heading prints on the card and carries no scores, so it can never be offered to a class (R7)."
+      />
+
+      <Panel
+        title="The subject tree"
+        icon={BookOpen}
         description="In card order. A group heading carries no scores of its own."
         actions={
           <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
@@ -67,71 +73,86 @@ export default function SubjectsPage() {
           </label>
         }
       >
-        {subjects.loading ? <Spinner /> : null}
-        {subjects.error ? <Notice>{subjects.error}</Notice> : null}
+        {!api || subjects.loading ? (
+          <SkeletonTable rows={8} columns={4} label="Loading the subjects…" />
+        ) : (
+          <>
+            {subjects.error ? <Notice>{subjects.error}</Notice> : null}
 
-        <Table head={["Subject", "", "Order", ""]} empty="No subjects yet.">
-          {ordered.map(({ subject, depth }) => (
-            <Row key={subject.id}>
-              <Cell>
-                <span style={{ paddingLeft: depth * 16 }}>{subject.name}</span>
-              </Cell>
-              <Cell className="whitespace-nowrap">
-                {subject.is_group ? <Badge>Heading</Badge> : null}
-                {subject.is_specialist ? <Badge tone="warn">Specialist</Badge> : null}
-                {!subject.is_active ? <Badge tone="bad">Retired</Badge> : null}
-              </Cell>
-              <Cell>
-                <OrderInput subject={subject} onSaved={subjects.reload} />
-              </Cell>
-              <Cell className="whitespace-nowrap">
-                {!subject.is_group ? (
-                  <Button
-                    variant="ghost"
-                    disabled={action.busy}
-                    onClick={() =>
-                      void action.run(
-                        () =>
-                          api.updateSubject(subject.id, {
-                            is_specialist: !subject.is_specialist,
-                          }),
-                        subject.is_specialist
-                          ? `${subject.name} is no longer a specialist subject.`
-                          : `${subject.name} is now a specialist subject.`,
-                      )
-                    }
-                  >
-                    {subject.is_specialist ? "Not specialist" : "Specialist"}
-                  </Button>
-                ) : null}
-                <Button
-                  variant="ghost"
-                  disabled={action.busy}
-                  onClick={() =>
-                    void action.run(
-                      () => api.updateSubject(subject.id, { is_active: !subject.is_active }),
-                      subject.is_active
-                        ? `${subject.name} retired. Past cards keep it.`
-                        : `${subject.name} is active again.`,
-                    )
-                  }
-                >
-                  {subject.is_active ? "Retire" : "Restore"}
-                </Button>
-              </Cell>
-            </Row>
-          ))}
-        </Table>
+            <Table head={["Subject", "", "Order", ""]} empty="No subjects yet.">
+              {ordered.map(({ subject, depth }) => (
+                <Row key={subject.id}>
+                  <Cell>
+                    <span
+                      className="font-medium"
+                      style={{ paddingLeft: depth * 16 }}
+                    >
+                      {subject.name}
+                    </span>
+                  </Cell>
+                  <Cell className="whitespace-nowrap">
+                    <span className="flex flex-wrap gap-1">
+                      {subject.is_group ? <Badge tone="brand">Heading</Badge> : null}
+                      {subject.is_specialist ? <Badge tone="warn">Specialist</Badge> : null}
+                      {!subject.is_active ? <Badge tone="bad">Retired</Badge> : null}
+                    </span>
+                  </Cell>
+                  <Cell>
+                    <OrderInput subject={subject} onSaved={subjects.reload} />
+                  </Cell>
+                  <Cell className="whitespace-nowrap text-right">
+                    {!subject.is_group ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={action.busy}
+                        onClick={() =>
+                          void action.run(
+                            () =>
+                              api!.updateSubject(subject.id, {
+                                is_specialist: !subject.is_specialist,
+                              }),
+                            subject.is_specialist
+                              ? `${subject.name} is no longer a specialist subject.`
+                              : `${subject.name} is now a specialist subject.`,
+                          )
+                        }
+                      >
+                        {subject.is_specialist ? "Not specialist" : "Specialist"}
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={action.busy}
+                      onClick={() =>
+                        void action.run(
+                          () =>
+                            api!.updateSubject(subject.id, { is_active: !subject.is_active }),
+                          subject.is_active
+                            ? `${subject.name} retired. Past cards keep it.`
+                            : `${subject.name} is active again.`,
+                        )
+                      }
+                    >
+                      {subject.is_active ? "Retire" : "Restore"}
+                    </Button>
+                  </Cell>
+                </Row>
+              ))}
+            </Table>
+          </>
+        )}
       </Panel>
 
-      <Panel title="Add a subject">
+      <Panel title="Add a subject" icon={Plus}>
         <form
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={async (event) => {
             event.preventDefault();
             const created = await action.run(
               () =>
-                api.createSubject({
+                api!.createSubject({
                   name: form.name,
                   parent_subject_id: form.parent_subject_id || null,
                   is_group: form.is_group,
@@ -217,7 +238,7 @@ export default function SubjectsPage() {
           </label>
 
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={action.busy}>
+            <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
               Add subject
             </Button>
           </div>

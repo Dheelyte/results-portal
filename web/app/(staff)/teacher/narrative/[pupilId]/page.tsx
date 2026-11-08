@@ -8,11 +8,10 @@
  * button walks back through the class the way a teacher expects.
  */
 
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
 import { NarrativeForm } from "@/components/narrative-form";
-import { Notice, Spinner } from "@/components/ui";
+import { Avatar, Notice, PageHeader, SkeletonPanel } from "@/components/ui";
 import { useTeacherApi } from "@/lib/api/use-teacher";
 import { TERM_LABELS, pupilName } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
@@ -33,30 +32,45 @@ export default function PupilNarrativePage() {
     { enabled: Boolean(api) && Boolean(termId) },
   );
 
-  if (workload.loading || (termId && page.loading)) {
-    return <Spinner label="Loading the assessment…" />;
+  if (!api || workload.loading || (termId && page.loading)) {
+    return (
+      <>
+        <PageHeader
+          breadcrumbs={[{ label: "My sheets", href: "/teacher" }]}
+          back={{ href: "/teacher", label: "My sheets" }}
+          title="Written assessment"
+        />
+        <SkeletonPanel rows={10} label="Loading the assessment…" />
+      </>
+    );
   }
   if (workload.error) return <Notice>{workload.error}</Notice>;
   if (page.error) return <Notice>{page.error}</Notice>;
-  if (!page.data || !api || !termId) return null;
+  if (!page.data || !termId) return null;
 
   const term = workload.data?.term;
+  const name = pupilName(page.data);
+  const classHref = `/teacher/class/${page.data.class_id}/narrative`;
 
   return (
     <>
-      <div>
-        <Link
-          href={`/teacher/class/${page.data.class_id}`}
-          className="text-sm text-[var(--muted)] hover:underline"
-        >
-          ← {page.data.class_name}
-        </Link>
-        <h1 className="text-lg font-semibold">{pupilName(page.data)}</h1>
-        <p className="text-sm text-[var(--muted)]">
-          {page.data.admission_number}
-          {term ? ` · ${TERM_LABELS[term.number] ?? term.number}, ${term.academic_session_name}` : ""}
-        </p>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "My sheets", href: "/teacher" },
+          { label: page.data.class_name, href: classHref },
+          { label: name },
+        ]}
+        back={{ href: classHref, label: page.data.class_name }}
+        title={
+          <span className="flex items-center gap-2.5">
+            <Avatar name={name} />
+            {name}
+          </span>
+        }
+        description={`${page.data.admission_number}${
+          term ? ` · ${TERM_LABELS[term.number] ?? term.number}, ${term.academic_session_name}` : ""
+        }`}
+      />
 
       {/* Keyed on the pupil so moving to the next one rebuilds the form's
           state rather than carrying one child's draft into another's page. */}

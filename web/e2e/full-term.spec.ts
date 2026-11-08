@@ -48,6 +48,7 @@ import {
   type Term,
   type Workload,
 } from "./api";
+import { navigate, openAReleasedTerm, signInAsParent, signInAsStaff } from "./sign-in";
 
 // One story told in order: a class cannot be approved before it is
 // submitted. These are steps, not independent tests.
@@ -66,50 +67,6 @@ interface Journey {
 const journey = {} as Journey;
 
 /**
- * Sign in on the staff screens.
- *
- * The submit is retried, and the reason is specific rather than
- * superstitious: on a loaded machine a click sometimes lands with nothing
- * sent — the API's `audit_log` shows no attempt at all, successful or
- * failed, so the request was never made. This is the development Next
- * server, which compiles a route on first request, and a button that is
- * visible and enabled before React has finished wiring it. A second submit
- * always works.
- *
- * It is deliberately **not** a Playwright `retries` setting: a retry would
- * re-run a whole step of a serial journey, and this is one click.
- */
-async function signInAsStaff(page: Page, identifier: string): Promise<void> {
-  await page.goto("/login");
-  await page.getByLabel(/email address or phone/i).fill(identifier);
-  await page.getByLabel(/^password/i).fill(DEMO_PASSWORD);
-
-  const submit = page.getByRole("button", { name: /^sign in$/i });
-
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    await expect(submit).toBeEnabled({ timeout: 30_000 });
-    await submit.click();
-
-    try {
-      await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });
-      return;
-    } catch {
-      // Still on the sign-in screen. If the API refused us, say so rather
-      // than hammering it — only a silent no-op is worth retrying.
-      const alert = page.getByRole("alert");
-      if ((await alert.count()) > 0) {
-        const message = (await alert.first().textContent())?.trim();
-        if (message) {
-          throw new Error(`signing in as ${identifier} was refused: ${message}`);
-        }
-      }
-    }
-  }
-
-  throw new Error(`signing in as ${identifier} never left /login after three submits`);
-}
-
-/**
  * Wait for §8.1's autosave to settle.
  *
  * Asserting on "Saved" is wrong: the indicator is a live status, and once a
@@ -122,20 +79,6 @@ async function autosaveSettles(page: Page): Promise<void> {
   const status = page.getByTestId("autosave-status");
   await expect(status).toBeVisible({ timeout: 20_000 });
   await expect(status).not.toHaveText(/unsaved|saving|not saved/i, { timeout: 20_000 });
-}
-
-/** The parent's door is a different screen entirely (§8.5, D89). */
-async function signInAsParent(page: Page, identifier: string): Promise<void> {
-  await page.goto("/");
-  await page.getByLabel(/email address or phone/i).fill(identifier);
-  await page.getByLabel(/^password/i).fill(DEMO_PASSWORD);
-
-  // No retry needed here: this is a `<form>` posting to a server action, so
-  // it works before any JavaScript has loaded at all (D90). That is the
-  // whole point of §8.5's "3G on a low-end Android device", and it is also
-  // why this screen is the steadiest thing in the journey.
-  await page.getByRole("button", { name: /^sign in$/i }).click();
-  await expect(page).toHaveURL(/\/children$/, { timeout: 30_000 });
 }
 
 test.describe("a full term, from an empty sheet to a parent's acknowledgement", () => {
@@ -158,22 +101,22 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
     // the service and the form that feeds it are exercised.
     await setMarksObtainable(admin, first);
 
-    await signInAsStaff(page, ACCOUNTS.admin);
-    await page
-      .getByRole("navigation", { name: /setup sections/i })
-      .getByRole("link", { name: /session & terms/i })
-      .click();
+    await signInAsStaff(page, ACCOUNTS.admin, DEMO_PASSWORD);
+    await navigate(page, /session & terms/i);
 
-    // The two half-term cards are behind the term's own "Open". Found by the
-    // row that says "Current" rather than by the term's name, so the test
-    // does not care which term the school is in.
+    // The two half-term panels are a route of their own now, behind the
+    // term's "Open" link (docs/DECISIONS.md D104). Found by the row that says
+    // "Current" rather than by the term's name, so the test does not care
+    // which term the school is in.
     const currentTermRow = page.getByRole("row").filter({ hasText: "Current" }).last();
     await expect(currentTermRow).toBeVisible({ timeout: 20_000 });
-    await currentTermRow.getByRole("button", { name: /^open$/i }).click();
+    await currentTermRow.getByRole("link", { name: /^open$/i }).click();
+    await expect(page).toHaveURL(/\/admin\/calendar\/[0-9a-f-]+$/, { timeout: 20_000 });
 
-    const secondHalf = page
-      .getByRole("heading", { name: "Second Half Term" })
-      .locator("xpath=..");
+    // By test id, not by walking up from the heading: the panel has an icon
+    // and a description now, so "the heading's grandparent" is no longer the
+    // form.
+    const secondHalf = page.getByTestId("period-second_half");
     await expect(secondHalf).toBeVisible({ timeout: 20_000 });
 
     for (let index = 1; index <= 5; index += 1) {
@@ -206,13 +149,16 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
     expect(journey.mine.length, "subjects this teacher teaches in their own class")
       .toBeGreaterThan(0);
 
-    await signInAsStaff(page, ACCOUNTS.teacher1);
+    await signInAsStaff(page, ACCOUNTS.teacher1, DEMO_PASSWORD);
 
     // The landing page lists every sheet this teacher owns, with a link per
     // half term. Take the first one offered rather than deciding in advance
     // which subject to open — that is what a teacher does, and it leaves the
     // test with nothing to assume about the seed's subject order.
-    const firstSheetLink = page.getByRole("link", { name: /first half term/i }).first();
+    const firstSheetLink = page
+      .getByRole("main")
+      .getByRole("link", { name: /first half term/i })
+      .first();
     await expect(firstSheetLink).toBeVisible({ timeout: 20_000 });
     await firstSheetLink.click();
 
@@ -245,13 +191,17 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
     // React state. Not `page.reload()`: a hard navigation drops the staff
     // token, which in development the refresh cookie cannot restore (see the
     // note at the top of this file).
-    await page.getByRole("link", { name: /my classes/i }).first().click();
+    await page.getByRole("link", { name: /^my sheets$/i }).first().click();
     await expect(
-      page.getByRole("link", { name: /first half term/i }).first(),
+      page.getByRole("main").getByRole("link", { name: /first half term/i }).first(),
       "the landing page should no longer say nothing is entered",
     ).not.toHaveText(/0 of \d+ entered/, { timeout: 20_000 });
 
-    await page.getByRole("link", { name: /first half term/i }).first().click();
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: /first half term/i })
+      .first()
+      .click();
     await expect(
       page.getByLabel(`CA Test 1 for ${pupil.last_name}, ${pupil.first_name}`),
     ).toHaveValue("7", { timeout: 20_000 });
@@ -282,9 +232,13 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
   test("the class teacher writes a passage in the browser", async ({ page }) => {
     const pupil = must(journey.pupils[0], "a pupil");
 
-    await signInAsStaff(page, ACCOUNTS.teacher1);
-    await page.getByRole("link", { name: journey.className, exact: true }).first().click();
-    await page
+    await signInAsStaff(page, ACCOUNTS.teacher1, DEMO_PASSWORD);
+    // Scoped to the page body throughout this step: the sidebar lists this
+    // teacher's own classes by name as well, and a click that lands in the
+    // drawer is not the click a teacher makes.
+    const body = page.getByRole("main");
+    await body.getByRole("link", { name: journey.className, exact: true }).first().click();
+    await body
       .getByRole("link", { name: new RegExp(pupil.last_name, "i") })
       .first()
       .click();
@@ -295,9 +249,10 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
     await passage.blur();
     await autosaveSettles(page);
 
-    // And it is on the server, not only in the textarea: away and back.
-    await page.getByRole("link", { name: new RegExp(journey.className, "i") }).first().click();
-    await page
+    // And it is on the server, not only in the textarea: away and back. The
+    // breadcrumb is the way back to the class now.
+    await body.getByRole("link", { name: new RegExp(journey.className, "i") }).first().click();
+    await body
       .getByRole("link", { name: new RegExp(pupil.last_name, "i") })
       .first()
       .click();
@@ -367,8 +322,12 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
   // -------------------------------------------------------------------------
 
   test("the class teacher sends the class to the head teacher", async ({ page }) => {
-    await signInAsStaff(page, ACCOUNTS.teacher1);
-    await page.getByRole("link", { name: journey.className, exact: true }).first().click();
+    await signInAsStaff(page, ACCOUNTS.teacher1, DEMO_PASSWORD);
+    await page
+      .getByRole("main")
+      .getByRole("link", { name: journey.className, exact: true })
+      .first()
+      .click();
 
     const send = page.getByRole("button", { name: /send to head teacher/i });
     await expect(send).toBeVisible({ timeout: 20_000 });
@@ -385,7 +344,7 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
   // -------------------------------------------------------------------------
 
   test("the head teacher approves, which freezes the grades", async ({ page }) => {
-    await signInAsStaff(page, ACCOUNTS.head);
+    await signInAsStaff(page, ACCOUNTS.head, DEMO_PASSWORD);
     await expect(page.getByText(/classes for review/i)).toBeVisible({ timeout: 20_000 });
 
     // The queue lists the class by name and offers a "Review" link; the
@@ -411,31 +370,34 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
   // -------------------------------------------------------------------------
 
   test("the admin publishes the class", async ({ page, request }) => {
-    await signInAsStaff(page, ACCOUNTS.admin);
-    await page
-      .getByRole("navigation", { name: /setup sections/i })
-      .getByRole("link", { name: /^publish$/i })
-      .click();
+    await signInAsStaff(page, ACCOUNTS.admin, DEMO_PASSWORD);
+    await navigate(page, /^publish$/i);
     await expect(page.getByText(/publish results/i).first()).toBeVisible({ timeout: 20_000 });
 
-    // By **role**, not `getByLabel`: each `<select>` sits inside its own
-    // `<label>`, so the label's text content is "Class" followed by every
-    // option — the accessible name is still just "Class", and that is what
-    // the role locator matches.
-    //
-    // Selected by id rather than by option text: the term's reads "third
-    // term (current)", which is a sentence about today rather than a name.
-    await page
-      .getByRole("combobox", { name: "Class", exact: true })
-      .selectOption(journey.classId);
+    // The term is still a `<select>`, found by **role** rather than
+    // `getByLabel`: it sits inside its own `<label>`, so the label's text
+    // content is "Term" followed by every option — the accessible name is
+    // still just "Term", and that is what the role locator matches. Selected
+    // by id rather than by option text, because the current term's reads
+    // "Third Term (current)", a sentence about today rather than a name.
     await page
       .getByRole("combobox", { name: "Term", exact: true })
       .selectOption(journey.term.id);
 
+    // The class is a link now, not an option: publishing happens at
+    // `/admin/publish/{classId}`, so the URL says what is about to be
+    // published (docs/DECISIONS.md D104).
     await page
-      .getByRole("button", { name: /^publish/i })
+      .getByRole("main")
+      .getByRole("link", { name: journey.className, exact: false })
       .first()
       .click();
+    await expect(page).toHaveURL(
+      new RegExp(`/admin/publish/${journey.classId}`),
+      { timeout: 20_000 },
+    );
+
+    await page.getByRole("button", { name: /^publish this class$/i }).click();
 
     // Wait for something only a publication produces. Not the word
     // "published": the page's own prose says "A class is published once the
@@ -462,14 +424,19 @@ test.describe("a full term, from an empty sheet to a parent's acknowledgement", 
   // -------------------------------------------------------------------------
 
   test("a parent opens the card, downloads the PDF and acknowledges it", async ({ page }) => {
-    await signInAsParent(page, ACCOUNTS.parent);
+    await signInAsParent(page, ACCOUNTS.parent, DEMO_PASSWORD);
 
     // §10's fixture: this parent has two children, in different classes.
     await expect(page.getByRole("heading", { name: /your children/i })).toBeVisible();
 
-    const open = page.getByRole("link", { name: /view result/i }).first();
-    await expect(open, "a published term to open").toBeVisible({ timeout: 20_000 });
-    await open.click();
+    // A child is a route of its own now — `/children/{pupilId}` — so the
+    // terms are one hop further in (docs/DECISIONS.md D104). Which of this
+    // parent's two children has the published class is the seed's business,
+    // not this test's, so the helper walks them.
+    await expect(page.getByRole("link", { name: /view results/i }).first()).toBeVisible({
+      timeout: 20_000,
+    });
+    await openAReleasedTerm(page);
 
     // §9's card, in the order the paper prints it.
     await expect(page.getByText(/continuous assessment for/i)).toBeVisible({ timeout: 30_000 });

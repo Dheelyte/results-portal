@@ -15,7 +15,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Notice, Panel } from "@/components/ui";
+import { Button, Notice, Panel, Skeleton, SkeletonPanel } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import type { TeacherApi } from "@/lib/api/teacher";
 import { attendanceErrors } from "@/lib/attendance";
@@ -163,14 +163,13 @@ function SaveBar({
         {autosaveLabel(autosave.state, autosave.savedAt)}
         {pending > 0 ? ` · ${pending} unsaved` : ""}
       </p>
-      <button
-        type="button"
+      <Button
         onClick={autosave.saveNow}
-        disabled={!editable || pending === 0 || blocked || autosave.state === "saving"}
-        className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        loading={autosave.state === "saving"}
+        disabled={!editable || pending === 0 || blocked}
       >
         Save now
-      </button>
+      </Button>
     </div>
   );
 }
@@ -202,9 +201,9 @@ function Cell({
         inputMode="decimal"
         aria-label={label}
         aria-invalid={error ? true : undefined}
-        className={`${width} rounded-md border bg-[var(--background)] px-2 py-1.5 text-right text-sm tabular-nums ${
+        className={`${width} rounded-lg border bg-[var(--surface)] px-2 py-1.5 text-right text-sm tabular-nums ${
           error ? "border-[var(--danger)]" : "border-[var(--border)]"
-        } disabled:bg-[var(--surface)] disabled:text-[var(--muted)]`}
+        } disabled:bg-[var(--surface-raised)] disabled:text-[var(--muted)]`}
       />
       {error ? (
         <span role="alert" className="max-w-[16rem] text-right text-xs text-[var(--danger)]">
@@ -251,7 +250,9 @@ export function ClassAttendance({
     deps: [api, classId, termId],
   });
 
-  if (records.loading) return <p className="text-sm text-[var(--muted)]">Loading attendance…</p>;
+  if (records.loading) {
+    return <SkeletonPanel rows={10} label="Loading attendance…" />;
+  }
   if (!records.data) return <Notice>{records.error ?? "Could not load attendance."}</Notice>;
 
   // Bound once, because TypeScript loses the narrowing above inside the map
@@ -360,7 +361,9 @@ export function ClassGrowth({
     deps: [api, classId, termId],
   });
 
-  if (records.loading) return <p className="text-sm text-[var(--muted)]">Loading measurements…</p>;
+  if (records.loading) {
+    return <SkeletonPanel rows={10} label="Loading measurements…" />;
+  }
   if (!records.data) return <Notice>{records.error ?? "Could not load measurements."}</Notice>;
 
   const data = records.data;
@@ -439,7 +442,9 @@ export function ClassComments({
     deps: [api, classId, termId],
   });
 
-  if (records.loading) return <p className="text-sm text-[var(--muted)]">Loading comments…</p>;
+  if (records.loading) {
+    return <SkeletonPanel rows={10} label="Loading comments…" />;
+  }
   if (!records.data) return <Notice>{records.error ?? "Could not load comments."}</Notice>;
 
   const data = records.data;
@@ -477,7 +482,7 @@ export function ClassComments({
                 maxLength={1000}
                 aria-label={`Comment for ${pupilName(row)}`}
                 aria-invalid={error ? true : undefined}
-                className={`w-full rounded-md border bg-[var(--background)] px-3 py-2 text-sm ${
+                className={`w-full rounded-lg border bg-[var(--surface)] px-3 py-2 text-sm ${
                   error ? "border-[var(--danger)]" : "border-[var(--border)]"
                 } disabled:bg-[var(--surface)] disabled:text-[var(--muted)]`}
               />
@@ -535,7 +540,7 @@ function CommentPhrases({
     return () => controller.abort();
   }, [api]);
 
-  if (phrases === null) return <p className="text-xs text-[var(--muted)]">Loading phrases…</p>;
+  if (phrases === null) return <Skeleton className="h-6 w-40" />;
   if (phrases.length === 0) {
     return (
       <p className="text-xs text-[var(--muted)]">

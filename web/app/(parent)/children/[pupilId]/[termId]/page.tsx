@@ -12,9 +12,12 @@
  * card in their hand should find them the same document.
  */
 
+import { Download, Eye } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SubmitButton } from "@/components/submit-button";
+import { Badge, Card, PageHeader } from "@/components/ui";
 import { HALVES, halfFrom, halfLabel } from "@/lib/half";
 import {
   apiGet,
@@ -106,11 +109,16 @@ export default async function ReportPage({
   if (!report) {
     // Not this parent's child, or no such term. R12's wording either way:
     // nothing here confirms whether a report exists.
-    return <Unavailable message="Result not yet available. Please contact the school." />;
+    return (
+      <Unavailable
+        pupilId={pupilId}
+        message="Result not yet available. Please contact the school."
+      />
+    );
   }
 
   if (!report.available || !report.card) {
-    return <Unavailable message={report.message ?? ""} />;
+    return <Unavailable pupilId={pupilId} message={report.message ?? ""} />;
   }
 
   async function acknowledge() {
@@ -128,27 +136,44 @@ export default async function ReportPage({
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/children" className="text-sm text-[var(--muted)] hover:underline">
-          ← All results
-        </Link>
-        <nav className="flex overflow-hidden rounded-md border border-[var(--border)] text-xs">
-          {HALVES.map((option) => (
-            <Link
-              key={option}
-              href={`/children/${pupilId}/${termId}?half=${option}`}
-              aria-current={option === half ? "page" : undefined}
-              className={
-                option === half
-                  ? "bg-[var(--accent)] px-3 py-1.5 font-medium text-white"
-                  : "px-3 py-1.5 text-[var(--muted)] hover:bg-[var(--surface-raised)]"
-              }
-            >
-              {halfLabel(option)}
-            </Link>
-          ))}
-        </nav>
-      </div>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Your children", href: "/children" },
+          { label: card.pupil_name, href: `/children/${pupilId}` },
+          { label: report.term_label },
+        ]}
+        back={{ href: `/children/${pupilId}`, label: card.pupil_name }}
+        title={report.term_label}
+        description={`${card.pupil_name} · ${card.class_name}`}
+        badge={
+          report.acknowledged_at ? (
+            <Badge tone="good" icon={Eye}>
+              Seen
+            </Badge>
+          ) : null
+        }
+        actions={
+          <nav
+            aria-label="Which half of the term"
+            className="flex overflow-hidden rounded-lg border border-[var(--border)] text-xs"
+          >
+            {HALVES.map((option) => (
+              <Link
+                key={option}
+                href={`/children/${pupilId}/${termId}?half=${option}`}
+                aria-current={option === half ? "page" : undefined}
+                className={
+                  option === half
+                    ? "bg-[var(--brand)] px-3 py-2 font-medium text-[var(--brand-contrast)]"
+                    : "px-3 py-2 text-[var(--muted)] hover:bg-[var(--surface-raised)]"
+                }
+              >
+                {halfLabel(option)}
+              </Link>
+            ))}
+          </nav>
+        }
+      />
 
       <header className="text-center">
         <p className="text-sm">{card.school_name}</p>
@@ -157,33 +182,33 @@ export default async function ReportPage({
       </header>
 
       <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-        <Field label="Name of Pupil" value={card.pupil_name} />
-        <Field label="Date" value={card.date} />
-        <Field label="Overall Percentage" value={show(card.overall_percentage)} />
-        <Field label="Position (In grades)" value={card.position_text} />
-        <Field label="Class" value={card.class_name} />
-        <Field label="Year/Session" value={card.session_name} />
-        <Field label="No. in Class" value={card.no_in_class} />
-        <Field label="House" value={card.house_name} />
+        <Entry label="Name of Pupil" value={card.pupil_name} />
+        <Entry label="Date" value={card.date} />
+        <Entry label="Overall Percentage" value={show(card.overall_percentage)} />
+        <Entry label="Position (In grades)" value={card.position_text} />
+        <Entry label="Class" value={card.class_name} />
+        <Entry label="Year/Session" value={card.session_name} />
+        <Entry label="No. in Class" value={card.no_in_class} />
+        <Entry label="House" value={card.house_name} />
       </dl>
 
       <section>
         <h2 className="text-sm font-bold">1. Attendance Record</h2>
         <dl className="grid grid-cols-2 gap-x-6 text-sm sm:grid-cols-4">
-          <Field label="Times School Opened" value={card.times_school_opened} />
-          <Field label="Times Present" value={card.times_present} />
-          <Field label="Times Absent" value={card.times_absent} />
-          <Field label="Times Collected Late" value={card.times_late} />
+          <Entry label="Times School Opened" value={card.times_school_opened} />
+          <Entry label="Times Present" value={card.times_present} />
+          <Entry label="Times Absent" value={card.times_absent} />
+          <Entry label="Times Collected Late" value={card.times_late} />
         </dl>
       </section>
 
       <section>
         <h2 className="text-sm font-bold">2. Health and Physical Growth</h2>
         <dl className="grid grid-cols-2 gap-x-6 text-sm sm:grid-cols-4">
-          <Field label="Height, start" value={suffix(card.height_start_m, "m")} />
-          <Field label="Height, end" value={suffix(card.height_end_m, "m")} />
-          <Field label="Weight, start" value={suffix(card.weight_start_kg, "kg")} />
-          <Field label="Weight, end" value={suffix(card.weight_end_kg, "kg")} />
+          <Entry label="Height, start" value={suffix(card.height_start_m, "m")} />
+          <Entry label="Height, end" value={suffix(card.height_end_m, "m")} />
+          <Entry label="Weight, start" value={suffix(card.weight_start_kg, "kg")} />
+          <Entry label="Weight, end" value={suffix(card.weight_end_kg, "kg")} />
         </dl>
       </section>
 
@@ -325,32 +350,36 @@ export default async function ReportPage({
         ) : null}
       </section>
 
-      <section className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-4">
+      <Card className="flex flex-wrap items-center gap-3 px-4 py-4">
         {/* A plain link: the endpoint redirects to a five-minute signed URL
             and the browser follows it, which is what makes the PDF open in a
-            viewer rather than arriving as a blob in JavaScript (§9). */}
+            viewer rather than arriving as a blob in JavaScript (§9). It is an
+            `<a>` and not `ButtonLink`, because `next/link` would prefetch a
+            one-use signed download. */}
         <a
           href={`/api/reports/${pupilId}/${termId}?half=${half}`}
-          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--brand)] px-3.5 py-2 text-sm font-medium text-[var(--brand-contrast)] shadow-sm transition hover:bg-[var(--brand-strong)]"
         >
+          <Download aria-hidden className="size-4" />
           Download PDF
         </a>
 
         {report.acknowledged_at ? (
-          <span className="text-sm text-[var(--success)]">
+          <span className="flex items-center gap-1.5 text-sm text-[var(--success)]">
+            <Eye aria-hidden className="size-4" />
             You confirmed you have seen this result.
           </span>
         ) : (
           <form action={acknowledge}>
-            <button
-              type="submit"
-              className="rounded-md border border-[var(--border)] px-4 py-2 text-sm"
+            <SubmitButton
+              variant="secondary"
+              icon={<Eye aria-hidden className="size-4 shrink-0" />}
             >
               I have seen this result
-            </button>
+            </SubmitButton>
           </form>
         )}
-      </section>
+      </Card>
 
       {card.return_date ? (
         <p className="text-xs italic text-[var(--muted)]">
@@ -362,7 +391,7 @@ export default async function ReportPage({
   );
 }
 
-function Field({
+function Entry({
   label,
   value,
 }: {
@@ -382,13 +411,17 @@ function suffix(value: string | null | undefined, unit: string): string {
 }
 
 /** R12's sentence, and nothing else. */
-function Unavailable({ message }: { message: string }) {
+function Unavailable({ message, pupilId }: { message: string; pupilId: string }) {
   return (
     <>
-      <Link href="/children" className="text-sm text-[var(--muted)] hover:underline">
-        ← All results
-      </Link>
-      <p className="rounded-md border border-[var(--border)] px-3 py-3 text-sm">{message}</p>
+      <PageHeader
+        breadcrumbs={[{ label: "Your children", href: "/children" }, { label: "Result" }]}
+        back={{ href: `/children/${pupilId}`, label: "Back" }}
+        title="Result"
+      />
+      <Card className="px-4 py-4">
+        <p className="text-sm">{message}</p>
+      </Card>
     </>
   );
 }

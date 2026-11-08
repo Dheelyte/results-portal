@@ -11,7 +11,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Button, Field, Input, Notice, Spinner } from "@/components/ui";
+import { Button, Field, Input, Notice, SkeletonText } from "@/components/ui";
 import { useAuth } from "@/lib/auth";
 import { useAction } from "@/lib/use-async";
 
@@ -31,7 +31,7 @@ export default function ChangePasswordPage() {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
 
-  if (loading) return <Spinner />;
+  if (loading) return <SkeletonText lines={4} />;
 
   return (
     <form
@@ -91,8 +91,8 @@ export default function ChangePasswordPage() {
 
       <Notice>{mismatch ?? action.error}</Notice>
 
-      <Button type="submit" disabled={action.busy}>
-        {action.busy ? "Saving…" : "Change password"}
+      <Button type="submit" loading={action.busy} className="justify-center py-2.5">
+        Change password
       </Button>
     </form>
   );

@@ -14,19 +14,23 @@
  * phrases to start from that is the feature that gets abandoned first.
  */
 
+import { ClipboardList, MessageSquareQuote, Plus, Scale } from "lucide-react";
 import { useState } from "react";
 
 import {
   Badge,
   Button,
+  Card,
   Cell,
   Field,
   Input,
   Notice,
+  PageHeader,
   Panel,
   Row,
   Select,
-  Spinner,
+  SkeletonPanel,
+  SkeletonTable,
   Table,
   TextArea,
 } from "@/components/ui";
@@ -48,13 +52,26 @@ const CARD_BANDS = [
 
 export default function AssessmentPage() {
   const api = useAdminApi();
-  if (!api) return <Spinner />;
 
   return (
     <>
-      <GradingScales />
-      <NarrativeSections />
-      <PhraseBank />
+      <PageHeader
+        title="Grading & narrative"
+        description="The scale a grade is read from, the sections the card prints, and the phrases a teacher starts from."
+      />
+
+      {api ? (
+        <>
+          <GradingScales />
+          <NarrativeSections />
+          <PhraseBank />
+        </>
+      ) : (
+        <>
+          <SkeletonPanel rows={6} label="Loading the assessment settings…" />
+          <SkeletonPanel rows={6} />
+        </>
+      )}
     </>
   );
 }
@@ -72,14 +89,15 @@ function GradingScales() {
   return (
     <Panel
       title="Grading scale"
+      icon={Scale}
       description="One scale is active. Changing a boundary means a new version, so printed cards keep saying what they said."
     >
       <div className="flex flex-col gap-5">
-        {scales.loading ? <Spinner /> : null}
+        {scales.loading ? <SkeletonTable rows={7} columns={3} label="Loading the scales…" /> : null}
         {scales.error ? <Notice>{scales.error}</Notice> : null}
 
         {(scales.data ?? []).map((scale) => (
-          <section key={scale.id} className="rounded-md border border-[var(--border)] p-4">
+          <Card key={scale.id} className="p-4">
             <header className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-sm font-medium">
@@ -92,7 +110,8 @@ function GradingScales() {
               {scale.is_active ? null : (
                 <Button
                   variant="secondary"
-                  disabled={action.busy}
+                  size="sm"
+                  loading={action.busy}
                   onClick={() =>
                     void action.run(
                       () => api.activateGradingScale(scale.id),
@@ -116,7 +135,7 @@ function GradingScales() {
                 </Row>
               ))}
             </Table>
-          </section>
+          </Card>
         ))}
 
         <details className="rounded-md border border-[var(--border)] p-4">
@@ -250,7 +269,7 @@ function GradingScales() {
               <Button type="button" variant="secondary" onClick={() => setBands(CARD_BANDS)}>
                 Reset to the card&apos;s scale
               </Button>
-              <Button type="submit" disabled={action.busy}>
+              <Button type="submit" icon={Plus} loading={action.busy}>
                 Create and activate
               </Button>
             </div>
@@ -278,10 +297,12 @@ function NarrativeSections() {
   return (
     <Panel
       title="Narrative sections"
+      icon={ClipboardList}
       description="The written passages on the card's assessment pages, in card order. Retire a section rather than deleting it — past cards still cite it."
       actions={
         <Button
-          disabled={action.busy || !dirty}
+          loading={action.busy}
+          disabled={!dirty}
           onClick={async () => {
             const payload = (sections.data ?? []).map((section) => {
               const value = edited(section);
@@ -304,7 +325,9 @@ function NarrativeSections() {
         </Button>
       }
     >
-      {sections.loading ? <Spinner /> : null}
+      {sections.loading ? (
+        <SkeletonTable rows={8} columns={3} label="Loading the sections…" />
+      ) : null}
       {sections.error ? <Notice>{sections.error}</Notice> : null}
 
       <Table
@@ -378,6 +401,7 @@ function PhraseBank() {
   return (
     <Panel
       title="Phrase bank"
+      icon={MessageSquareQuote}
       description="Starting points a teacher can pick from, scoped to one section so the suggestions are relevant."
       actions={
         <Field label="Section">
@@ -396,7 +420,7 @@ function PhraseBank() {
         </Field>
       }
     >
-      {phrases.loading ? <Spinner /> : null}
+      {phrases.loading ? <SkeletonTable rows={6} columns={2} label="Loading the phrases…" /> : null}
       {phrases.error ? <Notice>{phrases.error}</Notice> : null}
 
       <ul className="flex flex-col gap-2">
@@ -431,7 +455,7 @@ function PhraseBank() {
             onChange={(event) => setText(event.target.value)}
           />
         </Field>
-        <Button type="submit" className="w-fit" disabled={action.busy}>
+        <Button type="submit" icon={Plus} className="w-fit" loading={action.busy}>
           Add phrase
         </Button>
       </form>

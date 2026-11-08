@@ -27,9 +27,10 @@
  * the specialist's section is being handled by somebody.
  */
 
+import { ArrowLeft, ArrowRight, Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Badge, Notice } from "@/components/ui";
+import { Badge, Button, Notice, Skeleton } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import type { PassageSave, Phrase, PupilNarrative, TeacherApi } from "@/lib/api/teacher";
 import { clearDraft, readDraft, unreconciled, writeDraft, type Draft } from "@/lib/drafts";
@@ -241,7 +242,7 @@ export function NarrativeForm({
 
       {failure ? <Notice tone="error">{failure}</Notice> : null}
 
-      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--background)] py-2">
+      <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
         <p aria-live="polite" className="text-sm text-[var(--muted)]" data-testid="autosave-status">
           {autosaveLabel(autosave.state, autosave.savedAt)}
           {dirtyCount > 0 ? ` · ${dirtyCount} unsaved` : ""}
@@ -250,14 +251,13 @@ export function NarrativeForm({
           <Badge tone={page.complete_count === page.section_count ? "good" : "neutral"}>
             {page.complete_count} of {page.section_count} written
           </Badge>
-          <button
-            type="button"
+          <Button
             onClick={autosave.saveNow}
-            disabled={locked || dirtyCount === 0 || autosave.state === "saving"}
-            className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            loading={autosave.state === "saving"}
+            disabled={locked || dirtyCount === 0}
           >
             Save now
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -298,7 +298,7 @@ export function NarrativeForm({
                   rows={4}
                   maxLength={2000}
                   aria-invalid={error ? true : undefined}
-                  className={`w-full rounded-md border bg-[var(--background)] px-3 py-2 text-sm ${
+                  className={`w-full rounded-lg border bg-[var(--surface)] px-3 py-2 text-sm ${
                     error ? "border-[var(--danger)]" : "border-[var(--border)]"
                   } disabled:bg-[var(--surface)] disabled:text-[var(--muted)]`}
                 />
@@ -352,25 +352,25 @@ export function NarrativeForm({
       ))}
 
       <nav className="flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          icon={ArrowLeft}
           disabled={!page.previous_pupil_id}
           onClick={() => void moveTo(page.previous_pupil_id ?? null)}
-          className="rounded-md border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40"
         >
-          ← Previous pupil
-        </button>
+          Previous pupil
+        </Button>
         <span className="text-sm text-[var(--muted)]">
           Pupil {page.position} of {page.roll_size}
         </span>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           disabled={!page.next_pupil_id}
           onClick={() => void moveTo(page.next_pupil_id ?? null)}
-          className="rounded-md border border-[var(--border)] px-4 py-2 text-sm disabled:opacity-40"
         >
-          Next pupil →
-        </button>
+          Next pupil
+          <ArrowRight aria-hidden className="size-4 shrink-0" />
+        </Button>
       </nav>
     </div>
   );
@@ -412,7 +412,7 @@ function PhraseBank({
     return <p className="text-xs text-[var(--danger)]">{error}</p>;
   }
   if (phrases === null) {
-    return <p className="text-xs text-[var(--muted)]">Loading phrases…</p>;
+    return <Skeleton className="h-6 w-40" />;
   }
   if (phrases.length === 0) {
     return (
@@ -466,10 +466,11 @@ function CopyFromPrevious({
 
   return (
     <>
-      <button
-        type="button"
-        disabled={busy}
-        className="rounded-md border border-[var(--border)] px-2 py-1 disabled:opacity-50"
+      <Button
+        variant="secondary"
+        size="sm"
+        icon={Copy}
+        loading={busy}
         onClick={async () => {
           setBusy(true);
           setMessage(null);
@@ -487,8 +488,8 @@ function CopyFromPrevious({
           }
         }}
       >
-        {busy ? "Copying…" : "Copy from previous pupil"}
-      </button>
+        Copy from previous pupil
+      </Button>
       {message ? <span className="text-[var(--muted)]">{message}</span> : null}
     </>
   );

@@ -6,62 +6,54 @@
  * A client component for the same reason the others are: the session lives in
  * an httpOnly cookie on `api.<domain>` (D13), which the Next.js server cannot
  * read. See docs/DECISIONS.md D41.
+ *
+ * The sidebar is the queue itself, longest-waiting first, because §8.4's
+ * screen is worked through rather than browsed — the head teacher's next
+ * action is nearly always the next class down.
  */
 
-import Link from "next/link";
+import { ClipboardCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, Notice, Spinner } from "@/components/ui";
-import { useAuth, useRequireRole } from "@/lib/auth";
+import { classItem, REVIEW_ROOT, type NavSection } from "@/components/shell/nav";
+import { StaffShell } from "@/components/shell/staff-shell";
+import { useHeadApi } from "@/lib/api/use-head";
+import { useResource } from "@/lib/use-async";
 
 export default function ReviewLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useRequireRole("head_teacher");
-  const { signOut } = useAuth();
+  const api = useHeadApi();
+  const queue = useResource((signal) => api!.queue(undefined, signal), [api], {
+    enabled: Boolean(api),
+  });
 
-  if (loading) {
-    return (
-      <main className="mx-auto max-w-5xl px-6 py-16">
-        <Spinner label="Checking your session…" />
-      </main>
-    );
-  }
+  const waiting = (queue.data ?? []).filter((entry) => entry.state === "submitted");
 
-  if (!user) return null; // the redirect in useRequireRole is in flight
-
-  if (user.role !== "head_teacher") {
-    return (
-      <main className="mx-auto max-w-xl px-6 py-16">
-        <Notice tone="info">
-          These pages are for the head teacher. Your account does not have access to them.
-        </Notice>
-      </main>
-    );
-  }
+  const sections: NavSection[] = [
+    { items: [REVIEW_ROOT] },
+    ...(waiting.length > 0
+      ? [
+          {
+            heading: "Waiting for you",
+            items: waiting.map((entry) =>
+              classItem(entry.class_name, `/review/${entry.class_id}?term=${entry.term_id}`),
+            ),
+          },
+        ]
+      : []),
+  ];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-[var(--border)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3">
-          <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest text-[var(--muted)]">
-              Self-Starters House Montessori School
-            </p>
-            <Link href="/review" className="truncate text-sm font-semibold">
-              Review
-            </Link>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden truncate text-[var(--muted)] sm:inline">
-              {user.full_name}
-            </span>
-            <Button variant="secondary" onClick={() => void signOut()}>
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-6">{children}</main>
-    </div>
+    <StaffShell
+      role="head_teacher"
+      roleLabel="Head teacher"
+      area="Review"
+      areaHref="/review"
+      areaIcon={ClipboardCheck}
+      navLabel="Review sections"
+      sections={sections}
+      refusal="These pages are for the head teacher. Your account does not have access to them."
+    >
+      {children}
+    </StaffShell>
   );
 }

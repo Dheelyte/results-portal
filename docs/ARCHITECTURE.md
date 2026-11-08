@@ -327,26 +327,42 @@ results-portal/
 │   └── tests/
 └── web/
     ├── app/
+    │   ├── not-found.tsx        # incurious by design: R12 again
     │   ├── (staff)/             # one AuthProvider for all of it (D100)
     │   │   ├── (signin)/
     │   │   │   ├── login/
     │   │   │   └── change-password/  # the must_change_password gate (§5.1)
-    │   │   ├── admin/           # setup: checklist, calendar, classes,
-    │   │   │                    #   subjects, pupils, accounts, assessment,
-    │   │   │                    #   publish, audit
-    │   │   ├── teacher/         # my classes, [classSubjectId]: the grid,
-    │   │   │                    #   narrative/[pupilId], class/[classId]
+    │   │   ├── admin/           # setup checklist, subjects, pupils, audit,
+    │   │   │   ├── calendar/[termId]/      #   the term's two sheets
+    │   │   │   ├── classes/[classId]/      #   subjects and teachers (D104)
+    │   │   │   ├── accounts/[userId]/      #   a parent's children
+    │   │   │   ├── assessment/             #   scale, sections, phrases
+    │   │   │   └── publish/[classId]/[pupilId]/   # publish, then R13
+    │   │   ├── teacher/         # [classSubjectId]: the grid,
+    │   │   │   ├── narrative/[pupilId]/
+    │   │   │   └── class/[classId]/        # five routes, not five tabs
+    │   │   │       ├── narrative/ attendance/ growth/ comments/
+    │   │   │       └── context.tsx         # the class, fetched once
     │   │   └── review/          # §8.4: the queue, and [classId]
-    │   ├── (parent)/children/   # §8.5, server-rendered, no client bundle
+    │   ├── (parent)/children/   # §8.5, server-rendered, one client component
+    │   │   └── [pupilId]/[termId]/         # child, then the card (D104)
     │   └── api/
     │       ├── reports/         # the PDF download, server-side
     │       └── session/         # the one place the parent's session renews
+    │   # every segment above also carries a loading.tsx (D105)
     ├── e2e/                     # §10's journey; playwright.config.ts beside it
-    │   ├── full-term.spec.ts
+    │   ├── full-term.spec.ts    #   needs a freshly seeded database
+    │   ├── navigation.spec.ts   #   §8.0's shell and every route; re-runnable
     │   ├── smoke.spec.ts
+    │   ├── sign-in.ts           # the two front doors, and the sidebar
     │   └── api.ts               # the bulk setup, through the real API
     ├── components/
-    │   ├── ui.tsx
+    │   ├── ui.tsx               # the kit; NOT a client component (D107)
+    │   ├── submit-button.tsx    # the one client component §8.5 allows (D106)
+    │   ├── shell/
+    │   │   ├── app-shell.tsx    # §8.0: the rail, the drawer, the header
+    │   │   ├── staff-shell.tsx  # the session gate, once for three roles
+    │   │   └── nav.ts           # what each role's sidebar holds
     │   ├── score-grid.tsx       # §8.1, both layouts from one DOM
     │   ├── narrative-form.tsx   # §8.2, sixteen sections and the phrase bank
     │   ├── class-records.tsx    # §4.7 attendance and growth, §1.6 comment
@@ -1139,6 +1155,29 @@ mounted without a capability gate, or without a row in one of those tables.
 Next.js App Router. Server components by default; client components only where
 there is real interactivity.
 
+### 8.0 The shell, and one route per view
+
+The staff screens sit in one shell — `components/shell/app-shell.tsx`: a
+collapsible icon rail from `lg` up, a drawer below it, a header with the
+signed-in name and an avatar, and `lucide-react` for every icon. Admin,
+teacher and head teacher differ only in their list of links
+(`components/shell/nav.ts`) and their role.
+
+**The parent's pages have no sidebar, by decision** — §8.5's budget is the
+hard number in this section, and a collapsible sidebar is client state for a
+journey three screens long. They share the palette, the cards, the badges and
+the header, and navigate by breadcrumbs and a back button (`docs/DECISIONS.md`
+D103).
+
+Two rules hold across every screen:
+
+- **A view is a route.** A list never opens its detail beneath itself. Every
+  list → detail flow navigates, carries breadcrumbs and a back button, and can
+  be linked to and reloaded (D104).
+- **Waiting is drawn, not described.** A route segment has a `loading.tsx`, a
+  resource still arriving shows a skeleton of the shape that is coming, and a
+  button mid-request shows a spinner and keeps its label (D105).
+
 ### 8.1 Score entry grid
 
 Teachers will use this on an Android phone, on patchy data, for 30 pupils across
@@ -1196,12 +1235,19 @@ third term, the promotion decision. Approve, or return with a note.
 The lightest page in the system. Server-rendered, **target under 150 KB** first
 load, no client-side fetching for the report itself.
 
-- Login → children as cards → published terms → the report card.
+- Login → children as cards → published terms → the report card. Those are
+  three routes — `/children`, `/children/[pupilId]`, `/children/[pupilId]/[termId]`
+  — not one page that grows (D104). The list makes **one** request; it used to
+  make one per child as well.
 - A prominent **Download PDF** button and an **Acknowledge** action, which
   replaces the parent signature and the physical return of the card.
 - Withheld or unpublished: the R12 message, nothing else.
 
 Assume a 3G connection on a low-end Android device, and test against that.
+
+One client component only: `components/submit-button.tsx`, which puts a
+spinner on a server-action form while it is in flight. Everything else here is
+server-rendered and works with JavaScript switched off (D106).
 
 ---
 
@@ -1257,7 +1303,7 @@ Requirements:
 | Authorization | pytest | Each endpoint × each role, asserting allow or 403/404. The most valuable suite in the project — write it early. |
 | Workflow | pytest | Every legal transition, a rejection for each illegal one. |
 | PDF | pytest | Golden files for both half-term layouts. |
-| E2E | Playwright | Full term: set up → enter both periods → narrative → submit → approve → publish → parent downloads and acknowledges. `web/e2e/full-term.spec.ts`, at a phone viewport, against a freshly seeded database; `docker compose --profile e2e run --rm e2e`. A36 says what is clicked and what is not. |
+| E2E | Playwright | Full term: set up → enter both periods → narrative → submit → approve → publish → parent downloads and acknowledges. `web/e2e/full-term.spec.ts`, at a phone viewport, against a freshly seeded database; `docker compose --profile e2e run --rm e2e`. A36 says what is clicked and what is not. `navigation.spec.ts` beside it covers §8.0's shell and every route, and is re-runnable against any seeded stack. |
 
 Do not use SQLite. Generated columns, enums, `citext` and triggers behave
 differently; tests would pass against a database you do not run.
@@ -1437,4 +1483,6 @@ confirmed or overturned, move it to `docs/DECISIONS.md` with the date.
 | A34 | §5.1's per-IP login limit is **20 attempts per 15 minutes per address**, counting successes as well as failures, refused with a 429 and `Retry-After`. §5.1 asks for the limit and names no numbers. | **Low.** Two environment keys, `LOGIN_IP_MAX_ATTEMPTS` and `LOGIN_IP_WINDOW_MINUTES`, so a school that shares one connection can be given more room without a deploy. The table behind it is `login_attempts`, holding an address and a moment (migration 0004, `docs/DECISIONS.md` D96). |
 | A35 | A publish whose pre-publication dump fails is **refused**, not warned about. §11 requires the dump and does not say what to do when it cannot be taken. | **Low.** One environment key, `REQUIRE_PREPUBLISH_BACKUP`, false to publish past a broken backup store. The alternative default — publish anyway — makes the dump a hope rather than a safety net, and the one time it matters is the time it was missing. |
 | A36 | The E2E journey drives **every screen and every transition** in the browser with representative work typed into each, and fills the remaining ~1,600 score cells and ~150 narrative passages through the real API as the real role. §10 names the journey and not how much of it is clicked. | **Low.** More clicking is always possible; it costs runtime, not structure. The all-clicks version is about an hour per run and fails unreadably (`docs/DECISIONS.md` D98). |
+| A37 | The **parent's pages carry no sidebar**: the staff shell's collapsible navigation is client state, and §8.5's 150 KB budget is spent on the card. Those pages navigate by breadcrumbs and a back button. §8.5 names the journey and not its chrome. | **Low.** `components/shell/app-shell.tsx` already exists and the parent's layout is one file; adding it is an afternoon, and the measurement in `docs/DECISIONS.md` D103 says what it would cost in bytes. |
+| A38 | The school's colours are **navy and gold**, chosen rather than given: the report card is printed black on white and no logo file or brand guide was supplied. The crest is the school's initials. | **Low.** Ten custom properties in `web/app/globals.css` and one `Crest` component. Every screen reads the tokens; none hard-codes a colour. |
 | A11 | The web app and the API stay under **one registrable domain** (`<domain>` and `api.<domain>`), so browser requests between them are cross-origin but same-site. **Confirmed to bite in development:** Chrome treats `localhost` as a public suffix, so `localhost` ↔ `api.localhost` is cross-*site* locally while production is same-site, and `SameSite=Lax` withholds the refresh cookie locally. It errs safe, and `docs/RUNBOOK.md` §4 has the `.test` recipe for an exact mirror (`docs/DECISIONS.md` D100). | **Low** while it holds — CORS origin and cookie attributes are configuration. **Medium** if they ever land on unrelated domains: that forces `SameSite=None; Secure`, removes SameSite's CSRF defence so explicit CSRF tokens are needed, and runs into Safari's ITP. See `docs/DECISIONS.md` D13. |

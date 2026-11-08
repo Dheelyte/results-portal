@@ -9,9 +9,21 @@
  * submission gate.
  */
 
+import { Check, ListChecks, RefreshCw, Sparkles } from "lucide-react";
 import Link from "next/link";
 
-import { Badge, Button, Notice, Panel, Select, Spinner } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  ButtonLink,
+  Field,
+  Notice,
+  PageHeader,
+  Panel,
+  Select,
+  SkeletonPanel,
+  SkeletonTable,
+} from "@/components/ui";
 import type { ChecklistItem } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { TERM_LABELS } from "@/lib/format";
@@ -52,19 +64,30 @@ export default function SetupPage() {
     enabled: Boolean(api && chosen),
   });
 
-  if (!api || terms.loading) return <Spinner />;
+  if (!api || terms.loading) {
+    return (
+      <>
+        <PageHeader title="Setup" />
+        <SkeletonPanel rows={6} label="Loading the checklist…" />
+      </>
+    );
+  }
   if (terms.error) return <Notice>{terms.error}</Notice>;
 
   if (!terms.data?.length) {
     return (
-      <Panel
-        title="Nothing is set up yet"
-        description="Start by creating this academic session and its first term."
-      >
-        <Link href="/admin/calendar">
-          <Button>Create the session</Button>
-        </Link>
-      </Panel>
+      <>
+        <PageHeader title="Setup" />
+        <Panel
+          title="Nothing is set up yet"
+          icon={Sparkles}
+          description="Start by creating this academic session and its first term."
+        >
+          <ButtonLink href="/admin/calendar" variant="primary">
+            Create the session
+          </ButtonLink>
+        </Panel>
+      </>
     );
   }
 
@@ -74,7 +97,13 @@ export default function SetupPage() {
 
   return (
     <>
+      <PageHeader
+        title="Setup"
+        description="What teachers need before they can start entering scores for a term."
+      />
+
       <Panel
+        icon={ListChecks}
         title={
           checklist.data
             ? `${checklist.data.term_label}, ${checklist.data.academic_session_name}`
@@ -86,42 +115,59 @@ export default function SetupPage() {
             : `${outstanding} ${outstanding === 1 ? "item" : "items"} still to do before teachers can start.`
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-end gap-2">
             {checklist.data ? (
-              <Badge tone={checklist.data.ready ? "good" : "warn"}>
+              <Badge
+                tone={checklist.data.ready ? "good" : "warn"}
+                icon={checklist.data.ready ? Check : undefined}
+              >
                 {checklist.data.ready ? "Ready" : "Not ready"}
               </Badge>
             ) : null}
-            <Select
-              aria-label="Term"
-              value={chosen}
-              onChange={(event) => setTermId(event.target.value)}
-              className="w-auto"
+            <div className="w-44">
+              <Field label="Term">
+                <Select
+                  aria-label="Term"
+                  value={chosen}
+                  onChange={(event) => setTermId(event.target.value)}
+                >
+                  {terms.data.map((term) => (
+                    <option key={term.id} value={term.id}>
+                      {TERM_LABELS[term.number] ?? term.number}
+                      {term.is_current ? " (current)" : ""}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <Button
+              variant="secondary"
+              icon={RefreshCw}
+              loading={checklist.loading}
+              onClick={checklist.reload}
             >
-              {terms.data.map((term) => (
-                <option key={term.id} value={term.id}>
-                  {TERM_LABELS[term.number] ?? term.number}
-                  {term.is_current ? " (current)" : ""}
-                </option>
-              ))}
-            </Select>
-            <Button variant="secondary" onClick={checklist.reload}>
               Refresh
             </Button>
           </div>
         }
       >
-        {checklist.loading ? <Spinner /> : null}
-        {checklist.error ? <Notice>{checklist.error}</Notice> : null}
-        <ul className="flex flex-col gap-3">
-          {blocking.map((item) => (
-            <ChecklistRow key={item.key} item={item} />
-          ))}
-        </ul>
+        {checklist.loading ? (
+          <SkeletonTable rows={6} columns={2} label="Loading the checklist…" />
+        ) : (
+          <>
+            {checklist.error ? <Notice>{checklist.error}</Notice> : null}
+            <ul className="flex flex-col gap-3">
+              {blocking.map((item) => (
+                <ChecklistRow key={item.key} item={item} />
+              ))}
+            </ul>
+          </>
+        )}
       </Panel>
 
       {advisory.length ? (
         <Panel
+          icon={Sparkles}
           title="Worth doing"
           description="Real gaps, but teachers can start without them."
         >
@@ -146,13 +192,13 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
     <li className="flex gap-3">
       <span
         aria-hidden
-        className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border text-xs ${
+        className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border ${
           item.done
-            ? "border-[var(--success)] text-[var(--success)]"
+            ? "border-[var(--success)] bg-[var(--success-soft)] text-[var(--success)]"
             : "border-[var(--border)] text-[var(--muted)]"
         }`}
       >
-        {item.done ? "✓" : ""}
+        {item.done ? <Check className="size-3" /> : null}
       </span>
       <div className="min-w-0">
         <p className="text-sm font-medium">
@@ -172,9 +218,9 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
         {!item.done && link ? (
           <Link
             href={link.href}
-            className="mt-1 inline-block text-sm text-[var(--accent)] hover:underline"
+            className="mt-1 inline-block text-sm font-medium text-[var(--brand)] hover:underline"
           >
-            Go to {link.label}
+            Go to {link.label} &rarr;
           </Link>
         ) : null}
       </div>

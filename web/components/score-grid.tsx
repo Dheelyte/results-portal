@@ -28,7 +28,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Badge, Notice } from "@/components/ui";
+import { Badge, Button, Card, Notice } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import type { EntryRow, Sheet, TeacherApi } from "@/lib/api/teacher";
 import { clearDraft, readDraft, unreconciled, writeDraft, type Draft } from "@/lib/drafts";
@@ -214,9 +214,9 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
               are in the grid below but not yet saved.
             </span>
             <span className="flex gap-2">
-              <button
-                type="button"
-                className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => {
                   setValues(saved);
                   setDirty({});
@@ -225,17 +225,16 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
                 }}
               >
                 Discard them
-              </button>
-              <button
-                type="button"
-                className="rounded-md border border-[var(--border)] px-3 py-1 text-sm"
+              </Button>
+              <Button
+                size="sm"
                 onClick={() => {
                   setRecovered(null);
                   autosave.saveNow();
                 }}
               >
                 Save them now
-              </button>
+              </Button>
             </span>
           </div>
         </Notice>
@@ -259,7 +258,7 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
 
       {failure ? <Notice tone="error">{failure}</Notice> : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="sticky top-14 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2">
         <p
           aria-live="polite"
           className="text-sm text-[var(--muted)]"
@@ -268,17 +267,16 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
           {autosaveLabel(autosave.state, autosave.savedAt)}
           {dirtyCount > 0 ? ` · ${dirtyCount} unsaved` : ""}
         </p>
-        <button
-          type="button"
+        <Button
           onClick={autosave.saveNow}
-          disabled={locked || dirtyCount === 0 || hasLocalErrors || autosave.state === "saving"}
-          className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          loading={autosave.state === "saving"}
+          disabled={locked || dirtyCount === 0 || hasLocalErrors}
         >
           Save now
-        </button>
+        </Button>
       </div>
 
-      <div className="score-grid overflow-x-auto">
+      <Card className="score-grid overflow-x-auto p-3 sm:p-4">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
@@ -381,7 +379,7 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </Card>
 
       {rows.length === 0 ? (
         <Notice tone="info">
