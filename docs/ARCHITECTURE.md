@@ -1177,6 +1177,11 @@ Two rules hold across every screen:
 - **Waiting is drawn, not described.** A route segment has a `loading.tsx`, a
   resource still arriving shows a skeleton of the shape that is coming, and a
   button mid-request shows a spinner and keeps its label (D105).
+- **A colour never carries meaning alone.** `/admin` and `/review` open on a
+  row of stat cards (D113): a status tone is reserved for a real state, always
+  ships with an icon and a word, and the numbers themselves wear text tokens.
+  Every pair is measured against both themes, not judged by eye — which is how
+  the gold token's 3.52:1 was caught (D114).
 
 ### 8.1 Score entry grid
 

@@ -9,7 +9,16 @@
  * submission gate.
  */
 
-import { Check, ListChecks, RefreshCw, Sparkles } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  GraduationCap,
+  Layers,
+  ListChecks,
+  RefreshCw,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -21,8 +30,11 @@ import {
   PageHeader,
   Panel,
   Select,
+  Skeleton,
   SkeletonPanel,
   SkeletonTable,
+  StatCard,
+  StatRow,
 } from "@/components/ui";
 import type { ChecklistItem } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
@@ -64,6 +76,16 @@ export default function SetupPage() {
     enabled: Boolean(api && chosen),
   });
 
+  // The headline numbers. `limit: 1` because only `total` is wanted — the
+  // roll itself is `/admin/pupils`, and asking for five hundred rows to
+  // print one number would be the wrong trade on the screen an admin opens
+  // first.
+  const roll = useResource(() => api!.pupils({ limit: 1 }), [api], {
+    enabled: Boolean(api),
+  });
+  const classes = useResource(() => api!.classes(), [api], { enabled: Boolean(api) });
+  const accounts = useResource(() => api!.users(), [api], { enabled: Boolean(api) });
+
   if (!api || terms.loading) {
     return (
       <>
@@ -95,12 +117,70 @@ export default function SetupPage() {
   const advisory = checklist.data?.items.filter((item) => !item.blocking) ?? [];
   const outstanding = blocking.filter((item) => !item.done).length;
 
+  const pupilCount = roll.data?.total ?? null;
+  const classCount = classes.data?.length ?? null;
+  const staff = (accounts.data ?? []).filter(
+    (account) => account.role !== "parent" && account.is_active,
+  );
+  const parents = (accounts.data ?? []).filter(
+    (account) => account.role === "parent" && account.is_active,
+  );
+  const statsLoading = roll.loading || classes.loading || accounts.loading;
+
   return (
     <>
       <PageHeader
         title="Setup"
         description="What teachers need before they can start entering scores for a term."
       />
+
+      {statsLoading ? (
+        <StatRow>
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-[8.5rem] rounded-xl" />
+          ))}
+        </StatRow>
+      ) : (
+        <StatRow>
+          {/* Readiness is the only one of the four that is a *state*, so it
+              is the only one allowed a status colour — green when teachers
+              can start, amber with the count when they cannot. The other
+              three are plain counts and wear the brand hue, which is what
+              keeps a green tile on this screen meaning one thing. */}
+          <StatCard
+            tone={outstanding === 0 ? "good" : "warn"}
+            icon={outstanding === 0 ? Check : CircleAlert}
+            value={outstanding === 0 ? "Ready" : outstanding}
+            label={outstanding === 0 ? "Teachers can start" : "Still to do"}
+            hint={
+              outstanding === 0
+                ? checklist.data?.term_label ?? undefined
+                : `${outstanding === 1 ? "item" : "items"} blocking this term`
+            }
+          />
+          <StatCard
+            icon={GraduationCap}
+            value={pupilCount ?? "—"}
+            label="Pupils on the roll"
+            hint="Active enrolments"
+            href="/admin/pupils"
+          />
+          <StatCard
+            icon={Layers}
+            value={classCount ?? "—"}
+            label={classCount === 1 ? "Class" : "Classes"}
+            hint="Taking results this session"
+            href="/admin/classes"
+          />
+          <StatCard
+            icon={Users}
+            value={staff.length}
+            label="Staff accounts"
+            hint={`${parents.length} parent ${parents.length === 1 ? "account" : "accounts"}`}
+            href="/admin/accounts"
+          />
+        </StatRow>
+      )}
 
       <Panel
         icon={ListChecks}

@@ -34,7 +34,13 @@
   --brand-contrast: #ffffff;
   --accent: var(--brand);
 
-  --gold: #a8780c;
+  /* Darkened from #a8780c on 2026-11-08: that step read 3.52:1 on
+     --gold-soft and 3.92:1 on --surface, which is large-text-only, and
+     `Badge tone="gold"` sets small text (the house names on /admin/classes).
+     #856009 is the lightest step that clears 4.5:1 against the surface, the
+     raised surface and its own chip. Measured, not judged — the dataviz
+     skill's `contrast()`; the dark-mode gold already passed at 7.98:1. */
+  --gold: #856009;
   --gold-soft: #fbf2dc;
 
   --danger: #b42318;

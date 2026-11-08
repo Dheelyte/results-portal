@@ -424,6 +424,126 @@ export function Badge({
 }
 
 /* ---------------------------------------------------------------------------
+   Stat cards
+   --------------------------------------------------------------------------- */
+
+const STAT_TONES = {
+  brand: {
+    card: "border-[var(--brand)] bg-[var(--brand-soft)]",
+    chip: "bg-[var(--brand)] text-[var(--brand-contrast)]",
+  },
+  good: {
+    card: "border-[var(--success)] bg-[var(--success-soft)]",
+    chip: "bg-[var(--success)] text-[var(--surface)]",
+  },
+  warn: {
+    card: "border-[var(--warning)] bg-[var(--warning-soft)]",
+    chip: "bg-[var(--warning)] text-[var(--surface)]",
+  },
+  bad: {
+    card: "border-[var(--danger)] bg-[var(--danger-soft)]",
+    chip: "bg-[var(--danger)] text-[var(--surface)]",
+  },
+  gold: {
+    card: "border-[var(--gold)] bg-[var(--gold-soft)]",
+    chip: "bg-[var(--gold)] text-[var(--surface)]",
+  },
+  neutral: {
+    card: "border-[var(--border)] bg-[var(--surface-raised)]",
+    chip: "bg-[var(--muted)] text-[var(--surface)]",
+  },
+} as const;
+
+/**
+ * One headline number (§7, §8.4).
+ *
+ * A stat tile, not a one-bar chart: a handful of current values read at a
+ * glance is what this form is for. Three rules it follows that are easy to
+ * get wrong, and all three come from the project's data-visualisation
+ * guidance:
+ *
+ * - **The icon is not optional.** These tiles are coloured by *state* —
+ *   ready, outstanding, waiting — and a status colour must always carry an
+ *   icon and a label beside it, never stand alone. Colour-blind readers, a
+ *   greyscale print and `forced-colors` all lose the hue; none of them loses
+ *   the icon or the word.
+ * - **The text wears text tokens, never the tone.** The value is
+ *   `--foreground` and the label `--muted` on every tile, measured at 4.5:1
+ *   or better against all six tints in both themes. The coloured chip beside
+ *   them carries the meaning; tinting the words as well would spend
+ *   contrast to repeat it.
+ * - **No `tabular-nums` on the value.** Tabular figures give every digit the
+ *   width of a zero, which at display size makes a number like 121 look
+ *   loose and gappy. Tabular belongs in columns that must align — the score
+ *   grid and the tables — not here.
+ *
+ * `tone` is chosen by what the number *means*, not by what it is: a plain
+ * count is `brand`, and `good`/`warn`/`bad` are reserved for an actual state,
+ * so a green tile always means something is finished.
+ */
+export function StatCard({
+  label,
+  value,
+  hint,
+  tone = "brand",
+  icon: Icon,
+  href,
+}: {
+  /** Sentence case, no trailing colon. */
+  label: string;
+  value: ReactNode;
+  /** One short line of context beneath the value. */
+  hint?: ReactNode;
+  tone?: keyof typeof STAT_TONES;
+  icon: LucideIcon;
+  /** Where this number is managed, if anywhere. */
+  href?: string;
+}) {
+  const { card, chip } = STAT_TONES[tone];
+
+  const body = (
+    <>
+      <span className="flex items-start justify-between gap-3">
+        <span
+          aria-hidden
+          className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${chip}`}
+        >
+          <Icon className="size-[1.1rem]" />
+        </span>
+        {href ? (
+          <ChevronRight aria-hidden className="size-4 shrink-0 text-[var(--muted)]" />
+        ) : null}
+      </span>
+
+      <span className="mt-3 block text-[1.75rem] font-semibold leading-none tracking-tight text-[var(--foreground)]">
+        {value}
+      </span>
+      <span className="mt-1.5 block text-sm font-medium text-[var(--foreground)]">{label}</span>
+      {hint ? (
+        <span className="mt-0.5 block text-xs text-[var(--muted)]">{hint}</span>
+      ) : null}
+    </>
+  );
+
+  const shell = `flex flex-col rounded-xl border p-4 ${card}`;
+
+  if (!href) {
+    return <div className={shell}>{body}</div>;
+  }
+
+  return (
+    <Link href={href} className={`${shell} transition hover:brightness-[0.97]`}>
+      {body}
+    </Link>
+  );
+}
+
+/** A row of stat cards. Wraps to two columns on a phone, never one. */
+export function StatRow({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{children}</div>;
+}
+
+/* ---------------------------------------------------------------------------
    Tables
    --------------------------------------------------------------------------- */
 

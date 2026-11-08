@@ -82,6 +82,49 @@ test.describe("the admin's sidebar reaches every setup screen", () => {
   }
 });
 
+test("the admin dashboard leads with its headline numbers", async ({ page }) => {
+  await signInAsStaff(page, ACCOUNTS.admin, DEMO_PASSWORD);
+
+  const main = page.getByRole("main");
+  // Every tile carries a label in words, which is also what makes the
+  // colour non-load-bearing: a status tone must never be the only thing
+  // saying what a tile means (docs/DECISIONS.md D113).
+  for (const label of [
+    /pupils on the roll/i,
+    /^classes$|^class$/i,
+    /staff accounts/i,
+  ]) {
+    await expect(main.getByText(label).first()).toBeVisible({ timeout: 30_000 });
+  }
+
+  // The readiness tile says one of two things, and both are words.
+  await expect(
+    main.getByText(/teachers can start/i).or(main.getByText(/still to do/i)).first(),
+  ).toBeVisible({ timeout: 30_000 });
+
+  // The counting tiles are links to where that number is managed.
+  await clickThrough(
+    page,
+    () => main.getByRole("link", { name: /pupils on the roll/i }).first(),
+    /\/admin\/pupils$/,
+    "the pupils tile",
+  );
+});
+
+test("the head teacher's dashboard leads with the state of the queue", async ({ page }) => {
+  await signInAsStaff(page, ACCOUNTS.head, DEMO_PASSWORD);
+
+  const main = page.getByRole("main");
+  for (const label of [
+    /nothing waiting|waiting for you/i,
+    /remarks written/i,
+    /class(es)? approved/i,
+    /returned to teachers/i,
+  ]) {
+    await expect(main.getByText(label).first()).toBeVisible({ timeout: 30_000 });
+  }
+});
+
 test.describe("the admin's list → detail routes", () => {
   test("a class opens at its own URL, with a way back", async ({ page }) => {
     await signInAsStaff(page, ACCOUNTS.admin, DEMO_PASSWORD);

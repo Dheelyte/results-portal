@@ -2576,3 +2576,101 @@ the same page a stranger's child would produce.
 The lesson is about the test, not the bundler: a boundary that resolves by
 walking up a tree is worth asserting on, because the walk is an
 implementation detail and it changed.
+
+### D113 — Stat cards on the two dashboard homes
+
+`/admin` and `/review` lead with a row of four coloured tiles. A KPI row of
+stat tiles is the right form for a handful of current values — a one-bar bar
+chart is the classic wrong answer — so there is no chart here and no
+sparkline: there is no series to plot.
+
+**What the colour means, and what it does not.** Colour is assigned by the job
+it does, so a status hue is reserved for an actual *state* and a plain count
+wears the brand hue:
+
+| Tile | Tone | Why |
+|---|---|---|
+| Setup readiness / Waiting for you | green ↔ amber | a real state, and the one each person is here to act on |
+| Classes approved, Returned to teachers | green / red, **neutral at zero** | a green tile reading `0` claims an achievement that has not happened |
+| Pupils, Classes, Staff accounts, Remarks written | brand navy | counts; colouring them by value would spend the identity channel on nothing |
+
+Three rules the component enforces rather than leaves to the caller:
+
+- **The icon is required.** These are status-coloured, and a status colour
+  must always ship with an icon and a label — colour-blind readers, greyscale
+  print and `forced-colors` all lose the hue and none of them loses the word.
+  The navigation spec asserts the words, not the colours, for that reason.
+- **Text wears text tokens.** The value is `--foreground` and the label
+  `--muted` on every tile, never the tone. Measured at 4.5:1 or better on all
+  six tints in both themes; every icon glyph clears 3:1 on its chip.
+- **No `tabular-nums` on the value.** Tabular figures give every digit the
+  width of a zero, which at 28px makes `121` look gappy. Tabular stays where
+  it earns its keep — the score grid and the tables, where columns must align.
+
+**What they cost.** The head teacher's four come off `/review/queue`, which
+the page already fetches: no extra request at all. The admin's three counts
+are three small GETs (`/pupils?limit=1` for the total alone, `/classes`,
+`/users`) on a screen one person opens a few times a term.
+
+### D114 — The gold token failed contrast, and the check found it
+
+Running the data-visualisation guidance's `contrast()` over the palette from
+D102 turned up one failure: light-mode `--gold` at `#a8780c` read **3.52:1**
+on its own chip and 3.92:1 on the surface. That is large-text-only, and
+`Badge tone="gold"` sets small text — the house names on `/admin/classes`.
+
+`#856009` is the lightest step that clears 4.5:1 against the surface, the
+raised surface and its own chip (5.13 / 5.72 / 4.96). Dark-mode gold already
+passed at 7.98:1 and is unchanged.
+
+Worth stating plainly: this was shipped yesterday and I had not measured it.
+The colour part of this work is computable, and the lesson is to compute it —
+the other eleven pairs passed, which is exactly why eyeballing would not have
+found the one that did not.
+
+### D115 — Two bugs that would have broken the first production deployment
+
+Found while answering "what do I need to do to deploy this?", by resolving the
+production overlay and running the production image as the user it actually
+runs as. Neither could show in development, where the `dev` stage runs as
+root and the compose file mounts both stores.
+
+**The backup volume was not mounted in production.**
+`docker-compose.prod.yml` replaced the api service's volume list wholesale
+(`volumes: !override`) and listed only `report_store`. `BACKUP_STORE` still
+pointed at `/var/lib/portal/backups`, so every nightly and pre-publish dump
+would have been written into the container's own filesystem and destroyed by
+the next `docker compose up`. Meanwhile `docs/RUNBOOK.md` §3's restore reads
+the named volume — which `postgres` still mounted, and which would have been
+empty. §11 calls this data irreplaceable; D97 says the moment a
+client/server mismatch must not be discovered is the restore. The same goes
+for discovering there is nothing to restore.
+
+**Neither store was writable by the user that writes to them.**
+The prod stage runs as `appuser` (uid 10001). Docker initialises an empty
+named volume from the image's directory at that path *including its
+ownership*, and creates it **root-owned** when the image has no such
+directory — which this image did not. Measured, on a fresh volume:
+
+```
+drwxr-xr-x 2 root root /var/lib/portal/reports
+touch: cannot touch '/var/lib/portal/reports/probe': Permission denied
+```
+
+Worse without a volume at all: `appuser` could not even create
+`/var/lib/portal`, so `backup.take()` would raise, `BackupFailed` would
+propagate, and A35 — *a publish whose pre-publication dump fails is refused*
+— means **no class could ever have been released**. The one safety net in
+§11 would have been the thing that stopped the school using the system.
+
+Both fixed: the Dockerfile now creates the two directories owned by
+`appuser` before `USER appuser`, and the overlay mounts `backup_store`.
+Verified by running the production image against fresh volumes as uid 10001
+and taking a real dump — `PGDMP`, 138 kB, owned 10001, in the volume.
+
+**The pattern worth remembering:** every one of these (this, D110's dropped
+build arg) is a difference between the development and production
+*composition*, not the application code, and the E2E suite runs against the
+development stack so it cannot see any of them. §10's journey is not a
+deployment test. Before go-live the production overlay deserves one run on a
+throwaway host, end to end, including a publish and a restore.

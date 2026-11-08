@@ -8,7 +8,14 @@
  * longest is the one holding up the release.
  */
 
-import { ClipboardCheck, Inbox } from "lucide-react";
+import {
+  CheckCheck,
+  ClipboardCheck,
+  CornerUpLeft,
+  Hourglass,
+  Inbox,
+  PenLine,
+} from "lucide-react";
 
 import {
   Badge,
@@ -17,7 +24,10 @@ import {
   Notice,
   PageHeader,
   Panel,
+  Skeleton,
   SkeletonPanel,
+  StatCard,
+  StatRow,
 } from "@/components/ui";
 import { useHeadApi } from "@/lib/api/use-head";
 import { formatDateTime } from "@/lib/format";
@@ -48,6 +58,11 @@ export default function ReviewQueuePage() {
     return (
       <>
         <PageHeader title="Classes for review" />
+        <StatRow>
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-[8.5rem] rounded-xl" />
+          ))}
+        </StatRow>
         <SkeletonPanel rows={3} label="Loading the queue…" />
         <SkeletonPanel rows={3} />
       </>
@@ -57,6 +72,19 @@ export default function ReviewQueuePage() {
   if (!queue.data) return null;
 
   const waiting = queue.data.filter((entry) => entry.state === "submitted");
+  const approved = queue.data.filter((entry) => entry.state === "approved");
+  const returned = queue.data.filter((entry) => entry.state === "returned");
+
+  // Remarks across the **whole** queue, not just what is waiting: §8.4 lets
+  // the head teacher write a remark on an approved class too, right up until
+  // the admin publishes it, so counting only submitted classes would show a
+  // dash on a term with real work left in it. Both figures come off the queue
+  // the page has already fetched, so the cards cost no extra request (D113).
+  const pupilsInQueue = queue.data.reduce((total, entry) => total + entry.roll, 0);
+  const remarksWritten = queue.data.reduce(
+    (total, entry) => total + entry.remarks_written,
+    0,
+  );
 
   return (
     <>
@@ -68,6 +96,57 @@ export default function ReviewQueuePage() {
             : `${waiting.length} waiting for you`
         }`}
       />
+
+      <StatRow>
+        {/* Waiting is the head teacher's whole job, so it leads and it is the
+            one card allowed to be amber — and only when there is something
+            on it. Nothing waiting is a finished state, not a neutral one. */}
+        <StatCard
+          tone={waiting.length === 0 ? "good" : "warn"}
+          icon={waiting.length === 0 ? CheckCheck : Hourglass}
+          value={waiting.length === 0 ? "Clear" : waiting.length}
+          label={waiting.length === 0 ? "Nothing waiting" : "Waiting for you"}
+          hint={
+            waiting.length === 0
+              ? "Every submitted class is dealt with"
+              : `${waiting.length === 1 ? "class" : "classes"} submitted for review`
+          }
+        />
+        <StatCard
+          icon={PenLine}
+          value={pupilsInQueue === 0 ? "0" : `${remarksWritten}/${pupilsInQueue}`}
+          label="Remarks written"
+          hint={
+            pupilsInQueue === 0
+              ? "No class in the queue yet"
+              : `across ${pupilsInQueue} ${pupilsInQueue === 1 ? "pupil" : "pupils"}`
+          }
+        />
+        {/* Green only when there is something to be green about: a green
+            tile reading 0 claims an achievement that has not happened. */}
+        <StatCard
+          tone={approved.length === 0 ? "neutral" : "good"}
+          icon={ClipboardCheck}
+          value={approved.length}
+          label={approved.length === 1 ? "Class approved" : "Classes approved"}
+          hint={
+            approved.length === 0
+              ? "None approved this term yet"
+              : "Grades frozen, ready to publish"
+          }
+        />
+        <StatCard
+          tone={returned.length === 0 ? "neutral" : "bad"}
+          icon={CornerUpLeft}
+          value={returned.length}
+          label="Returned to teachers"
+          hint={
+            returned.length === 0
+              ? "Nothing sent back"
+              : "Waiting on a class teacher"
+          }
+        />
+      </StatRow>
 
       {queue.data.length === 0 ? (
         <EmptyState

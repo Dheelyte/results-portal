@@ -121,6 +121,28 @@ ENV PYTHONPATH=/app/src
 
 RUN useradd --create-home --uid 10001 appuser \
     && chown -R appuser:appuser /app
+
+# The two storage directories, created here and owned by the user that will
+# write to them (ARCHITECTURE.md §9, §11).
+#
+# This is not tidiness. Docker initialises an empty named volume from the
+# image's directory at the same path — **including its ownership** — and
+# creates the directory root-owned if the image has none. This container runs
+# as uid 10001, so without these two lines a fresh production server gets:
+#
+#   - an unwritable report store, so every card render fails (§9); and
+#   - an unwritable backup store, so every `pg_dump` fails — and because
+#     §11 refuses a publish whose pre-publication dump failed (A35), no
+#     class could ever be released.
+#
+# Neither shows in development, where the `dev` stage runs as root. Found by
+# writing to a fresh volume as this user on 2026-11-08 (docs/DECISIONS.md
+# D115).
+RUN install -d -o appuser -g appuser -m 0755 \
+        /var/lib/portal \
+        /var/lib/portal/reports \
+        /var/lib/portal/backups
+
 USER appuser
 
 EXPOSE 8000

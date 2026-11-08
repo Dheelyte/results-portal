@@ -12,6 +12,126 @@ does.
 
 ---
 
+## 0. Deploying for the first time
+
+From a clone on the production host. Every command is run from the repository
+root, and every one of them has been run.
+
+### Before you start
+
+- **DNS.** Two A records pointing at this server, under **one registrable
+  domain** — `portal.example.ng` and `api.example.ng`. Not two unrelated
+  domains: A11 and `Caddyfile.prod` explain why, and getting it wrong forces
+  `SameSite=None` and CSRF tokens before anyone can sign in.
+- **Ports 80 and 443 open.** Caddy needs 80 for the ACME challenge even
+  though it redirects.
+- **Docker Engine with the Compose plugin.** `docker compose version`.
+
+### 1 · The environment file
+
+```bash
+cp .env.example .env
+```
+
+Then edit it. These must change; the rest can keep their defaults:
+
+| Key | What to put |
+|---|---|
+| `POSTGRES_PASSWORD` | a generated password |
+| `DATABASE_URL` | the same password — `postgresql+asyncpg://portal:<password>@postgres:5432/portal` |
+| `JWT_SECRET` | `python3 -c 'import secrets; print(secrets.token_urlsafe(64))'` |
+| `WEB_DOMAIN` | `portal.example.ng` |
+| `API_DOMAIN` | `api.example.ng` |
+
+`APP_ENV`, `PUBLIC_WEB_ORIGIN` and the two `NEXT_PUBLIC_*` values are set by
+the production overlay from `WEB_DOMAIN` and `API_DOMAIN` — leave them.
+
+The API **refuses to start** in production if `JWT_SECRET` is the development
+value or shorter than 32 bytes. That is deliberate.
+
+### 2 · Build and start
+
+```bash
+export COMPOSE_FILE=docker-compose.yml:docker-compose.prod.yml
+
+docker compose build          # ~10 min the first time
+docker compose up -d --wait
+```
+
+`COMPOSE_FILE` saves repeating `-f ... -f ...` on every later command. If you
+open a new shell, export it again — or spell both files out.
+
+Caddy provisions TLS on first request to each hostname; the first load of
+each is slow and then it is cached.
+
+### 3 · Migrations, then the first account
+
+Migrations are **never** run at container start (§11), so they are a step:
+
+```bash
+docker compose exec api alembic upgrade head
+docker compose exec api alembic current      # should print the head revision
+```
+
+There is no self-registration (§5.1), so the first admin is made by hand:
+
+```bash
+docker compose exec api python -m app.bootstrap \
+    --school "Self-Starters House Montessori School" \
+    --short-name SSHMS \
+    --admin-name "Head of Admin" \
+    --admin-email admin@example.ng
+```
+
+It prints a temporary password **once** — the account must change it at first
+sign-in — and refuses to run if an admin already exists. Do **not** run
+`python -m app.seed` on this host: it is demo data.
+
+### 4 · Check it
+
+```bash
+curl -fsS https://$API_DOMAIN/healthz   && echo        # 200
+curl -fsS https://$API_DOMAIN/readyz    && echo        # 200 = database reachable
+curl -fsSo /dev/null -w '%{http_code}\n' https://$WEB_DOMAIN/          # 200
+curl -fsSo /dev/null -w '%{http_code}\n' https://$WEB_DOMAIN/healthz   # 404, see §1
+curl -fsSo /dev/null -w '%{http_code}\n' https://$API_DOMAIN/docs      # 404 in production
+```
+
+Then by hand: sign in at `https://$WEB_DOMAIN/login` as the bootstrapped
+admin and confirm the change-password gate fires. **If the staff screens
+cannot reach the API, the image was built without `NEXT_PUBLIC_API_URL`** —
+that value is inlined at build time, and `docs/DECISIONS.md` D110 is the
+story.
+
+Take one backup by hand before anyone depends on the schedule, and confirm it
+lands in the volume rather than inside the container:
+
+```bash
+docker compose exec api python -m app.backup --reason first-deploy
+docker compose exec postgres ls -lh /backups/*/
+```
+
+### 5 · The nightly schedule
+
+§2 below has the crontab line and the off-host copy that is **still
+outstanding** — dumps currently sit on the same disk as the database they
+protect.
+
+### Upgrading later
+
+```bash
+git pull
+docker compose exec api python -m app.backup --reason before-upgrade
+docker compose build
+docker compose up -d --wait
+docker compose exec api alembic upgrade head
+```
+
+The dump comes first because `alembic upgrade` is the step that can lose
+data, and §11's pre-publication dumps do not cover a deploy.
+
+---
+
 ## 1. The stack
 
 ```bash

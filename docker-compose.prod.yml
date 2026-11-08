@@ -32,11 +32,21 @@ services:
       # No default: the API refuses to start in production without a real one.
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in production}
     ports: !override []
-    # The source bind mounts go, but the report store must not: it holds
-    # every card a parent might open, and §2.1 caches rather than regenerates
-    # (ARCHITECTURE.md §9).
+    # The source bind mounts go, but the two stores must not.
+    #
+    # `report_store` holds every card a parent might open, and §2.1 caches
+    # rather than regenerates (ARCHITECTURE.md §9).
+    #
+    # `backup_store` was **missing here until 2026-11-08**, and that was the
+    # more serious of the two: `BACKUP_STORE` still pointed at
+    # /var/lib/portal/backups, so every nightly and pre-publish dump was
+    # written into the container's own filesystem and destroyed by the next
+    # deploy — while `docs/RUNBOOK.md` §3's restore reads the named volume,
+    # which would have been empty. §11 calls this data irreplaceable
+    # (docs/DECISIONS.md D115).
     volumes: !override
       - report_store:/var/lib/portal/reports
+      - backup_store:/var/lib/portal/backups
     restart: always
 
   web:
