@@ -9,7 +9,7 @@ import logging
 import uuid
 from dataclasses import dataclass
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.password import hash_password, needs_rehash, verify_password
@@ -249,6 +249,10 @@ async def refresh(
     family is revoked, which logs out every session descended from that login
     — including the attacker's and the legitimate user's. That is the intended
     outcome: the user re-authenticates, and the stolen token is worthless.
+
+    The one exception is A39's grace window: a token rotated seconds ago, in
+    a family that is still alive, is two tabs or a retried request racing
+    each other, and gets a sibling successor instead.
     """
     now = _now()
     token_hash = hash_refresh_token(refresh_token)
@@ -261,6 +265,28 @@ async def refresh(
     if row is None:
         logger.warning("refresh failed: unknown token", extra={"outcome": "unknown_token"})
         raise InvalidCredentials
+
+    if row.revoked_at is not None and await _is_concurrent_rotation(session, row, now=now):
+        # A race, not a theft (A39): this token was rotated seconds ago and
+        # its family is still alive. Issue another successor in the same
+        # family rather than revoking it.
+        user = await session.get(User, row.user_id)
+        if user is None or not user.is_active:
+            raise InvalidCredentials
+        tokens = await _issue_tokens(session, user, family_id=row.family_id, now=now)
+        await audit.record(
+            session,
+            school_id=user.school_id,
+            actor_id=user.id,
+            action=AuditAction.TOKEN_REFRESHED,
+            entity_type="refresh_token",
+            entity_id=row.id,
+            after={"family_id": str(row.family_id), "outcome": "concurrent_rotation"},
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+        await session.commit()
+        return tokens
 
     if row.revoked_at is not None:
         await _revoke_family(session, row, now=now)
@@ -309,6 +335,38 @@ async def refresh(
     )
     await session.commit()
     return tokens
+
+
+async def _is_concurrent_rotation(
+    session: AsyncSession, row: RefreshToken, *, now: dt.datetime
+) -> bool:
+    """Whether presenting this consumed token is a benign race (A39).
+
+    All three must hold:
+
+    - it was consumed by **rotation** (`replaced_by` is set), not merely
+      revoked;
+    - that happened within `refresh_reuse_grace_seconds`;
+    - its family still has a live token. Logout, a password change and
+      reuse detection all revoke the whole family, so a signed-out session
+      can never be revived through this window.
+    """
+    grace = settings.refresh_reuse_grace_seconds
+    if grace <= 0 or row.replaced_by is None or row.revoked_at is None:
+        return False
+    if now - row.revoked_at > dt.timedelta(seconds=grace):
+        return False
+
+    live = await session.scalar(
+        select(func.count())
+        .select_from(RefreshToken)
+        .where(
+            RefreshToken.family_id == row.family_id,
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.expires_at > now,
+        )
+    )
+    return bool(live)
 
 
 async def _revoke_family(session: AsyncSession, row: RefreshToken, *, now: dt.datetime) -> None:

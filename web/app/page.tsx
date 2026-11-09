@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { SubmitButton } from "@/components/submit-button";
 import { Card, Crest, Field, Input, Notice } from "@/components/ui";
 import { signInMessage } from "@/lib/sign-in-message";
-import { currentSession, signIn, signOut } from "@/lib/server/session";
+import { sessionState, signIn, signOut } from "@/lib/server/session";
 
 /**
  * The front door, and the parent's sign-in (ARCHITECTURE.md §8.5).
@@ -27,8 +27,13 @@ export default async function Home({
 }: {
   searchParams: Promise<{ error?: string | string[] }>;
 }) {
-  const session = await currentSession();
-  if (session?.user.role === "parent") redirect("/children");
+  const state = await sessionState();
+  if (state.kind === "live" && state.session.user.role === "parent") redirect("/children");
+  // A parent returning after more than half an hour — the access cookie has
+  // lapsed but the 30-day session has not. Showing them the form here was
+  // signing them out in all but name (D116). `/api/session` clears a cookie
+  // it cannot renew and comes back here, so this cannot loop.
+  if (state.kind === "stale") redirect("/api/session?next=/children");
 
   // A code, mapped here — never a message carried in the URL (D94).
   const error = signInMessage((await searchParams).error);

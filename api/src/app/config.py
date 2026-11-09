@@ -72,6 +72,15 @@ class Settings(BaseSettings):
     access_token_minutes: int = 30
     refresh_token_days: int = 30
 
+    # A34's sibling, A39: how long a just-rotated refresh token may be
+    # presented again without counting as reuse.  Two tabs restored at once,
+    # a double tap on a slow connection, or a refresh whose response was lost
+    # all present the same token twice within seconds — innocent, and without
+    # this each one revoked the family and signed the user out.  Reuse after
+    # the window, or of a family that has been signed out, is still theft
+    # (docs/DECISIONS.md D116).  0 restores the strict rule.
+    refresh_reuse_grace_seconds: int = 30
+
     # §5.1: lock for 15 minutes after 5 failed attempts.
     max_failed_attempts: int = 5
     lockout_minutes: int = 15

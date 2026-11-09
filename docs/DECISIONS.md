@@ -2674,3 +2674,42 @@ build arg) is a difference between the development and production
 development stack so it cannot see any of them. §10's journey is not a
 deployment test. Before go-live the production overlay deserves one run on a
 throwaway host, end to end, including a publish and a restore.
+
+### D116 — Sessions last as long as the refresh token, not the access token
+
+Users reported being signed out "very frequently". §5.1's lifetimes were
+never the problem — 30-minute access token, 30-day refresh token that slides
+on every rotation — but three things meant the 30 days never applied:
+
+**Staff were signed out 30 minutes after loading a page.** `AuthProvider`
+refreshed once, on mount, and never again. When the access token expired,
+every request — including the save a teacher had just typed — failed with
+"Your session has ended", though the refresh cookie was good for weeks. Now
+the provider renews two minutes before expiry, on waking (a laptop asleep
+through its timer), and `lib/api/client.ts` renews and retries once on any
+401. Concurrent callers share one `POST /auth/refresh`. A network failure or
+a 5xx keeps the user and retries in 30 seconds; only a 401/403 signs out.
+
+**Parents returning after half an hour saw the sign-in form.** `/` checked
+only the 30-minute access cookie. It now bounces a stale session through
+`/api/session` as the other parent pages already did (D89), which clears a
+cookie it cannot renew and returns to `/`, so it cannot loop.
+
+**Any innocent replay revoked the whole family.** Two tabs restored with the
+browser, a double tap on 3G, a refresh whose response was lost — each
+presents the same rotating cookie twice, and §5.1's reuse detection revoked
+everything. A39 adds a 30-second grace window in `services/auth.py`: a token
+rotated within it, in a family that still has a live token, gets a sibling
+successor and an audit row marked `concurrent_rotation`. Logout, a password
+change and earlier reuse all revoke the whole family, so the window can
+never revive a session that was ended. The existing reuse tests now age the
+rotation past the window first, which is what theft looks like.
+
+**Not changed:** the lifetimes themselves, the in-memory access token, and
+the cookie attributes. A parent who signs in once a term stays signed in
+only if they visit within 30 days of their last visit — terms are longer
+than that, so a parent will usually sign in again at each release. That is
+§5.1's number; lengthening it (e.g. to 120 days for parents) is the school's
+call and a one-key change, `REFRESH_TOKEN_DAYS`, though it applies to every
+role.
+

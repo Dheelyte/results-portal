@@ -133,21 +133,52 @@ async function failureFrom(response: Response): Promise<Failure> {
   return { message: `Request failed (${response.status}).`, rows, outstanding };
 }
 
+/**
+ * What to do when a signed-in request is refused with 401: renew the access
+ * token and hand back the new one, or null if the session really has ended.
+ * Installed by `AuthProvider` (lib/auth.tsx); absent, a 401 is final.
+ *
+ * Every screen binds its token into an API object when it renders, so a
+ * token that expired while a teacher was typing would otherwise fail the
+ * save in their hand. This lets that one request renew and go again.
+ */
+type Renewer = () => Promise<string | null>;
+let renewer: Renewer | null = null;
+
+export function setTokenRenewer(next: Renewer | null): void {
+  renewer = next;
+}
+
+/** Send once; on a 401 for a request that carried a token, renew and resend once. */
+async function send(
+  token: string | null | undefined,
+  attempt: (token: string | null | undefined) => Promise<Response>,
+): Promise<Response> {
+  const response = await attempt(token);
+  if (response.status !== 401 || !token || !renewer) return response;
+
+  const renewed = await renewer();
+  if (!renewed || renewed === token) return response;
+  return attempt(renewed);
+}
+
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = "GET", body, query, token, signal } = options;
 
-  const response = await fetch(url(path, query), {
-    method,
-    signal,
-    // The refresh cookie is host-only on the API's own hostname, so it only
-    // travels when the request asks for credentials.
-    credentials: "include",
-    headers: {
-      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  const response = await send(token, (bearer) =>
+    fetch(url(path, query), {
+      method,
+      signal,
+      // The refresh cookie is host-only on the API's own hostname, so it only
+      // travels when the request asks for credentials.
+      credentials: "include",
+      headers: {
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    }),
+  );
 
   if (!response.ok) {
     const failure = await failureFrom(response);
@@ -172,11 +203,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 export async function requestBlob(path: string, options: RequestOptions = {}): Promise<string> {
   const { query, token, signal } = options;
 
-  const response = await fetch(url(path, query), {
-    signal,
-    credentials: "include",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const response = await send(token, (bearer) =>
+    fetch(url(path, query), {
+      signal,
+      credentials: "include",
+      headers: bearer ? { Authorization: `Bearer ${bearer}` } : {},
+    }),
+  );
 
   if (!response.ok) {
     const failure = await failureFrom(response);

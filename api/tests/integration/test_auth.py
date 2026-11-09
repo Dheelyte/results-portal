@@ -31,6 +31,19 @@ async def refresh_with(client: AsyncClient, token: str):
     return await client.post(REFRESH)
 
 
+async def age_rotations(session, seconds: int | None = None) -> None:
+    """Move every rotation back past the reuse grace window (A39).
+
+    A replay seconds after rotation is a benign race and is allowed; theft is
+    a replay *after* the window, so the reuse tests stage exactly that.
+    """
+    delta = dt.timedelta(seconds=seconds or settings.refresh_reuse_grace_seconds + 1)
+    for row in (await session.execute(select(RefreshToken))).scalars():
+        if row.revoked_at is not None:
+            row.revoked_at -= delta
+    await session.commit()
+
+
 # ---------------------------------------------------------------------------
 # All four roles — the milestone's done-when
 # ---------------------------------------------------------------------------
@@ -265,18 +278,23 @@ async def test_refresh_issues_a_new_token_pair(make_user, login, client: AsyncCl
     assert isinstance(first, str)
 
 
-async def test_a_rotated_token_cannot_be_used_again(make_user, login, client: AsyncClient) -> None:
+async def test_a_rotated_token_cannot_be_used_again(
+    make_user, login, client: AsyncClient, session
+) -> None:
     user = await make_user(UserRole.TEACHER)
     await login(user.email)
     stale = client.cookies[REFRESH_COOKIE_NAME]
 
     await client.post(REFRESH)
+    await age_rotations(session)
 
     replayed = await refresh_with(client, stale)
     assert replayed.status_code == 401
 
 
-async def test_reuse_revokes_the_whole_family(make_user, login, client: AsyncClient) -> None:
+async def test_reuse_revokes_the_whole_family(
+    make_user, login, client: AsyncClient, session
+) -> None:
     """A replayed token means the chain has leaked. Revoking only that token
     would leave the attacker's successor working."""
     user = await make_user(UserRole.TEACHER)
@@ -285,6 +303,7 @@ async def test_reuse_revokes_the_whole_family(make_user, login, client: AsyncCli
 
     await client.post(REFRESH)
     current = client.cookies[REFRESH_COOKIE_NAME]
+    await age_rotations(session)
 
     await refresh_with(client, stale)
 
@@ -311,6 +330,99 @@ async def test_rotation_keeps_the_family_and_links_the_chain(
     assert rows[0].replaced_by == rows[1].id
     assert rows[0].revoked_at is not None
     assert rows[1].revoked_at is None
+
+
+# A39: the grace window for a token presented twice in quick succession.
+
+
+async def test_a_replay_inside_the_grace_window_is_a_race_not_a_theft(
+    make_user, login, client: AsyncClient, session
+) -> None:
+    """Two tabs restored together present the same cookie at once. Both must
+    stay signed in — before A39 this revoked the family."""
+    user = await make_user(UserRole.TEACHER)
+    await login(user.email)
+    stale = client.cookies[REFRESH_COOKIE_NAME]
+
+    await client.post(REFRESH)
+    current = client.cookies[REFRESH_COOKIE_NAME]
+
+    second = await refresh_with(client, stale)
+    assert second.status_code == 200
+    assert second.json()["user"]["id"] == str(user.id)
+
+    # The first tab's successor is still good, and so is the second's.
+    sibling = client.cookies[REFRESH_COOKIE_NAME]
+    assert (await refresh_with(client, current)).status_code == 200
+    assert (await refresh_with(client, sibling)).status_code == 200
+
+    reuse = await session.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(AuditLog.action == AuditAction.TOKEN_REUSE_DETECTED)
+    )
+    assert reuse == 0
+
+
+async def test_the_grace_window_cannot_revive_a_signed_out_session(
+    make_user, login, client: AsyncClient
+) -> None:
+    """Logout revokes the family, so a token rotated a moment before it is
+    dead even inside the window."""
+    user = await make_user(UserRole.TEACHER)
+    await login(user.email)
+    stale = client.cookies[REFRESH_COOKIE_NAME]
+    await client.post(REFRESH)
+    await client.post(LOGOUT)
+
+    assert (await refresh_with(client, stale)).status_code == 401
+
+
+async def test_the_grace_window_cannot_outlive_a_password_change(
+    make_user, login, client: AsyncClient
+) -> None:
+    user = await make_user(UserRole.TEACHER)
+    access = (await login(user.email)).json()["access_token"]
+    stale = client.cookies[REFRESH_COOKIE_NAME]
+    await client.post(REFRESH)
+
+    changed = await client.post(
+        CHANGE_PASSWORD,
+        headers={"Authorization": f"Bearer {access}"},
+        json={"current_password": TEST_PASSWORD, "new_password": "a-brand-new-passphrase-42"},
+    )
+    assert changed.status_code == 200
+
+    assert (await refresh_with(client, stale)).status_code == 401
+
+
+async def test_the_grace_window_does_not_serve_a_deactivated_user(
+    make_user, login, client: AsyncClient, session
+) -> None:
+    user = await make_user(UserRole.TEACHER)
+    await login(user.email)
+    stale = client.cookies[REFRESH_COOKIE_NAME]
+    await client.post(REFRESH)
+
+    record = await session.get(User, user.id)
+    record.is_active = False
+    await session.commit()
+
+    assert (await refresh_with(client, stale)).status_code == 401
+
+
+async def test_a_zero_grace_window_restores_the_strict_rule(
+    make_user, login, client: AsyncClient, monkeypatch
+) -> None:
+    monkeypatch.setattr(settings, "refresh_reuse_grace_seconds", 0)
+    user = await make_user(UserRole.TEACHER)
+    await login(user.email)
+    stale = client.cookies[REFRESH_COOKIE_NAME]
+    await client.post(REFRESH)
+    current = client.cookies[REFRESH_COOKIE_NAME]
+
+    assert (await refresh_with(client, stale)).status_code == 401
+    assert (await refresh_with(client, current)).status_code == 401
 
 
 async def test_an_unknown_refresh_token_is_refused(client: AsyncClient) -> None:
@@ -560,6 +672,7 @@ async def test_token_reuse_is_audited(make_user, login, client: AsyncClient, ses
     await login(user.email)
     stale = client.cookies[REFRESH_COOKIE_NAME]
     await client.post(REFRESH)
+    await age_rotations(session)
     await refresh_with(client, stale)
 
     entry = await session.scalar(
