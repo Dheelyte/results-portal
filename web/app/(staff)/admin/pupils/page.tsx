@@ -10,8 +10,9 @@
  */
 
 import { ChevronLeft, ChevronRight, GraduationCap, Plus, UserPlus } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
+import { Modal } from "@/components/modal";
 import {
   Avatar,
   Badge,
@@ -55,6 +56,8 @@ export default function PupilsPage() {
   );
 
   const action = useAction(pupils.reload);
+  const [adding, setAdding] = useState(false);
+  const admissionInput = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     admission_number: "",
     first_name: "",
@@ -74,7 +77,19 @@ export default function PupilsPage() {
     <>
       <PageHeader
         title="Pupils"
-        description="Typed in by hand — there is no import, by decision (N8). The form below keeps the class and house between entries."
+        description="Typed in by hand — there is no import, by decision (N8). The form keeps the class and house between entries."
+        actions={
+          <Button
+            icon={UserPlus}
+            disabled={!api}
+            onClick={() => {
+              action.clear();
+              setAdding(true);
+            }}
+          >
+            Add pupil
+          </Button>
+        }
       />
 
       <Panel
@@ -185,10 +200,12 @@ export default function PupilsPage() {
         ) : null}
       </Panel>
 
-      <Panel
+      <Modal
+        open={adding}
+        onClose={() => setAdding(false)}
         title="Add a pupil"
-        icon={UserPlus}
-        description="The class and house stay as you set them, so a whole class can be typed in without resetting the form each time."
+        description="The class and house stay as you set them, so a whole class can be typed in without closing this or resetting the form each time."
+        size="lg"
       >
         <form
           className="grid gap-3 sm:grid-cols-3"
@@ -218,11 +235,14 @@ export default function PupilsPage() {
                 sex: "",
                 date_of_birth: "",
               });
+              // Open for the next one: N8's whole class, typed in a row.
+              admissionInput.current?.focus();
             }
           }}
         >
           <Field label="Admission number" required>
             <Input
+              ref={admissionInput}
               required
               value={form.admission_number}
               onChange={(event) =>
@@ -296,18 +316,22 @@ export default function PupilsPage() {
               ))}
             </Select>
           </Field>
-          <div className="flex items-end">
+          {action.error || action.success ? (
+            <div className="flex flex-col gap-2 sm:col-span-3">
+              <Notice>{action.error}</Notice>
+              <Notice tone="success">{action.success}</Notice>
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 sm:col-span-3">
+            <Button type="button" variant="secondary" onClick={() => setAdding(false)}>
+              Done
+            </Button>
             <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
               Add pupil
             </Button>
           </div>
         </form>
-
-        <div className="mt-3 flex flex-col gap-2">
-          <Notice>{action.error}</Notice>
-          <Notice tone="success">{action.success}</Notice>
-        </div>
-      </Panel>
+      </Modal>
     </>
   );
 }

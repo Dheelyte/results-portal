@@ -320,3 +320,26 @@ body {
     text-align: right;
   }
 }
+
+/* The create dialogs (components/modal.tsx, D117). `::backdrop` cannot read
+   custom properties from :root in every engine, so the dim is a literal. */
+.portal-modal::backdrop {
+  background: rgb(10 18 28 / 0.55);
+}
+
+.portal-modal[open] {
+  animation: portal-modal-in 0.14s ease-out;
+}
+
+@keyframes portal-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-modal[open] {
+    animation: none;
+  }
+}

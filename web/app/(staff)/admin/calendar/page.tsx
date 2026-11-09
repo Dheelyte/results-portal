@@ -12,9 +12,10 @@
  * address.
  */
 
-import { CalendarDays, CalendarRange, Plus } from "lucide-react";
+import { CalendarDays, CalendarRange, CalendarPlus, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { Modal } from "@/components/modal";
 import {
   Badge,
   Button,
@@ -43,6 +44,15 @@ export default function CalendarPage() {
   });
 
   const currentSession = sessions.data?.find((item) => item.is_current) ?? null;
+  const termsInSession = (terms.data ?? []).filter(
+    (term) => term.academic_session_id === currentSession?.id,
+  ).length;
+  const canAddTerm = Boolean(currentSession) && !terms.loading && termsInSession < 3;
+
+  // Which create dialog is open (D117). The panels own the forms; the page
+  // owns the buttons, so both sit at the top whatever the panels hold.
+  const [dialog, setDialog] = useState<"session" | "term" | null>(null);
+  const closeDialog = () => setDialog(null);
 
   const reloadAll = () => {
     sessions.reload();
@@ -54,9 +64,41 @@ export default function CalendarPage() {
       <PageHeader
         title="Session & terms"
         description="The school year, its three terms, and the two assessment sheets each term carries."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              icon={CalendarPlus}
+              disabled={!api}
+              onClick={() => setDialog("session")}
+            >
+              New session
+            </Button>
+            <Button
+              icon={Plus}
+              disabled={!canAddTerm}
+              title={
+                !currentSession
+                  ? "Make a session current first."
+                  : termsInSession >= 3
+                    ? "All three terms exist for this session."
+                    : undefined
+              }
+              onClick={() => setDialog("term")}
+            >
+              New term
+            </Button>
+          </>
+        }
       />
 
-      <SessionsPanel sessions={sessions} ready={Boolean(api)} onChanged={reloadAll} />
+      <SessionsPanel
+        sessions={sessions}
+        ready={Boolean(api)}
+        onChanged={reloadAll}
+        creating={dialog === "session"}
+        onCloseCreate={closeDialog}
+      />
 
       {!api || sessions.loading ? null : currentSession ? (
         <TermsPanel
@@ -64,6 +106,8 @@ export default function CalendarPage() {
           sessionId={currentSession.id}
           sessionName={currentSession.name}
           onChanged={reloadAll}
+          creating={dialog === "term"}
+          onCloseCreate={closeDialog}
         />
       ) : (
         <Notice tone="info">
@@ -81,14 +125,28 @@ function SessionsPanel({
   sessions,
   ready,
   onChanged,
+  creating,
+  onCloseCreate,
 }: {
   sessions: Resource<AcademicSession[]>;
   ready: boolean;
   onChanged: () => void;
+  creating: boolean;
+  onCloseCreate: () => void;
 }) {
   const api = useAdminApi();
   const [form, setForm] = useState({ name: "", starts_on: "", ends_on: "" });
   const action = useAction(onChanged);
+  const create = useAction(onChanged);
+  // A fresh dialog starts with no message from the last one.
+  const [wasCreating, setWasCreating] = useState(creating);
+  if (creating !== wasCreating) {
+    setWasCreating(creating);
+    if (creating) {
+      action.clear();
+      create.clear();
+    }
+  }
 
   return (
     <Panel
@@ -134,15 +192,28 @@ function SessionsPanel({
           </>
         )}
 
+        <Notice>{action.error}</Notice>
+        <Notice tone="success">{action.success ?? (creating ? null : create.success)}</Notice>
+      </div>
+
+      <Modal
+        open={creating}
+        onClose={onCloseCreate}
+        title="New academic session"
+        description="It becomes the current session as soon as it is created."
+      >
         <form
-          className="grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-4"
+          className="grid gap-3 sm:grid-cols-3"
           onSubmit={async (event) => {
             event.preventDefault();
-            const created = await action.run(
+            const created = await create.run(
               () => api!.createSession({ ...form, is_current: true }),
               `${form.name} created and made current.`,
             );
-            if (created) setForm({ name: "", starts_on: "", ends_on: "" });
+            if (created) {
+              setForm({ name: "", starts_on: "", ends_on: "" });
+              onCloseCreate();
+            }
           }}
         >
           <Field label="Name" required>
@@ -169,16 +240,21 @@ function SessionsPanel({
               onChange={(event) => setForm({ ...form, ends_on: event.target.value })}
             />
           </Field>
-          <div className="flex items-end">
-            <Button type="submit" icon={Plus} loading={action.busy} disabled={!ready}>
-              Add session
+          {create.error ? (
+            <div className="sm:col-span-3">
+              <Notice>{create.error}</Notice>
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 sm:col-span-3">
+            <Button type="button" variant="secondary" onClick={onCloseCreate}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={create.busy} disabled={!ready}>
+              Create session
             </Button>
           </div>
         </form>
-
-        <Notice>{action.error}</Notice>
-        <Notice tone="success">{action.success}</Notice>
-      </div>
+      </Modal>
     </Panel>
   );
 }
@@ -190,14 +266,27 @@ function TermsPanel({
   sessionId,
   sessionName,
   onChanged,
+  creating,
+  onCloseCreate,
 }: {
   terms: Resource<Term[]>;
   sessionId: string;
   sessionName: string;
   onChanged: () => void;
+  creating: boolean;
+  onCloseCreate: () => void;
 }) {
   const api = useAdminApi()!;
   const action = useAction(onChanged);
+  const create = useAction(onChanged);
+  const [wasCreating, setWasCreating] = useState(creating);
+  if (creating !== wasCreating) {
+    setWasCreating(creating);
+    if (creating) {
+      action.clear();
+      create.clear();
+    }
+  }
   const [form, setForm] = useState({
     number: "first",
     starts_on: "",
@@ -211,6 +300,12 @@ function TermsPanel({
     (term) => term.academic_session_id === sessionId,
   );
   const taken = new Set(inSession.map((term) => term.number));
+  // The select only offers terms not yet created, so the state must follow:
+  // left at "first" once First Term exists, it showed "Second" and sent "first".
+  const TERMS = ["first", "second", "third"] as const;
+  const chosenTerm = taken.has(form.number as Term["number"])
+    ? (TERMS.find((candidate) => !taken.has(candidate)) ?? form.number)
+    : form.number;
 
   return (
     <Panel
@@ -271,106 +366,122 @@ function TermsPanel({
           </>
         )}
 
-        {taken.size < 3 ? (
-          <form
-            className="grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-3"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              const created = await action.run(
-                () =>
-                  api.createTerm({
-                    academic_session_id: sessionId,
-                    number: form.number as Term["number"],
-                    starts_on: form.starts_on,
-                    ends_on: form.ends_on,
-                    times_school_opened: form.times_school_opened
-                      ? Number(form.times_school_opened)
-                      : null,
-                    next_resumption_on: form.next_resumption_on || null,
-                    card_return_on: form.card_return_on || null,
-                    is_current: taken.size === 0,
-                  }),
-                "Term created, with both of its half terms.",
-              );
-              if (created) {
-                setForm({ ...form, starts_on: "", ends_on: "", times_school_opened: "" });
-              }
-            }}
-          >
-            <Field label="Term" required>
-              <Select
-                value={form.number}
-                onChange={(event) => setForm({ ...form, number: event.target.value })}
-              >
-                {(["first", "second", "third"] as const)
-                  .filter((number) => !taken.has(number))
-                  .map((number) => (
-                    <option key={number} value={number}>
-                      {TERM_LABELS[number]}
-                    </option>
-                  ))}
-              </Select>
-            </Field>
-            <Field label="Starts" required>
-              <Input
-                type="date"
-                required
-                value={form.starts_on}
-                onChange={(event) => setForm({ ...form, starts_on: event.target.value })}
-              />
-            </Field>
-            <Field label="Ends" required>
-              <Input
-                type="date"
-                required
-                value={form.ends_on}
-                onChange={(event) => setForm({ ...form, ends_on: event.target.value })}
-              />
-            </Field>
-            <Field
-              label="Times school opened"
-              hint="Attendance is checked against this (R9). It can be filled in later."
-            >
-              <Input
-                type="number"
-                min={0}
-                value={form.times_school_opened}
-                onChange={(event) =>
-                  setForm({ ...form, times_school_opened: event.target.value })
-                }
-              />
-            </Field>
-            <Field label="Next term resumes" hint="Prints on the card.">
-              <Input
-                type="date"
-                value={form.next_resumption_on}
-                onChange={(event) =>
-                  setForm({ ...form, next_resumption_on: event.target.value })
-                }
-              />
-            </Field>
-            <Field label="Card returned on" hint='"Return this card to the School on …"'>
-              <Input
-                type="date"
-                value={form.card_return_on}
-                onChange={(event) => setForm({ ...form, card_return_on: event.target.value })}
-              />
-            </Field>
-            <div className="flex items-end sm:col-span-3">
-              <Button type="submit" icon={Plus} loading={action.busy}>
-                Add term
-              </Button>
-            </div>
-          </form>
-        ) : (
+        {taken.size >= 3 ? (
           <p className="border-t border-[var(--border)] pt-4 text-sm text-[var(--muted)]">
             All three terms exist for this session.
           </p>
-        )}
+        ) : null}
 
         <Notice>{action.error}</Notice>
-        <Notice tone="success">{action.success}</Notice>
+        <Notice tone="success">{action.success ?? (creating ? null : create.success)}</Notice>
       </div>
+
+      <Modal
+        open={creating && taken.size < 3}
+        onClose={onCloseCreate}
+        title={`New term in ${sessionName}`}
+        description="Both of its half terms are created with it."
+        size="lg"
+      >
+        <form
+          className="grid gap-3 sm:grid-cols-3"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const created = await create.run(
+              () =>
+                api.createTerm({
+                  academic_session_id: sessionId,
+                  number: chosenTerm as Term["number"],
+                  starts_on: form.starts_on,
+                  ends_on: form.ends_on,
+                  times_school_opened: form.times_school_opened
+                    ? Number(form.times_school_opened)
+                    : null,
+                  next_resumption_on: form.next_resumption_on || null,
+                  card_return_on: form.card_return_on || null,
+                  is_current: taken.size === 0,
+                }),
+              "Term created, with both of its half terms.",
+            );
+            if (created) {
+              setForm({ ...form, starts_on: "", ends_on: "", times_school_opened: "" });
+              onCloseCreate();
+            }
+          }}
+        >
+          <Field label="Term" required>
+            <Select
+              value={chosenTerm}
+              onChange={(event) => setForm({ ...form, number: event.target.value })}
+            >
+              {TERMS.filter((number) => !taken.has(number))
+                .map((number) => (
+                  <option key={number} value={number}>
+                    {TERM_LABELS[number]}
+                  </option>
+                ))}
+            </Select>
+          </Field>
+          <Field label="Starts" required>
+            <Input
+              type="date"
+              required
+              value={form.starts_on}
+              onChange={(event) => setForm({ ...form, starts_on: event.target.value })}
+            />
+          </Field>
+          <Field label="Ends" required>
+            <Input
+              type="date"
+              required
+              value={form.ends_on}
+              onChange={(event) => setForm({ ...form, ends_on: event.target.value })}
+            />
+          </Field>
+          <Field
+            label="Times school opened"
+            hint="Attendance is checked against this (R9). It can be filled in later."
+          >
+            <Input
+              type="number"
+              min={0}
+              value={form.times_school_opened}
+              onChange={(event) =>
+                setForm({ ...form, times_school_opened: event.target.value })
+              }
+            />
+          </Field>
+          <Field label="Next term resumes" hint="Prints on the card.">
+            <Input
+              type="date"
+              value={form.next_resumption_on}
+              onChange={(event) =>
+                setForm({ ...form, next_resumption_on: event.target.value })
+              }
+            />
+          </Field>
+          <Field label="Card returned on" hint='"Return this card to the School on …"'>
+            <Input
+              type="date"
+              value={form.card_return_on}
+              onChange={(event) => setForm({ ...form, card_return_on: event.target.value })}
+            />
+          </Field>
+          {create.error ? (
+            <div className="sm:col-span-3">
+              <Notice>{create.error}</Notice>
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 sm:col-span-3">
+            <Button type="button" variant="secondary" onClick={onCloseCreate}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={create.busy}>
+              Create term
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </Panel>
   );
 }

@@ -17,6 +17,7 @@
 import { KeyRound, Plus, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 
+import { Modal } from "@/components/modal";
 import {
   Avatar,
   Badge,
@@ -55,6 +56,10 @@ export default function AccountsPage() {
   const [resetting, setResetting] = useState<string | null>(null);
 
   const action = useAction(accounts.reload);
+  // Its own action, so a failed create shows in the dialog and a failed
+  // reset shows on the page — never one in the other's place.
+  const create = useAction(accounts.reload);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
     role: "teacher" as Role,
     full_name: "",
@@ -67,6 +72,18 @@ export default function AccountsPage() {
       <PageHeader
         title="Accounts"
         description="Nobody can register themselves. Every account starts here."
+        actions={
+          <Button
+            icon={UserPlus}
+            disabled={!api}
+            onClick={() => {
+              create.clear();
+              setCreating(true);
+            }}
+          >
+            Create account
+          </Button>
+        }
       />
 
       {secret ? (
@@ -74,6 +91,8 @@ export default function AccountsPage() {
           Temporary password for {secret.user.full_name}
         </OneTimeSecret>
       ) : null}
+
+      <Notice>{action.error}</Notice>
 
       <Panel
         title="Everyone with an account"
@@ -165,16 +184,17 @@ export default function AccountsPage() {
         )}
       </Panel>
 
-      <Panel
+      <Modal
+        open={creating}
+        onClose={() => setCreating(false)}
         title="Create an account"
-        icon={UserPlus}
         description="An email address or a phone number — either one signs in, against the same password."
       >
         <form
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={async (event) => {
             event.preventDefault();
-            const created = await action.run(async () => {
+            const created = await create.run(async () => {
               setSecret(
                 await api!.createUser({
                   role: form.role,
@@ -184,7 +204,11 @@ export default function AccountsPage() {
                 }),
               );
             });
-            if (created) setForm({ ...form, full_name: "", email: "", phone: "" });
+            if (created) {
+              setForm({ ...form, full_name: "", email: "", phone: "" });
+              // Closed so the one-time password above is what they see next.
+              setCreating(false);
+            }
           }}
         >
           <Field label="Role" required>
@@ -224,22 +248,21 @@ export default function AccountsPage() {
               onChange={(event) => setForm({ ...form, phone: event.target.value })}
             />
           </Field>
-          <div className="sm:col-span-2">
-            <Button
-              type="submit"
-              icon={Plus}
-              loading={action.busy && resetting === null}
-              disabled={!api}
-            >
+          {create.error ? (
+            <div className="sm:col-span-2">
+              <Notice>{create.error}</Notice>
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 sm:col-span-2">
+            <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={create.busy} disabled={!api}>
               Create account
             </Button>
           </div>
         </form>
-
-        <div className="mt-3 flex flex-col gap-2">
-          <Notice>{action.error}</Notice>
-        </div>
-      </Panel>
+      </Modal>
     </>
   );
 }

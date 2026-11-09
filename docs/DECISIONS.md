@@ -2713,3 +2713,43 @@ than that, so a parent will usually sign in again at each release. That is
 call and a one-key change, `REFRESH_TOKEN_DAYS`, though it applies to every
 role.
 
+### D117 — Create forms open in a dialog from a button at the top
+
+Asked for: every admin page that creates something had its form at the
+bottom, under a table that grows all term — the pupils form sat beneath five
+hundred rows' worth of pages. Each page now has its create button(s) in the
+page header and the form in a modal.
+
+| Page | Buttons | After a save |
+|---|---|---|
+| Session & terms | New session, New term | closes |
+| Grading & narrative | New scale version, Add phrase | closes |
+| Subjects | Add subject | closes |
+| Classes | Add class, Add house | closes |
+| Pupils | Add pupil | **stays open**, keeps class and house, focus back on admission no. |
+| Accounts | Create account | closes, so the one-time password (§5.1) is what the admin sees |
+
+Pupils stays open because N8 makes it the typing-in screen: a whole class,
+one after another, and closing after each would undo what the form's
+"keeps the class and house" behaviour is for.
+
+**`components/modal.tsx` is the native `<dialog>` with `showModal()`.** The
+browser supplies the top layer, the inert page behind, focus containment,
+focus return to the opener and Escape; no dependency was added. It lives
+outside `components/ui.tsx` because it needs an effect and that file is kept
+free of client code for §8.5's parent pages. Closing — Escape, the backdrop,
+Cancel — never clears the form: the page owns the state, so a half-typed
+pupil survives an accidental click outside.
+
+**Each dialog has its own action, separate from the page's row buttons.**
+Before, the create form's notices were also where *Retire*, *Make current*
+and *Reset password* reported back, so moving the form would have taken
+those messages with it into a closed dialog. Now a create error shows in the
+dialog, the row buttons report on the page, and a create's success shows on
+the page once the dialog closes.
+
+**One bug fixed on the way.** The new-term form's select offered only terms
+not yet created, but its state defaulted to `first`; once First Term existed
+it displayed "Second Term" and submitted `first`, which the API refused. The
+form now submits what the select shows.
+

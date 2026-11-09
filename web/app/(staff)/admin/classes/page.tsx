@@ -10,9 +10,10 @@
  * (docs/DECISIONS.md D104).
  */
 
-import { Layers, Plus } from "lucide-react";
+import { House, Layers, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { Modal } from "@/components/modal";
 import {
   Badge,
   Button,
@@ -40,6 +41,13 @@ export default function ClassesPage() {
     classes.reload();
     houses.reload();
   });
+  // Which create dialog is open (D117). One at a time, so one action serves
+  // both: its error belongs to whichever dialog is showing.
+  const [dialog, setDialog] = useState<"class" | "house" | null>(null);
+  const openDialog = (which: "class" | "house") => {
+    action.clear();
+    setDialog(which);
+  };
   const [className, setClassName] = useState("");
   const [levelOrder, setLevelOrder] = useState("");
   const [houseName, setHouseName] = useState("");
@@ -51,7 +59,24 @@ export default function ClassesPage() {
       <PageHeader
         title="Classes"
         description="Level order sets the display order only. Pupils are never ranked (R11)."
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              icon={House}
+              disabled={!api}
+              onClick={() => openDialog("house")}
+            >
+              Add house
+            </Button>
+            <Button icon={Plus} disabled={!api} onClick={() => openDialog("class")}>
+              Add class
+            </Button>
+          </>
+        }
       />
+
+      {dialog ? null : <Notice tone="success">{action.success}</Notice>}
 
       <Panel
         title="Every class"
@@ -84,44 +109,6 @@ export default function ClassesPage() {
             </Table>
           </>
         )}
-
-        <form
-          className="mt-5 grid gap-3 border-t border-[var(--border)] pt-4 sm:grid-cols-3"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const created = await action.run(
-              () => api!.createClass({ name: className, level_order: Number(levelOrder || 0) }),
-              `${className} added.`,
-            );
-            if (created) {
-              setClassName("");
-              setLevelOrder("");
-            }
-          }}
-        >
-          <Field label="Name" required>
-            <Input
-              required
-              placeholder="Primary 4"
-              value={className}
-              onChange={(event) => setClassName(event.target.value)}
-            />
-          </Field>
-          <Field label="Level order" required>
-            <Input
-              type="number"
-              min={0}
-              required
-              value={levelOrder}
-              onChange={(event) => setLevelOrder(event.target.value)}
-            />
-          </Field>
-          <div className="flex items-end">
-            <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
-              Add class
-            </Button>
-          </div>
-        </form>
       </Panel>
 
       <Panel title="Houses" description="The card prints each pupil's house in its header.">
@@ -141,21 +128,80 @@ export default function ClassesPage() {
             ) : (
               <EmptyState
                 title="No houses yet"
-                description="A house prints in the card's header. Add the ones the school uses."
+                description="A house prints in the card's header. Add the ones the school uses with “Add house” above."
               />
             )}
           </>
         )}
+      </Panel>
 
+      <Modal open={dialog === "class"} onClose={() => setDialog(null)} title="Add a class">
         <form
-          className="mt-5 flex flex-wrap items-end gap-3 border-t border-[var(--border)] pt-4"
+          className="grid gap-3 sm:grid-cols-2"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const created = await action.run(
+              () => api!.createClass({ name: className, level_order: Number(levelOrder || 0) }),
+              `${className} added.`,
+            );
+            if (created) {
+              setClassName("");
+              setLevelOrder("");
+              setDialog(null);
+            }
+          }}
+        >
+          <Field label="Name" required>
+            <Input
+              required
+              placeholder="Primary 4"
+              value={className}
+              onChange={(event) => setClassName(event.target.value)}
+            />
+          </Field>
+          <Field label="Level order" hint="Display order only — lower comes first." required>
+            <Input
+              type="number"
+              min={0}
+              required
+              value={levelOrder}
+              onChange={(event) => setLevelOrder(event.target.value)}
+            />
+          </Field>
+          {action.error ? (
+            <div className="sm:col-span-2">
+              <Notice>{action.error}</Notice>
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 sm:col-span-2">
+            <Button type="button" variant="secondary" onClick={() => setDialog(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
+              Add class
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={dialog === "house"}
+        onClose={() => setDialog(null)}
+        title="Add a house"
+        description="The card prints each pupil's house in its header."
+      >
+        <form
+          className="flex flex-col gap-3"
           onSubmit={async (event) => {
             event.preventDefault();
             const created = await action.run(
               () => api!.createHouse({ name: houseName }),
               `${houseName} added.`,
             );
-            if (created) setHouseName("");
+            if (created) {
+              setHouseName("");
+              setDialog(null);
+            }
           }}
         >
           <Field label="Name" required>
@@ -165,16 +211,17 @@ export default function ClassesPage() {
               onChange={(event) => setHouseName(event.target.value)}
             />
           </Field>
-          <Button type="submit" variant="secondary" icon={Plus} loading={action.busy} disabled={!api}>
-            Add house
-          </Button>
-        </form>
-
-        <div className="mt-3 flex flex-col gap-2">
           <Notice>{action.error}</Notice>
-          <Notice tone="success">{action.success}</Notice>
-        </div>
-      </Panel>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={() => setDialog(null)}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
+              Add house
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </>
   );
 }

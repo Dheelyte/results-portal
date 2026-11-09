@@ -15,6 +15,7 @@
 import { BookOpen, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { Modal } from "@/components/modal";
 import {
   Badge,
   Button,
@@ -40,6 +41,9 @@ export default function SubjectsPage() {
     enabled: Boolean(api),
   });
   const action = useAction(subjects.reload);
+  // The dialog's own, so its error stays in the dialog (D117).
+  const create = useAction(subjects.reload);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({
     name: "",
     parent_subject_id: "",
@@ -56,7 +60,24 @@ export default function SubjectsPage() {
       <PageHeader
         title="Subjects"
         description="English is a group heading over five scored sub-subjects. A heading prints on the card and carries no scores, so it can never be offered to a class (R7)."
+        actions={
+          <Button
+            icon={Plus}
+            disabled={!api}
+            onClick={() => {
+              // Whichever message the page shows next is this create's.
+              action.clear();
+              create.clear();
+              setCreating(true);
+            }}
+          >
+            Add subject
+          </Button>
+        }
       />
+
+      <Notice>{action.error}</Notice>
+      <Notice tone="success">{action.success ?? (creating ? null : create.success)}</Notice>
 
       <Panel
         title="The subject tree"
@@ -145,12 +166,12 @@ export default function SubjectsPage() {
         )}
       </Panel>
 
-      <Panel title="Add a subject" icon={Plus}>
+      <Modal open={creating} onClose={() => setCreating(false)} title="Add a subject">
         <form
           className="grid gap-3 sm:grid-cols-2"
           onSubmit={async (event) => {
             event.preventDefault();
-            const created = await action.run(
+            const created = await create.run(
               () =>
                 api!.createSubject({
                   name: form.name,
@@ -168,6 +189,7 @@ export default function SubjectsPage() {
                 is_group: false,
                 is_specialist: false,
               });
+              setCreating(false);
             }
           }}
         >
@@ -237,18 +259,21 @@ export default function SubjectsPage() {
             </span>
           </label>
 
-          <div className="sm:col-span-2">
-            <Button type="submit" icon={Plus} loading={action.busy} disabled={!api}>
+          {create.error ? (
+            <div className="sm:col-span-2">
+              <Notice>{create.error}</Notice>
+            </div>
+          ) : null}
+          <div className="flex justify-end gap-2 sm:col-span-2">
+            <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={create.busy} disabled={!api}>
               Add subject
             </Button>
           </div>
         </form>
-
-        <div className="mt-3 flex flex-col gap-2">
-          <Notice>{action.error}</Notice>
-          <Notice tone="success">{action.success}</Notice>
-        </div>
-      </Panel>
+      </Modal>
     </>
   );
 }
