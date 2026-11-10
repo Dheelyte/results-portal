@@ -326,15 +326,15 @@ export function Field({
 const CONTROL =
   "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none transition focus:border-[var(--brand)]";
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Input(props: React.ComponentProps<"input">) {
   return <input {...props} className={`${CONTROL} ${props.className ?? ""}`} />;
 }
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function Select(props: React.ComponentProps<"select">) {
   return <select {...props} className={`${CONTROL} ${props.className ?? ""}`} />;
 }
 
-export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextArea(props: React.ComponentProps<"textarea">) {
   return <textarea {...props} className={`${CONTROL} ${props.className ?? ""}`} />;
 }
 

@@ -26,7 +26,11 @@ async def refresh_with(client: AsyncClient, token: str):
     """POST /refresh presenting a specific token.
 
     httpx deprecates per-request cookies, so the client's jar is set instead.
+    It is cleared first: the server's reply sets the cookie scoped to the test
+    host, and a second copy left beside it makes the jar ambiguous. Read the
+    successor from the response, not the jar.
     """
+    client.cookies.clear()
     client.cookies.set(REFRESH_COOKIE_NAME, token)
     return await client.post(REFRESH)
 
@@ -352,7 +356,7 @@ async def test_a_replay_inside_the_grace_window_is_a_race_not_a_theft(
     assert second.json()["user"]["id"] == str(user.id)
 
     # The first tab's successor is still good, and so is the second's.
-    sibling = client.cookies[REFRESH_COOKIE_NAME]
+    sibling = second.cookies[REFRESH_COOKIE_NAME]
     assert (await refresh_with(client, current)).status_code == 200
     assert (await refresh_with(client, sibling)).status_code == 200
 
