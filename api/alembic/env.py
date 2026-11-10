@@ -28,8 +28,12 @@ if config.config_file_name is not None:
 # the test suite points each run at a throwaway database, and a one-off
 # migration against a restored backup needs the same hook.  Overriding
 # unconditionally would silently send both at the development database.
+#
+# `%` is doubled because Alembic's config is a ConfigParser, which reads `%` as
+# interpolation and refuses a URL-encoded password (`%23` for `#`). Reading
+# the option back undoes the doubling, so the driver sees the real URL.
 if not config.get_main_option("sqlalchemy.url", None):
-    config.set_main_option("sqlalchemy.url", settings.dsn)
+    config.set_main_option("sqlalchemy.url", settings.dsn.replace("%", "%%"))
 
 target_metadata = Base.metadata
 
