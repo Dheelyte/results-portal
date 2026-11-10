@@ -44,6 +44,22 @@
 	}
 }
 
+# --- Health, internal only ---------------------------------------------------
+# What the healthcheck in docker-compose.yml probes: 127.0.0.1:8080/healthz,
+# through Caddy to the API. Without this block nothing listened on 8080 in
+# production, so Caddy was never healthy and `docker compose up -d --wait`
+# hung for two minutes and then failed. Port 8080 is not published —
+# docker-compose.prod.yml maps only 80 and 443 — so this is unreachable from
+# outside the host.
+http://:8080 {
+	handle /healthz {
+		reverse_proxy api:8000
+	}
+	handle {
+		respond 404
+	}
+}
+
 # --- Web app ---------------------------------------------------------------
 {$WEB_DOMAIN} {
 	reverse_proxy web:3000

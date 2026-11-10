@@ -2753,3 +2753,18 @@ not yet created, but its state defaulted to `first`; once First Term existed
 it displayed "Second Term" and submitted `first`, which the API refused. The
 form now submits what the select shows.
 
+
+### D118 — Caddy's healthcheck could never pass in production
+
+Found on the first real deploy: `docker compose up -d --wait` sat for minutes
+and then failed. The healthcheck in `docker-compose.yml` probes
+`127.0.0.1:8080/healthz`, which is the development Caddyfile's only site.
+`Caddyfile.prod` listened on 80 and 443 alone, so production Caddy was
+unhealthy forever — whether or not the site worked.
+
+`Caddyfile.prod` now has an `http://:8080` block that proxies `/healthz` to
+the API and answers 404 to everything else. The healthcheck is unchanged and
+still proves what it was written to prove: Caddy is up and can route to the
+API. Port 8080 is not published in the production overlay, so the block is
+reachable only from inside the host. Another D115: a difference between the
+development and production composition that no test runs against.
