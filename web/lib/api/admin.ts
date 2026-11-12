@@ -142,6 +142,8 @@ export function adminApi(token: string) {
         `/class-subjects/${classSubjectId}/teacher`,
         { teacher_user_id: teacherUserId },
       ),
+    classTeacher: (classId: string) =>
+      get<Schemas["ClassTeacherRead"] | null>(`/classes/${classId}/class-teacher`),
     setClassTeacher: (classId: string, teacherUserId: string) =>
       send<Schemas["ClassTeacherRead"]>("PUT", `/classes/${classId}/class-teacher`, {
         teacher_user_id: teacherUserId,

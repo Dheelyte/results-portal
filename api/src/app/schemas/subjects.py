@@ -69,6 +69,10 @@ class ClassSubjectRead(OrmModel):
     subject_id: uuid.UUID
     academic_session_id: uuid.UUID
     display_order: int
+    teacher_user_id: uuid.UUID | None = Field(
+        default=None,
+        description="Who enters the scores for this subject in this class; null until assigned.",
+    )
 
 
 class TeacherAssignmentSave(BaseModel):

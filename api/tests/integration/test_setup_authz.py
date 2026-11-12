@@ -53,6 +53,7 @@ SETUP_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("PATCH", f"/subjects/{ANY_ID}", {"display_order": 1}),
     ("GET", f"/classes/{ANY_ID}/subjects", None),
     ("PUT", f"/classes/{ANY_ID}/subjects", {"subject_ids": []}),
+    ("GET", f"/classes/{ANY_ID}/class-teacher", None),
     ("PUT", f"/class-subjects/{ANY_ID}/teacher", {"teacher_user_id": ANY_ID}),
     ("PUT", f"/classes/{ANY_ID}/class-teacher", {"teacher_user_id": ANY_ID}),
     ("GET", "/pupils", None),

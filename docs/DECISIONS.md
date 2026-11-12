@@ -2795,3 +2795,28 @@ No schema change. The audit row is the new `narrative_section.created`.
 `audit_log.action` is text, so the new value needs no migration. The dialog
 refuses to submit while the table has unsaved edits, because renumbering would
 make them stale.
+
+### D120 — The teacher is chosen beside each subject on the class page
+
+The class page showed the subject list in one panel and the teachers in a
+second, "Who enters the scores". The second panel's dropdowns were
+uncontrolled (`defaultValue=""`), and `GET /classes/{id}/subjects` didn't say
+who was assigned. So every dropdown read "Choose a teacher…", even for a
+subject that already had one. An admin couldn't tell from the page whether a
+class was ready for score entry.
+
+`ClassSubjectRead` now carries `teacher_user_id`, null until someone is
+assigned. It's a response field only, read from `teaching_assignments`; the
+schema doesn't change. The two panels are now one table: a "Taught" checkbox,
+the subject, and a dropdown that shows the current teacher. A subject ticked
+but not yet saved shows "Save the subject list to choose". A teacher can't be
+assigned to a class-subject that doesn't exist yet. A deactivated teacher who
+is still assigned stays in the dropdown, marked as deactivated, so the
+dropdown never silently shows someone else.
+
+The **Class teacher** dropdown at the top of the same page had the same fault:
+it was uncontrolled, with nothing to read the current teacher from. The fix is
+`GET /classes/{id}/class-teacher`, which returns this session's
+`ClassTeacherRead`, or null when nobody is set. It is admin-only like the
+`PUT`, and an unknown class returns 404. The dropdown now shows the current
+class teacher, and offers "Choose a teacher…" only while none is set.

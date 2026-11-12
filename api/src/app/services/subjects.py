@@ -225,6 +225,24 @@ async def list_class_subjects(
     )
 
 
+async def teachers_of(
+    db: AsyncSession, actor: User, class_subject_ids: Sequence[uuid.UUID]
+) -> dict[uuid.UUID, uuid.UUID]:
+    """Who enters the scores for each of these class-subjects (§4.3).
+
+    A class-subject with nobody assigned yet is simply absent from the result.
+    """
+    if not class_subject_ids:
+        return {}
+    rows = await all_of(
+        db,
+        scope.scoped_teaching_assignments(actor).where(
+            TeachingAssignment.class_subject_id.in_(class_subject_ids)
+        ),
+    )
+    return {row.class_subject_id: row.teacher_user_id for row in rows}
+
+
 async def set_class_subjects(
     db: AsyncSession,
     actor: User,
@@ -397,6 +415,24 @@ async def set_class_subject_teacher(
     await db.commit()
     await db.refresh(record)
     return record
+
+
+async def get_class_teacher(
+    db: AsyncSession,
+    actor: User,
+    class_id: uuid.UUID,
+    *,
+    academic_session_id: uuid.UUID | None = None,
+) -> ClassTeacher | None:
+    """This session's class teacher for one class, or None if nobody is set yet."""
+    await academic.get_class(db, actor, class_id)
+    session_id = await academic.resolve_session_id(db, actor, academic_session_id)
+    return await db.scalar(
+        scope.scoped_class_teachers(actor).where(
+            ClassTeacher.class_id == class_id,
+            ClassTeacher.academic_session_id == session_id,
+        )
+    )
 
 
 async def set_class_teacher(

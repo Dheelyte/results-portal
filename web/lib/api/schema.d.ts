@@ -299,7 +299,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * A class's class teacher
+         * @description This session's class teacher, or null when nobody has been assigned.
+         */
+        get: operations["get_class_teacher_api_v1_classes__class_id__class_teacher_get"];
         /**
          * Assign a class teacher
          * @description The most consequential assignment in setup.
@@ -2141,6 +2145,11 @@ export interface components {
              * Format: uuid
              */
             subject_id: string;
+            /**
+             * Teacher User Id
+             * @description Who enters the scores for this subject in this class; null until assigned.
+             */
+            teacher_user_id?: string | null;
         };
         /**
          * ClassSubjectsSave
@@ -4421,6 +4430,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClassAttendanceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_class_teacher_api_v1_classes__class_id__class_teacher_get: {
+        parameters: {
+            query?: {
+                academic_session_id?: string | null;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassTeacherRead"] | null;
                 };
             };
             /** @description Validation Error */

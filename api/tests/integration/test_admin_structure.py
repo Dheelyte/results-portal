@@ -350,6 +350,37 @@ async def test_assigning_a_subject_teacher(client: AsyncClient, admin_headers, m
     assert response.json()["teacher_user_id"] == str(teacher.id)
 
 
+async def test_the_subject_list_shows_who_teaches_each_subject(
+    client: AsyncClient, admin_headers, make_user
+) -> None:
+    """The admin's class page sets the teacher beside each subject, so the
+    list has to say who is already assigned."""
+    await make_session(client, admin_headers)
+    klass = await a_class(client, admin_headers)
+    maths = await a_subject(client, admin_headers, name="Mathematics")
+    french = await a_subject(client, admin_headers, name="French")
+    offerings = (
+        await client.put(
+            f"{CLASSES}/{klass['id']}/subjects",
+            headers=admin_headers,
+            json={"subject_ids": [maths["id"], french["id"]]},
+        )
+    ).json()
+    assert [row["teacher_user_id"] for row in offerings] == [None, None]
+    teacher = await make_user(UserRole.TEACHER)
+    maths_row = next(row for row in offerings if row["subject_id"] == maths["id"])
+    await client.put(
+        f"/api/v1/class-subjects/{maths_row['id']}/teacher",
+        headers=admin_headers,
+        json={"teacher_user_id": str(teacher.id)},
+    )
+
+    listed = (await client.get(f"{CLASSES}/{klass['id']}/subjects", headers=admin_headers)).json()
+
+    by_subject = {row["subject_id"]: row["teacher_user_id"] for row in listed}
+    assert by_subject == {maths["id"]: str(teacher.id), french["id"]: None}
+
+
 async def test_reassigning_replaces_the_teacher(
     client: AsyncClient, admin_headers, make_user
 ) -> None:
@@ -437,6 +468,35 @@ async def test_assigning_a_class_teacher(client: AsyncClient, admin_headers, mak
     body = response.json()
     assert body["teacher_user_id"] == str(teacher.id)
     assert body["academic_session_id"] == academic["id"]
+
+
+async def test_the_class_teacher_can_be_read_back(
+    client: AsyncClient, admin_headers, make_user
+) -> None:
+    """The class page shows who is set, and null before anyone is."""
+    await make_session(client, admin_headers)
+    klass = await a_class(client, admin_headers)
+    teacher = await make_user(UserRole.TEACHER)
+    url = f"{CLASSES}/{klass['id']}/class-teacher"
+
+    before = await client.get(url, headers=admin_headers)
+    await client.put(url, headers=admin_headers, json={"teacher_user_id": str(teacher.id)})
+    after = await client.get(url, headers=admin_headers)
+
+    assert (before.status_code, before.json()) == (200, None)
+    assert after.json()["teacher_user_id"] == str(teacher.id)
+
+
+async def test_reading_the_class_teacher_of_an_unknown_class_is_a_404(
+    client: AsyncClient, admin_headers
+) -> None:
+    await make_session(client, admin_headers)
+
+    response = await client.get(
+        f"{CLASSES}/00000000-0000-0000-0000-000000000000/class-teacher", headers=admin_headers
+    )
+
+    assert response.status_code == 404
 
 
 async def test_a_class_has_one_class_teacher_per_session(

@@ -1792,6 +1792,19 @@
             "format": "uuid",
             "title": "Subject Id",
             "type": "string"
+          },
+          "teacher_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who enters the scores for this subject in this class; null until assigned.",
+            "title": "Teacher User Id"
           }
         },
         "required": [
@@ -7469,6 +7482,78 @@
       }
     },
     "/api/v1/classes/{class_id}/class-teacher": {
+      "get": {
+        "description": "This session's class teacher, or null when nobody has been assigned.",
+        "operationId": "get_class_teacher_api_v1_classes__class_id__class_teacher_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "academic_session_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Academic Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClassTeacherRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Class Teacher Api V1 Classes  Class Id  Class Teacher Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "A class's class teacher",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
       "put": {
         "description": "The most consequential assignment in setup.\n\n\u00a75.2 hands this person the narrative sections, attendance, growth, the\nclass teacher's comment and the submission gate for every pupil in the\nclass.",
         "operationId": "set_class_teacher_api_v1_classes__class_id__class_teacher_put",

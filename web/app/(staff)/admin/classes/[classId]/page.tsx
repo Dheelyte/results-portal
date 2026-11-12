@@ -15,7 +15,7 @@
  * to, could not reload, and could not leave with the back button.
  */
 
-import { ClipboardList, GraduationCap, UserCog, Users } from "lucide-react";
+import { ClipboardList, GraduationCap, UserCog } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
@@ -54,10 +54,14 @@ export default function ClassDetailPage() {
     enabled: Boolean(api),
   });
   const teachers = useResource(() => api!.users("teacher"), [api], { enabled: Boolean(api) });
+  const classTeacher = useResource(() => api!.classTeacher(classId), [api, classId], {
+    enabled: Boolean(api),
+  });
 
   const action = useAction(() => {
     offerings.reload();
     assignments.reload();
+    classTeacher.reload();
   });
 
   const [chosen, setChosen] = useState<Set<string> | null>(null);
@@ -65,7 +69,23 @@ export default function ClassDetailPage() {
   const schoolClass = (classes.data ?? []).find((item) => item.id === classId) ?? null;
   const activeTeachers = (teachers.data ?? []).filter((teacher) => teacher.is_active);
 
-  const offered = new Set((offerings.data ?? []).map((row) => row.subject_id));
+  const offeringBySubject = new Map((offerings.data ?? []).map((row) => [row.subject_id, row]));
+  const offered = new Set(offeringBySubject.keys());
+
+  /**
+   * Active teachers, plus the assigned one if their account has since been
+   * deactivated — otherwise the dropdown would silently show someone else.
+   */
+  const teacherOptions = (assignedId: string | null | undefined) => {
+    const assigned = (teachers.data ?? []).find((teacher) => teacher.id === assignedId);
+    const listed = assigned && !assigned.is_active ? [...activeTeachers, assigned] : activeTeachers;
+    return listed.map((teacher) => (
+      <option key={teacher.id} value={teacher.id}>
+        {teacher.full_name}
+        {teacher.is_active ? "" : " (deactivated)"}
+      </option>
+    ));
+  };
   const selection = chosen ?? offered;
   const scored = (subjects.data ?? []).filter((subject) => !subject.is_group);
   const headings = (subjects.data ?? []).filter((subject) => subject.is_group);
@@ -137,13 +157,14 @@ export default function ClassDetailPage() {
         icon={UserCog}
         description="Writes the narrative sections, records attendance and growth, writes the class teacher's comment, and submits the class for review."
       >
-        {teachers.loading ? (
+        {teachers.loading || classTeacher.loading ? (
           <SkeletonTable rows={1} columns={2} label="Loading the teachers…" />
         ) : (
           <div className="max-w-sm">
+            {classTeacher.error ? <Notice>{classTeacher.error}</Notice> : null}
             <Field label="Teacher">
               <Select
-                defaultValue=""
+                value={classTeacher.data?.teacher_user_id ?? ""}
                 disabled={action.busy}
                 onChange={(event) => {
                   const teacherId = event.target.value;
@@ -154,12 +175,9 @@ export default function ClassDetailPage() {
                   );
                 }}
               >
-                <option value="">Choose a teacher…</option>
-                {activeTeachers.map((teacher) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.full_name}
-                  </option>
-                ))}
+                {/* Only until someone is set: a class teacher is replaced, never cleared. */}
+                {classTeacher.data ? null : <option value="">Choose a teacher…</option>}
+                {teacherOptions(classTeacher.data?.teacher_user_id)}
               </Select>
             </Field>
           </div>
@@ -171,7 +189,8 @@ export default function ClassDetailPage() {
         icon={GraduationCap}
         description={
           <>
-            Group headings are not listed: they print on the card and carry no scores (R7).
+            Tick what this class is taught, then choose who teaches each subject — only that
+            teacher can enter its scores. Group headings are not listed: they print on the card and carry no scores (R7).
             {headings.length
               ? ` ${headings.map((heading) => heading.name).join(", ")} ${
                   headings.length === 1 ? "is a heading" : "are headings"
@@ -181,31 +200,68 @@ export default function ClassDetailPage() {
         }
       >
         {subjects.loading || offerings.loading ? (
-          <SkeletonTable rows={5} columns={2} label="Loading the subjects…" />
+          <SkeletonTable rows={6} columns={3} label="Loading the subjects…" />
         ) : (
           <>
             {subjects.error ? <Notice>{subjects.error}</Notice> : null}
 
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {scored.map((subject) => (
-                <li key={subject.id}>
-                  <label className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm transition hover:bg-[var(--surface-raised)]">
-                    <input
-                      type="checkbox"
-                      checked={selection.has(subject.id)}
-                      onChange={(event) => {
-                        const next = new Set(selection);
-                        if (event.target.checked) next.add(subject.id);
-                        else next.delete(subject.id);
-                        setChosen(next);
-                      }}
-                    />
-                    <span className="flex-1">{subject.name}</span>
-                    {subject.is_specialist ? <Badge tone="warn">Specialist</Badge> : null}
-                  </label>
-                </li>
-              ))}
-            </ul>
+            <Table head={["Taught", "Subject", "Teacher"]} empty="No subjects yet.">
+              {scored.map((subject) => {
+                const offering = offeringBySubject.get(subject.id);
+                const checked = selection.has(subject.id);
+                return (
+                  <Row key={subject.id}>
+                    <Cell className="w-16">
+                      <input
+                        type="checkbox"
+                        aria-label={`${subject.name} is taught`}
+                        checked={checked}
+                        onChange={(event) => {
+                          const next = new Set(selection);
+                          if (event.target.checked) next.add(subject.id);
+                          else next.delete(subject.id);
+                          setChosen(next);
+                        }}
+                      />
+                    </Cell>
+                    <Cell>
+                      <span className="flex items-center gap-2">
+                        <span className="font-medium">{subject.name}</span>
+                        {subject.is_specialist ? <Badge tone="warn">Specialist</Badge> : null}
+                      </span>
+                    </Cell>
+                    <Cell className="w-72">
+                      {offering && checked ? (
+                        <Select
+                          aria-label={`Teacher for ${subject.name}`}
+                          value={offering.teacher_user_id ?? ""}
+                          disabled={action.busy}
+                          onChange={(event) => {
+                            const teacherId = event.target.value;
+                            if (!teacherId) return;
+                            void action.run(
+                              () => api.setSubjectTeacher(offering.id, teacherId),
+                              `${subject.name} assigned.`,
+                            );
+                          }}
+                        >
+                          {/* Offered only until someone is assigned: the API
+                              replaces a teacher but never leaves it empty. */}
+                          {offering.teacher_user_id ? null : (
+                            <option value="">Choose a teacher…</option>
+                          )}
+                          {teacherOptions(offering.teacher_user_id)}
+                        </Select>
+                      ) : (
+                        <span className="text-sm text-[var(--muted)]">
+                          {checked ? "Save the subject list to choose" : "—"}
+                        </span>
+                      )}
+                    </Cell>
+                  </Row>
+                );
+              })}
+            </Table>
 
             <Button
               className="mt-4"
@@ -225,45 +281,6 @@ export default function ClassDetailPage() {
               Save subject list
             </Button>
           </>
-        )}
-      </Panel>
-
-      <Panel title="Who enters the scores" icon={Users}>
-        {offerings.loading ? (
-          <SkeletonTable rows={5} columns={2} label="Loading the assignments…" />
-        ) : (
-          <Table head={["Subject", "Teacher"]} empty="Save a subject list first.">
-            {(offerings.data ?? []).map((row) => {
-              const subject = (subjects.data ?? []).find((item) => item.id === row.subject_id);
-              return (
-                <Row key={row.id}>
-                  <Cell className="font-medium">{subject?.name ?? "—"}</Cell>
-                  <Cell>
-                    <Select
-                      aria-label={`Teacher for ${subject?.name ?? "subject"}`}
-                      defaultValue=""
-                      disabled={action.busy}
-                      onChange={(event) => {
-                        const teacherId = event.target.value;
-                        if (!teacherId) return;
-                        void action.run(
-                          () => api.setSubjectTeacher(row.id, teacherId),
-                          `${subject?.name ?? "Subject"} assigned.`,
-                        );
-                      }}
-                    >
-                      <option value="">Choose a teacher…</option>
-                      {activeTeachers.map((teacher) => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.full_name}
-                        </option>
-                      ))}
-                    </Select>
-                  </Cell>
-                </Row>
-              );
-            })}
-          </Table>
         )}
       </Panel>
 

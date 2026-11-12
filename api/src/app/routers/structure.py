@@ -5,11 +5,14 @@ Admin-only, per §5.2's first two rows.
 """
 
 import uuid
+from collections.abc import Sequence
 
 from fastapi import APIRouter, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import Context, DbSession
 from app.authz.dependencies import AcademicStructureAdmin, UserAdmin
+from app.models import ClassSubject, User
 from app.schemas.academic import ClassCreate, ClassRead, HouseCreate, HouseRead
 from app.schemas.subjects import (
     ClassSubjectRead,
@@ -162,6 +165,19 @@ async def update_subject(
 # ---------------------------------------------------------------------------
 
 
+async def _class_subjects_read(
+    db: AsyncSession, admin: User, records: Sequence[ClassSubject]
+) -> list[ClassSubjectRead]:
+    """Each class-subject with the teacher who enters its scores, if any."""
+    teachers = await subjects_service.teachers_of(db, admin, [record.id for record in records])
+    return [
+        ClassSubjectRead.model_validate(record).model_copy(
+            update={"teacher_user_id": teachers.get(record.id)}
+        )
+        for record in records
+    ]
+
+
 @router.get(
     "/classes/{class_id}/subjects",
     response_model=list[ClassSubjectRead],
@@ -176,7 +192,7 @@ async def list_class_subjects(
     records = await subjects_service.list_class_subjects(
         db, admin, class_id, academic_session_id=academic_session_id
     )
-    return [ClassSubjectRead.model_validate(record) for record in records]
+    return await _class_subjects_read(db, admin, records)
 
 
 @router.put(
@@ -207,7 +223,7 @@ async def set_class_subjects(
         ip_address=context.ip_address,
         user_agent=context.user_agent,
     )
-    return [ClassSubjectRead.model_validate(record) for record in records]
+    return await _class_subjects_read(db, admin, records)
 
 
 @router.put(
@@ -237,6 +253,24 @@ async def set_class_subject_teacher(
         user_agent=context.user_agent,
     )
     return TeachingAssignmentRead.model_validate(record)
+
+
+@router.get(
+    "/classes/{class_id}/class-teacher",
+    response_model=ClassTeacherRead | None,
+    summary="A class's class teacher",
+)
+async def get_class_teacher(
+    class_id: uuid.UUID,
+    db: DbSession,
+    admin: UserAdmin,
+    academic_session_id: uuid.UUID | None = None,
+) -> ClassTeacherRead | None:
+    """This session's class teacher, or null when nobody has been assigned."""
+    record = await subjects_service.get_class_teacher(
+        db, admin, class_id, academic_session_id=academic_session_id
+    )
+    return None if record is None else ClassTeacherRead.model_validate(record)
 
 
 @router.put(
