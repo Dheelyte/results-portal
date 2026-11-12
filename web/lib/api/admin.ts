@@ -173,6 +173,8 @@ export function adminApi(token: string) {
     narrativeSections: () => get<NarrativeSection[]>("/narrative-sections"),
     saveNarrativeSections: (body: Schemas["NarrativeSectionsSave"]) =>
       send<NarrativeSection[]>("PUT", "/narrative-sections", body),
+    createNarrativeSection: (body: Schemas["NarrativeSectionCreate"]) =>
+      send<NarrativeSection>("POST", "/narrative-sections", body),
 
     narrativeAssignments: (classId: string) =>
       get<NarrativeAssignment[]>(`/classes/${classId}/narrative-assignments`),

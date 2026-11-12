@@ -22,6 +22,21 @@ class NarrativeSectionsSave(BaseModel):
     sections: list[NarrativeSectionSave] = Field(min_length=1)
 
 
+class NarrativeSectionCreate(BaseModel):
+    """One new section. Its code and place on the card are chosen for it."""
+
+    label: str = Field(min_length=1, max_length=200, examples=["Music"])
+    group_label: str | None = Field(
+        default=None,
+        max_length=200,
+        examples=["Area of Curriculum"],
+        description=(
+            "An existing group places the section inside that block; a new name "
+            "starts a block of its own; null makes it a heading by itself."
+        ),
+    )
+
+
 class NarrativeSectionRead(OrmModel):
     id: uuid.UUID
     code: str

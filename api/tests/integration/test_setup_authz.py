@@ -88,6 +88,7 @@ SETUP_ENDPOINTS: list[tuple[str, str, dict | None]] = [
         "/narrative-sections",
         {"sections": [{"code": "B", "label": "Work", "display_order": 0}]},
     ),
+    ("POST", "/narrative-sections", {"label": "Music"}),
     ("GET", f"/classes/{ANY_ID}/narrative-assignments", None),
     (
         "PUT",

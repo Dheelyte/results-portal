@@ -900,7 +900,14 @@ export interface paths {
          *     said. N7 may yet reduce the sixteen, and this is how.
          */
         put: operations["save_narrative_sections_api_v1_narrative_sections_put"];
-        post?: never;
+        /**
+         * Add a narrative section
+         * @description Add one section to the card. Its code and place are chosen for it.
+         *
+         *     Inside an existing group it joins that block, after its last section;
+         *     otherwise it takes the next unused letter and goes at the end.
+         */
+        post: operations["create_narrative_section_api_v1_narrative_sections_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2838,6 +2845,19 @@ export interface components {
         NarrativeSave: {
             /** Passages */
             passages: components["schemas"]["PassageSave"][];
+        };
+        /**
+         * NarrativeSectionCreate
+         * @description One new section. Its code and place on the card are chosen for it.
+         */
+        NarrativeSectionCreate: {
+            /**
+             * Group Label
+             * @description An existing group places the section inside that block; a new name starts a block of its own; null makes it a heading by itself.
+             */
+            group_label?: string | null;
+            /** Label */
+            label: string;
         };
         /** NarrativeSectionRead */
         NarrativeSectionRead: {
@@ -5551,6 +5571,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NarrativeSectionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_narrative_section_api_v1_narrative_sections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NarrativeSectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NarrativeSectionRead"];
                 };
             };
             /** @description Validation Error */

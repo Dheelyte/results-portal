@@ -23,6 +23,7 @@ from app.schemas.narrative import (
     CommentRead,
     NarrativeAssignmentRead,
     NarrativeAssignmentsSave,
+    NarrativeSectionCreate,
     NarrativeSectionRead,
     NarrativeSectionsSave,
 )
@@ -182,6 +183,34 @@ async def save_narrative_sections(
         user_agent=context.user_agent,
     )
     return [NarrativeSectionRead.model_validate(record) for record in records]
+
+
+@router.post(
+    "/narrative-sections",
+    response_model=NarrativeSectionRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a narrative section",
+)
+async def create_narrative_section(
+    payload: NarrativeSectionCreate,
+    db: DbSession,
+    admin: AssessmentConfigAdmin,
+    context: Context,
+) -> NarrativeSectionRead:
+    """Add one section to the card. Its code and place are chosen for it.
+
+    Inside an existing group it joins that block, after its last section;
+    otherwise it takes the next unused letter and goes at the end.
+    """
+    record = await narrative_service.add_section(
+        db,
+        admin,
+        label=payload.label,
+        group_label=payload.group_label,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return NarrativeSectionRead.model_validate(record)
 
 
 @router.get(

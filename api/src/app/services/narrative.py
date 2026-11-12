@@ -154,6 +154,106 @@ async def save_sections(
     return await list_sections(db, actor)
 
 
+def _letter_of(code: str) -> str:
+    """The block a section prints in: "A.english_language_arts" → "A", "B" → "B"."""
+    return code.split(".", 1)[0]
+
+
+def _slug(label: str) -> str:
+    slug = "".join(char if char.isalnum() else "_" for char in label.lower())
+    return "_".join(part for part in slug.split("_") if part) or "section"
+
+
+async def add_section(
+    db: AsyncSession,
+    actor: User,
+    *,
+    label: str,
+    group_label: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> NarrativeSection:
+    """Add one section, choosing its code and its place on the card.
+
+    The code is not the admin's to pick, because the card prints it:
+    `card.html` heads an ungrouped section "K. Label" and a group
+    "A) Area of Curriculum", taking the letter from the code. So:
+
+    - **Under an existing group** — the group's letter, `A.<slug>`, placed
+      after the group's last section, so it prints inside that block.
+    - **Under a new group, or none** — the next unused letter, at the end.
+
+    Letters already used by a retired section are skipped: last term's card
+    still prints that letter with its old meaning.
+    """
+    label = label.strip()
+    group = (group_label or "").strip() or None
+    if not label:
+        raise Invalid("A section needs a label — it prints on the card.")
+
+    sections = list(await list_sections(db, actor))
+    codes = {section.code for section in sections}
+
+    members = [
+        section
+        for section in sections
+        if group and section.group_label and section.group_label.casefold() == group.casefold()
+    ]
+    if members:
+        letter = _letter_of(members[-1].code)
+        group = members[-1].group_label  # the spelling the card already prints
+        position = sections.index(members[-1]) + 1
+    else:
+        used = {_letter_of(code) for code in codes}
+        free = [char for char in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" if char not in used]
+        if not free:
+            raise Invalid("Every letter from A to Z is already used by a section.")
+        letter = free[0]
+        position = len(sections)
+
+    if group:
+        base = f"{letter}.{_slug(label)}"
+        code, suffix = base, 2
+        while code in codes:
+            code, suffix = f"{base}_{suffix}", suffix + 1
+    else:
+        code = letter
+
+    if any(
+        section.label.casefold() == label.casefold() and section.group_label == group
+        for section in sections
+    ):
+        raise Invalid(f"There is already a section called {label!r} there.")
+
+    record = NarrativeSection(
+        school_id=actor.school_id, code=code, label=label, group_label=group, display_order=0
+    )
+    db.add(record)
+    sections.insert(position, record)
+    # Renumbered from zero: inserting into a block must push everything after
+    # it down, and an order only means anything relative to the others.
+    for order, section in enumerate(sections):
+        section.display_order = order
+
+    async with integrity_guard(db, "Two sections cannot share a code."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.NARRATIVE_SECTION_CREATED,
+        entity_type="narrative_section",
+        entity_id=record.id,
+        after={"code": code, "label": label, "group_label": group},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
 async def count_active_sections(db: AsyncSession, actor: User) -> int:
     return (
         await db.scalar(

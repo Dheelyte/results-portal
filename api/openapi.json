@@ -3794,6 +3794,41 @@
         "title": "NarrativeSave",
         "type": "object"
       },
+      "NarrativeSectionCreate": {
+        "description": "One new section. Its code and place on the card are chosen for it.",
+        "properties": {
+          "group_label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An existing group places the section inside that block; a new name starts a block of its own; null makes it a heading by itself.",
+            "examples": [
+              "Area of Curriculum"
+            ],
+            "title": "Group Label"
+          },
+          "label": {
+            "examples": [
+              "Music"
+            ],
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "title": "NarrativeSectionCreate",
+        "type": "object"
+      },
       "NarrativeSectionRead": {
         "properties": {
           "code": {
@@ -9392,6 +9427,51 @@
           }
         ],
         "summary": "The card's narrative sections",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      },
+      "post": {
+        "description": "Add one section to the card. Its code and place are chosen for it.\n\nInside an existing group it joins that block, after its last section;\notherwise it takes the next unused letter and goes at the end.",
+        "operationId": "create_narrative_section_api_v1_narrative_sections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NarrativeSectionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NarrativeSectionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add a narrative section",
         "tags": [
           "admin: assessment configuration"
         ]

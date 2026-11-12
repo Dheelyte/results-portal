@@ -258,6 +258,93 @@ async def test_a_section_is_retired_rather_than_deleted(client: AsyncClient, adm
     assert len(everything) == 16
 
 
+# Adding one section. The card prints the code ("K. Label", "A) Group"), so the
+# admin names the section and the server chooses the code and the place.
+
+
+async def add(client: AsyncClient, headers, **payload) -> dict:
+    response = await client.post(SECTIONS, headers=headers, json=payload)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def test_a_section_added_to_a_group_prints_inside_that_block(
+    client: AsyncClient, admin_headers
+) -> None:
+    await client.put(SECTIONS, headers=admin_headers, json={"sections": all_sixteen()})
+
+    music = await add(client, admin_headers, label="Music", group_label="area of curriculum")
+
+    assert music["code"] == "A.music"
+    assert music["group_label"] == "Area of Curriculum"  # the card's own spelling
+    codes = [item["code"] for item in (await client.get(SECTIONS, headers=admin_headers)).json()]
+    # After the seventh curriculum area and before B, so nothing after it moved out of order.
+    assert codes[7] == "A.music"
+    assert codes[8:] == ["B", "C", "D", "E", "F", "G", "H", "I", "J"]
+
+
+async def test_a_section_on_its_own_takes_the_next_letter_at_the_end(
+    client: AsyncClient, admin_headers
+) -> None:
+    await client.put(SECTIONS, headers=admin_headers, json={"sections": all_sixteen()})
+
+    first = await add(client, admin_headers, label="Leadership")
+    second = await add(client, admin_headers, label="Punctuality", group_label=None)
+
+    assert (first["code"], first["group_label"]) == ("K", None)
+    assert second["code"] == "L"
+    body = (await client.get(SECTIONS, headers=admin_headers)).json()
+    assert [item["code"] for item in body[-2:]] == ["K", "L"]
+    assert [item["display_order"] for item in body] == list(range(18))
+
+
+async def test_a_new_group_starts_a_block_of_its_own(client: AsyncClient, admin_headers) -> None:
+    await client.put(SECTIONS, headers=admin_headers, json={"sections": all_sixteen()})
+
+    first = await add(client, admin_headers, label="Choir", group_label="Clubs")
+    second = await add(client, admin_headers, label="Chess", group_label="Clubs")
+
+    assert first["code"] == "K.choir"
+    assert second["code"] == "K.chess"
+
+
+async def test_a_retired_sections_letter_is_not_reused(client: AsyncClient, admin_headers) -> None:
+    """Last term's card still prints J with its old meaning."""
+    sections = all_sixteen()
+    sections[-1]["is_active"] = False
+    await client.put(SECTIONS, headers=admin_headers, json={"sections": sections})
+
+    assert (await add(client, admin_headers, label="Leadership"))["code"] == "K"
+
+
+async def test_the_same_label_twice_in_one_place_is_refused(
+    client: AsyncClient, admin_headers
+) -> None:
+    await client.put(SECTIONS, headers=admin_headers, json={"sections": all_sixteen()})
+
+    response = await client.post(
+        SECTIONS, headers=admin_headers, json={"label": "attitude", "group_label": None}
+    )
+
+    assert response.status_code == 422
+    assert "already a section" in response.json()["detail"]
+
+
+async def test_adding_the_first_section_to_an_empty_card(
+    client: AsyncClient, admin_headers, session: AsyncSession
+) -> None:
+    """Production starts with none until the reference seed runs."""
+    body = await add(client, admin_headers, label="Work/Study Habits")
+
+    assert (body["code"], body["display_order"]) == ("A", 0)
+    logged = await session.scalar(
+        select(func.count())
+        .select_from(AuditLog)
+        .where(AuditLog.action == AuditAction.NARRATIVE_SECTION_CREATED)
+    )
+    assert logged == 1
+
+
 async def test_a_repeated_code_is_refused(client: AsyncClient, admin_headers) -> None:
     response = await client.put(
         SECTIONS,

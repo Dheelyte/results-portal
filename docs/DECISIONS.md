@@ -2768,3 +2768,30 @@ still proves what it was written to prove: Caddy is up and can route to the
 API. Port 8080 is not published in the production overlay, so the block is
 reachable only from inside the host. Another D115: a difference between the
 development and production composition that no test runs against.
+
+### D119 — An admin adds a narrative section by name; the server picks its code
+
+The Narrative sections panel could only edit rows that already existed. Its
+empty state said "add them here", but there was nowhere to add one. The bulk
+`PUT /narrative-sections` could create a section, but only if the caller chose
+a code. The code isn't internal: `card.html` prints it. An ungrouped section
+heads as "K. Label", and a group takes its letter from its members' codes
+("A) Area of Curriculum"). A wrong code prints a wrong letter or splits a
+block in two.
+
+So `POST /narrative-sections` takes only a label and an optional group, and
+`services/narrative.add_section` decides the rest:
+
+- **An existing group** (matched case-insensitively) gives the group's letter,
+  code `<letter>.<slug>`, placed after the group's last section.
+- **A new group, or none** gives the next letter A–Z that no section uses,
+  placed at the end.
+- **Retired sections still hold their letters.** Last term's card prints J
+  with its old meaning, so a new section must not reuse J.
+- Every section's `display_order` is renumbered from zero, so a section
+  inserted into a block pushes the rest down.
+
+No schema change. The audit row is the new `narrative_section.created`.
+`audit_log.action` is text, so the new value needs no migration. The dialog
+refuses to submit while the table has unsaved edits, because renumbering would
+make them stale.

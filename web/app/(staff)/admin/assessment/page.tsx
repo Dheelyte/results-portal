@@ -14,7 +14,14 @@
  * phrases to start from that is the feature that gets abandoned first.
  */
 
-import { ClipboardList, MessageSquarePlus, MessageSquareQuote, Plus, Scale } from "lucide-react";
+import {
+  ClipboardList,
+  ListPlus,
+  MessageSquarePlus,
+  MessageSquareQuote,
+  Plus,
+  Scale,
+} from "lucide-react";
 import { useState } from "react";
 
 import { Modal } from "@/components/modal";
@@ -71,7 +78,9 @@ function useClearOnOpen(open: boolean, ...actions: { clear: () => void }[]) {
 
 export default function AssessmentPage() {
   const api = useAdminApi();
-  const [dialog, setDialog] = useState<"scale" | "phrase" | null>(null);
+  const [dialog, setDialog] = useState<"scale" | "section" | "phrase" | null>(null);
+  // Bumped when a section is added, so the phrase bank can offer it at once.
+  const [sectionsVersion, setSectionsVersion] = useState(0);
   const closeDialog = () => setDialog(null);
 
   return (
@@ -81,6 +90,14 @@ export default function AssessmentPage() {
         description="The scale a grade is read from, the sections the card prints, and the phrases a teacher starts from."
         actions={
           <>
+            <Button
+              variant="secondary"
+              icon={ListPlus}
+              disabled={!api}
+              onClick={() => setDialog("section")}
+            >
+              Add section
+            </Button>
             <Button
               variant="secondary"
               icon={MessageSquarePlus}
@@ -99,8 +116,14 @@ export default function AssessmentPage() {
       {api ? (
         <>
           <GradingScales create={{ open: dialog === "scale", onClose: closeDialog }} />
-          <NarrativeSections />
-          <PhraseBank create={{ open: dialog === "phrase", onClose: closeDialog }} />
+          <NarrativeSections
+            create={{ open: dialog === "section", onClose: closeDialog }}
+            onAdded={() => setSectionsVersion((version) => version + 1)}
+          />
+          <PhraseBank
+            create={{ open: dialog === "phrase", onClose: closeDialog }}
+            sectionsVersion={sectionsVersion}
+          />
         </>
       ) : (
         <>
@@ -342,14 +365,37 @@ function GradingScales({ create: dialog }: { create: CreateDialog }) {
 
 /* ------------------------------------------------------------------------- */
 
-function NarrativeSections() {
+/** In the "Where it goes" select: a heading of its own, or a new group. */
+const OWN_HEADING = "";
+const NEW_GROUP = "\u0000new-group"; // cannot collide with a real group name
+
+function NarrativeSections({
+  create: dialog,
+  onAdded,
+}: {
+  create: CreateDialog;
+  onAdded: () => void;
+}) {
   const api = useAdminApi()!;
   const sections = useResource(() => api.narrativeSections(), [api]);
   const action = useAction(sections.reload);
+  const create = useAction(sections.reload);
+  useClearOnOpen(dialog.open, create);
   const [draft, setDraft] = useState<Record<string, Partial<NarrativeSection>>>({});
+  const [newLabel, setNewLabel] = useState("");
+  const [placement, setPlacement] = useState(OWN_HEADING);
+  const [newGroup, setNewGroup] = useState("");
 
   const edited = (section: NarrativeSection) => ({ ...section, ...draft[section.id] });
   const dirty = Object.keys(draft).length > 0;
+
+  // Each group once, with the letter the card prints before it.
+  const groups = new Map<string, string>();
+  for (const section of sections.data ?? []) {
+    if (section.group_label && !groups.has(section.group_label)) {
+      groups.set(section.group_label, section.code.split(".", 1)[0] ?? section.code);
+    }
+  }
 
   return (
     <Panel
@@ -389,7 +435,7 @@ function NarrativeSections() {
 
       <Table
         head={["Order", "Group", "Label", "Code", "Active"]}
-        empty="No sections yet. Run the reference seed, or add them here."
+        empty="No sections yet. Add one with “Add section” at the top of the page."
       >
         {(sections.data ?? []).map((section) => {
           const value = edited(section);
@@ -440,16 +486,100 @@ function NarrativeSections() {
       <div className="mt-3 flex flex-col gap-2">
         <Notice>{action.error}</Notice>
         <Notice tone="success">{action.success}</Notice>
+        {!dialog.open ? <Notice tone="success">{create.success}</Notice> : null}
       </div>
+
+      <Modal
+        open={dialog.open}
+        onClose={dialog.onClose}
+        title="Add a narrative section"
+        description="A passage teachers write for every pupil, every term. Its letter and place on the card are chosen for you."
+      >
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const group =
+              placement === NEW_GROUP ? newGroup : placement === OWN_HEADING ? null : placement;
+            const added = await create.run(
+              () => api.createNarrativeSection({ label: newLabel, group_label: group }),
+              `“${newLabel.trim()}” added.`,
+            );
+            if (added) {
+              setNewLabel("");
+              setNewGroup("");
+              onAdded();
+              dialog.onClose();
+            }
+          }}
+        >
+          <Field label="Section name" hint="Printed on the card." required>
+            <Input
+              required
+              maxLength={200}
+              value={newLabel}
+              onChange={(event) => setNewLabel(event.target.value)}
+            />
+          </Field>
+          <Field
+            label="Where it goes"
+            hint={
+              placement === OWN_HEADING || placement === NEW_GROUP
+                ? "At the end of the card, with the next unused letter."
+                : "Inside that block, after its last section."
+            }
+          >
+            <Select value={placement} onChange={(event) => setPlacement(event.target.value)}>
+              <option value={OWN_HEADING}>A heading of its own</option>
+              {[...groups].map(([group, letter]) => (
+                <option key={group} value={group}>
+                  Inside {letter}) {group}
+                </option>
+              ))}
+              <option value={NEW_GROUP}>A new group…</option>
+            </Select>
+          </Field>
+          {placement === NEW_GROUP ? (
+            <Field label="Group name" hint="Printed above the sections inside it." required>
+              <Input
+                required
+                maxLength={200}
+                value={newGroup}
+                onChange={(event) => setNewGroup(event.target.value)}
+              />
+            </Field>
+          ) : null}
+          {dirty ? (
+            <Notice tone="warning">
+              Save or undo your edits to the table first — adding a section renumbers the order.
+            </Notice>
+          ) : null}
+          <Notice>{create.error}</Notice>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="secondary" onClick={dialog.onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" icon={Plus} loading={create.busy} disabled={dirty}>
+              Add section
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </Panel>
   );
 }
 
 /* ------------------------------------------------------------------------- */
 
-function PhraseBank({ create: dialog }: { create: CreateDialog }) {
+function PhraseBank({
+  create: dialog,
+  sectionsVersion,
+}: {
+  create: CreateDialog;
+  sectionsVersion: number;
+}) {
   const api = useAdminApi()!;
-  const sections = useResource(() => api.narrativeSections(), [api]);
+  const sections = useResource(() => api.narrativeSections(), [api, sectionsVersion]);
   const [scope, setScope] = useState("class_teacher");
   const phrases = useResource(() => api.comments(scope), [api, scope]);
   const action = useAction(phrases.reload);

@@ -60,6 +60,7 @@ class AuditAction(str):
     GRADING_SCALE_CREATED = "grading_scale.created"
     GRADING_SCALE_ACTIVATED = "grading_scale.activated"
     NARRATIVE_SECTIONS_SAVED = "narrative_sections.saved"
+    NARRATIVE_SECTION_CREATED = "narrative_section.created"
     NARRATIVE_ASSIGNMENTS_SET = "narrative_assignments.set"
     COMMENT_BANK_ENTRY_CREATED = "comment_bank.created"
 
