@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
 import {
   Badge,
@@ -42,7 +43,7 @@ import {
   Table,
   TextArea,
 } from "@/components/ui";
-import type { NarrativeSection } from "@/lib/api/admin";
+import type { Comment, NarrativeSection } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { formatDate } from "@/lib/format";
 import { useAction, useResource } from "@/lib/use-async";
@@ -146,6 +147,7 @@ function GradingScales({ create: dialog }: { create: CreateDialog }) {
   const [name, setName] = useState("");
   const [effectiveFrom, setEffectiveFrom] = useState("");
   const [bands, setBands] = useState(CARD_BANDS);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   return (
     <Panel
@@ -169,19 +171,31 @@ function GradingScales({ create: dialog }: { create: CreateDialog }) {
                 </p>
               </div>
               {scale.is_active ? null : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={action.busy}
-                  onClick={() =>
-                    void action.run(
-                      () => api.activateGradingScale(scale.id),
-                      `${scale.name} is now the active scale.`,
-                    )
+                <RowActions
+                  label={scale.name}
+                  onDelete={() =>
+                    setDeleting({
+                      name: scale.name,
+                      consequence:
+                        "A scale is never edited: make a new version instead. Only a version that isn't active and that no grade was approved under can be deleted.",
+                      run: () => api.deleteGradingScale(scale.id),
+                    })
                   }
                 >
-                  Make active
-                </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={action.busy}
+                    onClick={() =>
+                      void action.run(
+                        () => api.activateGradingScale(scale.id),
+                        `${scale.name} is now the active scale.`,
+                      )
+                    }
+                  >
+                    Make active
+                  </Button>
+                </RowActions>
               )}
             </header>
 
@@ -359,6 +373,7 @@ function GradingScales({ create: dialog }: { create: CreateDialog }) {
           </div>
         </form>
       </Modal>
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={scales.reload} />
     </Panel>
   );
 }
@@ -385,6 +400,7 @@ function NarrativeSections({
   const [newLabel, setNewLabel] = useState("");
   const [placement, setPlacement] = useState(OWN_HEADING);
   const [newGroup, setNewGroup] = useState("");
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   const edited = (section: NarrativeSection) => ({ ...section, ...draft[section.id] });
   const dirty = Object.keys(draft).length > 0;
@@ -434,7 +450,7 @@ function NarrativeSections({
       {sections.error ? <Notice>{sections.error}</Notice> : null}
 
       <Table
-        head={["Order", "Group", "Label", "Code", "Active"]}
+        head={["Order", "Group", "Label", "Code", "Active", ""]}
         empty="No sections yet. Add one with “Add section” at the top of the page."
       >
         {(sections.data ?? []).map((section) => {
@@ -471,6 +487,23 @@ function NarrativeSections({
                   aria-label={`${section.label} is active`}
                   checked={value.is_active}
                   onChange={(event) => change({ is_active: event.target.checked })}
+                />
+              </Cell>
+              <Cell className="text-right">
+                <RowActions
+                  label={section.label}
+                  disabled={dirty}
+                  onDelete={() =>
+                    setDeleting({
+                      name: section.label,
+                      consequence:
+                        "Only a section nobody has written in can be deleted. Its phrases in the phrase bank go with it. Once a passage is written, untick Active to retire it instead.",
+                      run: async () => {
+                        await api.deleteNarrativeSection(section.id);
+                        onAdded();
+                      },
+                    })
+                  }
                 />
               </Cell>
             </Row>
@@ -565,6 +598,7 @@ function NarrativeSections({
           </div>
         </form>
       </Modal>
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={sections.reload} />
     </Panel>
   );
 }
@@ -585,6 +619,9 @@ function PhraseBank({
   const action = useAction(phrases.reload);
   useClearOnOpen(dialog.open, action);
   const [text, setText] = useState("");
+  const update = useAction(phrases.reload);
+  const [editing, setEditing] = useState<{ phrase: Comment; text: string } | null>(null);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   // One list of sections, for the filter above the list and the dialog's own
   // choice — the two are the same state, so a new phrase lands in view.
@@ -621,8 +658,25 @@ function PhraseBank({
 
       <ul className="flex flex-col gap-2">
         {(phrases.data ?? []).map((phrase) => (
-          <li key={phrase.id} className="rounded border border-[var(--border)] px-3 py-2 text-sm">
-            {phrase.text}
+          <li
+            key={phrase.id}
+            className="flex items-start justify-between gap-3 rounded border border-[var(--border)] px-3 py-2 text-sm"
+          >
+            <span className="min-w-0 py-1">{phrase.text}</span>
+            <RowActions
+              label="phrase"
+              onEdit={() => {
+                update.clear();
+                setEditing({ phrase, text: phrase.text });
+              }}
+              onDelete={() =>
+                setDeleting({
+                  name: "this phrase",
+                  consequence: "Passages already written from it keep their own words.",
+                  run: () => api.deleteComment(phrase.id),
+                })
+              }
+            />
           </li>
         ))}
         {phrases.data?.length ? null : (
@@ -682,6 +736,40 @@ function PhraseBank({
           </div>
         </form>
       </Modal>
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="Edit phrase">
+        {editing ? (
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(() =>
+                api.updateComment(editing.phrase.id, { text: editing.text }),
+              );
+              if (saved) setEditing(null);
+            }}
+          >
+            <Field label="Phrase" hint="Passages already written from it keep their own words." required>
+              <TextArea
+                required
+                rows={3}
+                value={editing.text}
+                onChange={(event) => setEditing({ ...editing, text: event.target.value })}
+              />
+            </Field>
+            <Notice>{update.error}</Notice>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={phrases.reload} />
     </Panel>
   );
 }

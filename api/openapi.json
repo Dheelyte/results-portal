@@ -71,6 +71,50 @@
         "title": "AcademicSessionRead",
         "type": "object"
       },
+      "AcademicSessionUpdate": {
+        "description": "Every field optional; only what is sent is changed.",
+        "properties": {
+          "ends_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends On"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "starts_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts On"
+          }
+        },
+        "title": "AcademicSessionUpdate",
+        "type": "object"
+      },
       "AccountRead": {
         "description": "An account as an admin sees it. Never carries the password hash.",
         "properties": {
@@ -1939,6 +1983,51 @@
         "title": "ClassTermState",
         "type": "string"
       },
+      "ClassUpdate": {
+        "description": "Every field optional; only what is sent is changed.",
+        "properties": {
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deactivate a class rather than deleting it once it has history.",
+            "title": "Is Active"
+          },
+          "level_order": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Order"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "ClassUpdate",
+        "type": "object"
+      },
       "CommentCreate": {
         "properties": {
           "scope": {
@@ -2016,6 +2105,21 @@
           "pupil_id"
         ],
         "title": "CommentSaveRow",
+        "type": "object"
+      },
+      "CommentUpdate": {
+        "properties": {
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CommentUpdate",
         "type": "object"
       },
       "CorrectableRowRead": {
@@ -3265,6 +3369,21 @@
           "name"
         ],
         "title": "HouseRead",
+        "type": "object"
+      },
+      "HouseUpdate": {
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "HouseUpdate",
         "type": "object"
       },
       "LoginRequest": {
@@ -5244,6 +5363,115 @@
         "title": "PupilRead",
         "type": "object"
       },
+      "PupilUpdate": {
+        "description": "Every field optional; only what is sent is changed. Null clears an\noptional field, such as the house.",
+        "properties": {
+          "admission_number": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "first_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Name"
+          },
+          "house_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "House Id"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deactivate a pupil who has left, rather than deleting them.",
+            "title": "Is Active"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "enum": [
+                  "M",
+                  "F"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          }
+        },
+        "title": "PupilUpdate",
+        "type": "object"
+      },
       "QueueEntryRead": {
         "description": "One class in the review queue (\u00a78.4).",
         "properties": {
@@ -6474,6 +6702,62 @@
         "title": "UserRole",
         "type": "string"
       },
+      "UserUpdate": {
+        "description": "Every field optional; only what is sent is changed. The role is not\neditable \u2014 make a new account instead.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deactivating signs the person out everywhere at once.",
+            "title": "Is Active"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "title": "UserUpdate",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -7286,6 +7570,105 @@
           }
         ],
         "summary": "Create a class",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}": {
+      "delete": {
+        "description": "Delete a class no pupil was enrolled in. Refused with 409, naming what is in the way, once\nanything depends on it (D121).",
+        "operationId": "delete_class_api_v1_classes__class_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused class",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
+      "patch": {
+        "description": "Rename, reorder, deactivate or reactivate a class.",
+        "operationId": "update_class_api_v1_classes__class_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a class",
         "tags": [
           "admin: classes and subjects"
         ]
@@ -8763,6 +9146,105 @@
         ]
       }
     },
+    "/api/v1/comment-bank/{comment_id}": {
+      "delete": {
+        "description": "Delete a phrase. Always allowed: passages copy its words, not a link to it.",
+        "operationId": "delete_comment_api_v1_comment_bank__comment_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a phrase",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      },
+      "patch": {
+        "description": "Reword a phrase. Passages already written keep their own text.",
+        "operationId": "update_comment_api_v1_comment_bank__comment_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Comment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Reword a phrase",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
     "/api/v1/entries/{entry_id}": {
       "patch": {
         "description": "Correct one score after approval (R13).\n\nAdmin only, reason required, audited with before and after values \u2014 and\nthe grade is re-resolved against the scale the row was **frozen** against,\nnever today's (\u00a74.5, CLAUDE.md rule 6).",
@@ -8893,6 +9375,48 @@
           }
         ],
         "summary": "Create a grading scale",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
+    "/api/v1/grading-scales/{scale_id}": {
+      "delete": {
+        "description": "Delete a scale version that is not active and no grade cites. Refused with 409, naming what\nis in the way, once anything depends on it (D121).",
+        "operationId": "delete_grading_scale_api_v1_grading_scales__scale_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scale_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Scale Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused scale version",
         "tags": [
           "admin: assessment configuration"
         ]
@@ -9129,6 +9653,105 @@
           }
         ],
         "summary": "Create a house",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      }
+    },
+    "/api/v1/houses/{house_id}": {
+      "delete": {
+        "description": "Delete a house no pupil belongs to. Refused with 409, naming what is in the way, once\nanything depends on it (D121).",
+        "operationId": "delete_house_api_v1_houses__house_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "house_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "House Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an empty house",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
+      "patch": {
+        "description": "Rename a house.",
+        "operationId": "update_house_api_v1_houses__house_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "house_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "House Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HouseUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rename a house",
         "tags": [
           "admin: classes and subjects"
         ]
@@ -9611,6 +10234,48 @@
         ]
       }
     },
+    "/api/v1/narrative-sections/{section_id}": {
+      "delete": {
+        "description": "Delete a section nobody has written in; its phrases go with it. Refused with 409, naming\nwhat is in the way, once anything depends on it (D121).",
+        "operationId": "delete_narrative_section_api_v1_narrative_sections__section_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Section Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused narrative section",
+        "tags": [
+          "admin: assessment configuration"
+        ]
+      }
+    },
     "/api/v1/phrases": {
       "get": {
         "description": "The active phrases, optionally for one section only.\n\nA separate path from the admin's `GET /comment-bank` rather than a widened\ngate on it: this one returns only the active entries, takes no part in\nmanaging them, and is the one \u00a78.2's phrase-bank button calls\n(docs/DECISIONS.md D55).",
@@ -9834,6 +10499,105 @@
           }
         ],
         "summary": "Add a pupil",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/pupils/{pupil_id}": {
+      "delete": {
+        "description": "Delete a pupil nothing was recorded for, such as a duplicate. Refused with 409, naming what\nis in the way, once anything depends on it (D121).",
+        "operationId": "delete_pupil_api_v1_pupils__pupil_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete a pupil with no records",
+        "tags": [
+          "admin: people"
+        ]
+      },
+      "patch": {
+        "description": "Correct a pupil's details, or deactivate a pupil who has left.",
+        "operationId": "update_pupil_api_v1_pupils__pupil_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PupilUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a pupil",
         "tags": [
           "admin: people"
         ]
@@ -10398,6 +11162,105 @@
         ]
       }
     },
+    "/api/v1/sessions/{session_id}": {
+      "delete": {
+        "description": "Delete a session nothing was set up in. Refused with 409, naming what is in the way, once\nanything depends on it (D121).",
+        "operationId": "delete_session_api_v1_sessions__session_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused session",
+        "tags": [
+          "admin: academic structure"
+        ]
+      },
+      "patch": {
+        "description": "Rename a session or move its dates. Its terms must stay inside them.",
+        "operationId": "update_session_api_v1_sessions__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicSessionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicSessionRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update a session",
+        "tags": [
+          "admin: academic structure"
+        ]
+      }
+    },
     "/api/v1/sessions/{session_id}/current": {
       "post": {
         "description": "Switch the school into another academic year.\n\nNot in \u00a77's list, which has only GET and POST for sessions. \u00a72.3 requires\nthe active session to be set in the platform rather than derived from the\nclock, so the verb has to exist somewhere (docs/DECISIONS.md D37).",
@@ -10594,6 +11457,46 @@
       }
     },
     "/api/v1/subjects/{subject_id}": {
+      "delete": {
+        "description": "Delete a subject no class was given. Refused with 409, naming what is in the way, once\nanything depends on it (D121).",
+        "operationId": "delete_subject_api_v1_subjects__subject_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subject_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Subject Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused subject",
+        "tags": [
+          "admin: classes and subjects"
+        ]
+      },
       "patch": {
         "description": "Rename, reorder, retire or regroup a subject.\n\nNot in \u00a77's list, which has only GET and POST. \u00a71.5 requires it: \"the list\nmust be admin-editable and the display order must be configurable\", and\nthe card leaves blank rows for additions (docs/DECISIONS.md D37).",
         "operationId": "update_subject_api_v1_subjects__subject_id__patch",
@@ -10757,6 +11660,46 @@
       }
     },
     "/api/v1/terms/{term_id}": {
+      "delete": {
+        "description": "Delete a term nothing was recorded in. Refused with 409, naming what is in the way, once\nanything depends on it (D121).",
+        "operationId": "delete_term_api_v1_terms__term_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused term",
+        "tags": [
+          "admin: academic structure"
+        ]
+      },
       "patch": {
         "description": "Change a term's dates or its calendar figures.\n\n`times_school_opened` is why this exists: R9 measures every pupil's\nattendance against it and it is rarely known on the day a term is created.",
         "operationId": "update_term_api_v1_terms__term_id__patch",
@@ -11080,6 +12023,105 @@
           }
         ],
         "summary": "Create an account",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}": {
+      "delete": {
+        "description": "Delete an account that was never used. Refused with 409, naming what is in the way, once\nanything depends on it (D121).",
+        "operationId": "delete_user_api_v1_users__user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Delete an unused account",
+        "tags": [
+          "admin: people"
+        ]
+      },
+      "patch": {
+        "description": "Correct a name or sign-in details, or deactivate the account.",
+        "operationId": "update_user_api_v1_users__user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Update an account",
         "tags": [
           "admin: people"
         ]

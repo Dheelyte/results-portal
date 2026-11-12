@@ -15,6 +15,7 @@
 import { CalendarDays, CalendarRange, CalendarPlus, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
 import {
   Badge,
@@ -138,6 +139,14 @@ function SessionsPanel({
   const [form, setForm] = useState({ name: "", starts_on: "", ends_on: "" });
   const action = useAction(onChanged);
   const create = useAction(onChanged);
+  const update = useAction(onChanged);
+  const [editing, setEditing] = useState<{
+    id: string;
+    name: string;
+    starts_on: string;
+    ends_on: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
   // A fresh dialog starts with no message from the last one.
   const [wasCreating, setWasCreating] = useState(creating);
   if (creating !== wasCreating) {
@@ -170,21 +179,42 @@ function SessionsPanel({
                   </Cell>
                   <Cell>{item.is_current ? <Badge tone="good">Current</Badge> : null}</Cell>
                   <Cell className="text-right">
-                    {item.is_current ? null : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        loading={action.busy}
-                        onClick={() =>
-                          void action.run(
-                            () => api!.makeSessionCurrent(item.id),
-                            `${item.name} is now the current session.`,
-                          )
-                        }
-                      >
-                        Make current
-                      </Button>
-                    )}
+                    <RowActions
+                      label={`session ${item.name}`}
+                      onEdit={() => {
+                        update.clear();
+                        setEditing({
+                          id: item.id,
+                          name: item.name,
+                          starts_on: item.starts_on,
+                          ends_on: item.ends_on,
+                        });
+                      }}
+                      onDelete={() =>
+                        setDeleting({
+                          name: `the ${item.name} session`,
+                          consequence:
+                            "Only a session with no terms and nothing set up in it can be deleted, and never the current one.",
+                          run: () => api!.deleteSession(item.id),
+                        })
+                      }
+                    >
+                      {item.is_current ? null : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          loading={action.busy}
+                          onClick={() =>
+                            void action.run(
+                              () => api!.makeSessionCurrent(item.id),
+                              `${item.name} is now the current session.`,
+                            )
+                          }
+                        >
+                          Make current
+                        </Button>
+                      )}
+                    </RowActions>
                   </Cell>
                 </Row>
               ))}
@@ -255,6 +285,69 @@ function SessionsPanel({
           </div>
         </form>
       </Modal>
+
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="Edit session">
+        {editing ? (
+          <form
+            className="grid gap-3 sm:grid-cols-3"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(
+                () =>
+                  api!.updateSession(editing.id, {
+                    name: editing.name,
+                    starts_on: editing.starts_on,
+                    ends_on: editing.ends_on,
+                  }),
+                `${editing.name.trim()} saved.`,
+              );
+              if (saved) setEditing(null);
+            }}
+          >
+            <Field label="Name" required>
+              <Input
+                required
+                value={editing.name}
+                onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+              />
+            </Field>
+            <Field label="Starts" required>
+              <Input
+                type="date"
+                required
+                value={editing.starts_on}
+                onChange={(event) => setEditing({ ...editing, starts_on: event.target.value })}
+              />
+            </Field>
+            <Field label="Ends" required>
+              <Input
+                type="date"
+                required
+                value={editing.ends_on}
+                onChange={(event) => setEditing({ ...editing, ends_on: event.target.value })}
+              />
+            </Field>
+            <p className="text-sm text-[var(--muted)] sm:col-span-3">
+              Every term has to stay inside the session&apos;s dates.
+            </p>
+            {update.error ? (
+              <div className="sm:col-span-3">
+                <Notice>{update.error}</Notice>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2 sm:col-span-3">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={onChanged} />
     </Panel>
   );
 }
@@ -279,6 +372,7 @@ function TermsPanel({
   const api = useAdminApi()!;
   const action = useAction(onChanged);
   const create = useAction(onChanged);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
   const [wasCreating, setWasCreating] = useState(creating);
   if (creating !== wasCreating) {
     setWasCreating(creating);
@@ -336,29 +430,37 @@ function TermsPanel({
                     {term.times_school_opened ?? <Badge tone="warn">Not set</Badge>}
                   </Cell>
                   <Cell>{term.is_current ? <Badge tone="good">Current</Badge> : null}</Cell>
-                  <Cell className="whitespace-nowrap text-right">
-                    {term.is_current ? null : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        loading={action.busy}
-                        onClick={() =>
-                          void action.run(
-                            () => api.makeTermCurrent(term.id),
-                            `${TERM_LABELS[term.number]} is now current.`,
-                          )
-                        }
-                      >
-                        Make current
-                      </Button>
-                    )}
-                    <ButtonLink
-                      href={`/admin/calendar/${term.id}`}
-                      size="sm"
-                      className="ml-1.5"
+                  <Cell className="text-right">
+                    <RowActions
+                      label={TERM_LABELS[term.number] ?? term.number}
+                      onDelete={() =>
+                        setDeleting({
+                          name: TERM_LABELS[term.number] ?? "this term",
+                          consequence:
+                            "Only a term nothing has been recorded in can be deleted, and never the current one. Its two half terms and their marks obtainable go with it.",
+                          run: () => api.deleteTerm(term.id),
+                        })
+                      }
                     >
-                      Open
-                    </ButtonLink>
+                      {term.is_current ? null : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          loading={action.busy}
+                          onClick={() =>
+                            void action.run(
+                              () => api.makeTermCurrent(term.id),
+                              `${TERM_LABELS[term.number]} is now current.`,
+                            )
+                          }
+                        >
+                          Make current
+                        </Button>
+                      )}
+                      <ButtonLink href={`/admin/calendar/${term.id}`} size="sm">
+                        Open
+                      </ButtonLink>
+                    </RowActions>
                   </Cell>
                 </Row>
               ))}
@@ -482,6 +584,8 @@ function TermsPanel({
           </div>
         </form>
       </Modal>
+
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={onChanged} />
     </Panel>
   );
 }

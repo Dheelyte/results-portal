@@ -20,7 +20,9 @@ from app.schemas.people import (
     PupilCreate,
     PupilPageRead,
     PupilRead,
+    PupilUpdate,
     UserCreate,
+    UserUpdate,
 )
 from app.services import accounts as accounts_service
 from app.services import pupils as pupils_service
@@ -248,3 +250,94 @@ async def link_children(
         user_agent=context.user_agent,
     )
     return [PupilRead.model_validate(record) for record in records]
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/pupils/{pupil_id}", response_model=PupilRead, summary="Update a pupil")
+async def update_pupil(
+    pupil_id: uuid.UUID,
+    payload: PupilUpdate,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> PupilRead:
+    """Correct a pupil's details, or deactivate a pupil who has left."""
+    record = await pupils_service.update_pupil(
+        db,
+        admin,
+        pupil_id,
+        changes=payload.model_dump(exclude_unset=True),
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return PupilRead.model_validate(record)
+
+
+@router.delete(
+    "/pupils/{pupil_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a pupil with no records",
+)
+async def delete_pupil(
+    pupil_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> None:
+    """Delete a pupil nothing was recorded for, such as a duplicate. Refused with 409, naming what
+    is in the way, once anything depends on it (D121).
+    """
+    await pupils_service.delete_pupil(
+        db,
+        admin,
+        pupil_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+
+
+@router.patch("/users/{user_id}", response_model=AccountRead, summary="Update an account")
+async def update_user(
+    user_id: uuid.UUID,
+    payload: UserUpdate,
+    db: DbSession,
+    admin: UserAdmin,
+    context: Context,
+) -> AccountRead:
+    """Correct a name or sign-in details, or deactivate the account."""
+    record = await accounts_service.update_user(
+        db,
+        admin,
+        user_id,
+        changes=payload.model_dump(exclude_unset=True),
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return AccountRead.model_validate(record)
+
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused account",
+)
+async def delete_user(
+    user_id: uuid.UUID,
+    db: DbSession,
+    admin: UserAdmin,
+    context: Context,
+) -> None:
+    """Delete an account that was never used. Refused with 409, naming what is in the way, once
+    anything depends on it (D121).
+    """
+    await accounts_service.delete_user(
+        db,
+        admin,
+        user_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )

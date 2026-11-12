@@ -99,6 +99,23 @@ SETUP_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("GET", "/comment-bank", None),
     ("POST", "/comment-bank", {"scope": "class_teacher", "text": "Steady."}),
     ("GET", f"/setup-checklist?term_id={ANY_ID}", None),
+    # Editing and deleting (D121).
+    ("PATCH", f"/sessions/{ANY_ID}", {"name": "2026/2027"}),
+    ("DELETE", f"/sessions/{ANY_ID}", None),
+    ("DELETE", f"/terms/{ANY_ID}", None),
+    ("PATCH", f"/classes/{ANY_ID}", {"name": "Primary 4"}),
+    ("DELETE", f"/classes/{ANY_ID}", None),
+    ("PATCH", f"/houses/{ANY_ID}", {"name": "Blue"}),
+    ("DELETE", f"/houses/{ANY_ID}", None),
+    ("DELETE", f"/subjects/{ANY_ID}", None),
+    ("PATCH", f"/pupils/{ANY_ID}", {"first_name": "Ada"}),
+    ("DELETE", f"/pupils/{ANY_ID}", None),
+    ("PATCH", f"/users/{ANY_ID}", {"full_name": "T"}),
+    ("DELETE", f"/users/{ANY_ID}", None),
+    ("DELETE", f"/grading-scales/{ANY_ID}", None),
+    ("DELETE", f"/narrative-sections/{ANY_ID}", None),
+    ("PATCH", f"/comment-bank/{ANY_ID}", {"text": "Steady."}),
+    ("DELETE", f"/comment-bank/{ANY_ID}", None),
 ]
 
 NON_ADMIN_ROLES = [UserRole.HEAD_TEACHER, UserRole.TEACHER, UserRole.PARENT]

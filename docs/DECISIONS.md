@@ -2820,3 +2820,59 @@ it was uncontrolled, with nothing to read the current teacher from. The fix is
 `ClassTeacherRead`, or null when nobody is set. It is admin-only like the
 `PUT`, and an unknown class returns 404. The dropdown now shows the current
 class teacher, and offers "Choose a teacher…" only while none is set.
+
+### D121 — Everything setup creates can be edited, and deleted only while unused
+
+Before this, only subjects, terms and narrative sections could be edited, and
+nothing could be deleted. A class typed as "Primay 4", a duplicate pupil or a
+parent account with the wrong phone number stayed for good.
+
+**The rule.** Anything an admin creates can be corrected. It can be
+**deleted only while nothing depends on it**. Otherwise the API refuses with
+a 409 that counts what is in the way and names the safe alternative: "This
+pupil can't be deleted: it has 1 report card. Deactivate the pupil instead."
+`services/removal.refuse_if_in_use` writes those sentences. The database's
+foreign keys are the backstop, and `integrity_guard` turns a lost race into
+the same kind of refusal. Counts only, never names, per CLAUDE.md.
+
+| Record | Edit | Deleted only when | Otherwise |
+|---|---|---|---|
+| Account | name, email, phone, active | never used (no audit row in their name, no assignments) | deactivate |
+| Pupil | every field, active | no scores, passages, attendance, growth or cards | deactivate |
+| Class | name, order, active | no pupil enrolled, nothing recorded | deactivate |
+| House | name | no pupil in it | move the pupils |
+| Session | name, dates (terms must stay inside) | no terms or setup, not current | delete its terms first |
+| Term | (already on its own page) | nothing recorded, not current | — |
+| Subject | name, parent (plus retire, as before) | no class given it, no subjects under it | retire |
+| Grading scale | never (§4.5: versions, not edits) | not active, no grade approved under it | make a new version |
+| Narrative section | (as before) | nobody has written in it | retire |
+| Phrase | text | always | — |
+
+**What goes with a delete** is only the record's own configuration: a
+class's subject list and teachers, a term's half terms and marks obtainable,
+a pupil's enrolment and parent links, a section's phrases. Each confirm
+dialog says so before the admin presses Delete.
+
+**Decisions inside it:**
+
+- **Role isn't editable.** A teacher turned into a parent would keep class
+  assignments no parent may hold. A new account is the safe path.
+- **Deactivating an account revokes its sessions**, as a password reset
+  already did. Access tokens are refused on the next request anyway,
+  because every request checks `is_active`.
+- **An admin can't deactivate or delete their own account.** The service
+  also refuses to remove the last active admin. That can't be reached
+  through the API today, since the person acting is an active admin, but it
+  stays as a backstop.
+- **A signed-in account is "used".** Every sign-in writes an audit row in
+  that person's name. The audit log must keep saying who did what, so the
+  answer is deactivation.
+- **A pupil's audit row names the changed fields, not their values.**
+
+No schema change. Sixteen new routes, all admin-only, in
+`test_setup_authz.py`'s table. `test_edit_delete.py` pairs each "deleted
+when unused" case with a "refused when in use" case. On the web, every list
+has Edit and Delete in the same place (`components/manage.tsx`). Delete
+always confirms, and shows the server's refusal in the dialog in place of
+the button. The roll gained "Show deactivated", so a pupil who has left can
+be found and reactivated.

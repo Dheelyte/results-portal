@@ -246,6 +246,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an unused class
+         * @description Delete a class no pupil was enrolled in. Refused with 409, naming what is in the way, once
+         *     anything depends on it (D121).
+         */
+        delete: operations["delete_class_api_v1_classes__class_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a class
+         * @description Rename, reorder, deactivate or reactivate a class.
+         */
+        patch: operations["update_class_api_v1_classes__class_id__patch"];
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/approve": {
         parameters: {
             query?: never;
@@ -611,6 +636,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/comment-bank/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a phrase
+         * @description Delete a phrase. Always allowed: passages copy its words, not a link to it.
+         */
+        delete: operations["delete_comment_api_v1_comment_bank__comment_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Reword a phrase
+         * @description Reword a phrase. Passages already written keep their own text.
+         */
+        patch: operations["update_comment_api_v1_comment_bank__comment_id__patch"];
+        trace?: never;
+    };
     "/api/v1/entries/{entry_id}": {
         parameters: {
             query?: never;
@@ -666,6 +715,27 @@ export interface paths {
          */
         post: operations["create_grading_scale_api_v1_grading_scales_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/grading-scales/{scale_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an unused scale version
+         * @description Delete a scale version that is not active and no grade cites. Refused with 409, naming what
+         *     is in the way, once anything depends on it (D121).
+         */
+        delete: operations["delete_grading_scale_api_v1_grading_scales__scale_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -736,6 +806,31 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/houses/{house_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an empty house
+         * @description Delete a house no pupil belongs to. Refused with 409, naming what is in the way, once
+         *     anything depends on it (D121).
+         */
+        delete: operations["delete_house_api_v1_houses__house_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Rename a house
+         * @description Rename a house.
+         */
+        patch: operations["update_house_api_v1_houses__house_id__patch"];
         trace?: never;
     };
     "/api/v1/my/assignments": {
@@ -918,6 +1013,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/narrative-sections/{section_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an unused narrative section
+         * @description Delete a section nobody has written in; its phrases go with it. Refused with 409, naming
+         *     what is in the way, once anything depends on it (D121).
+         */
+        delete: operations["delete_narrative_section_api_v1_narrative_sections__section_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/phrases": {
         parameters: {
             query?: never;
@@ -962,6 +1078,31 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pupils/{pupil_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a pupil with no records
+         * @description Delete a pupil nothing was recorded for, such as a duplicate. Refused with 409, naming what
+         *     is in the way, once anything depends on it (D121).
+         */
+        delete: operations["delete_pupil_api_v1_pupils__pupil_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a pupil
+         * @description Correct a pupil's details, or deactivate a pupil who has left.
+         */
+        patch: operations["update_pupil_api_v1_pupils__pupil_id__patch"];
         trace?: never;
     };
     "/api/v1/pupils/{pupil_id}/card": {
@@ -1141,6 +1282,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an unused session
+         * @description Delete a session nothing was set up in. Refused with 409, naming what is in the way, once
+         *     anything depends on it (D121).
+         */
+        delete: operations["delete_session_api_v1_sessions__session_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a session
+         * @description Rename a session or move its dates. Its terms must stay inside them.
+         */
+        patch: operations["update_session_api_v1_sessions__session_id__patch"];
+        trace?: never;
+    };
     "/api/v1/sessions/{session_id}/current": {
         parameters: {
             query?: never;
@@ -1224,7 +1390,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete an unused subject
+         * @description Delete a subject no class was given. Refused with 409, naming what is in the way, once
+         *     anything depends on it (D121).
+         */
+        delete: operations["delete_subject_api_v1_subjects__subject_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -1272,7 +1443,12 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete an unused term
+         * @description Delete a term nothing was recorded in. Refused with 409, naming what is in the way, once
+         *     anything depends on it (D121).
+         */
+        delete: operations["delete_term_api_v1_terms__term_id__delete"];
         options?: never;
         head?: never;
         /**
@@ -1351,6 +1527,31 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an unused account
+         * @description Delete an account that was never used. Refused with 409, naming what is in the way, once
+         *     anything depends on it (D121).
+         */
+        delete: operations["delete_user_api_v1_users__user_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update an account
+         * @description Correct a name or sign-in details, or deactivate the account.
+         */
+        patch: operations["update_user_api_v1_users__user_id__patch"];
         trace?: never;
     };
     "/api/v1/users/{user_id}/reset-password": {
@@ -1494,6 +1695,18 @@ export interface components {
              * Format: date
              */
             starts_on: string;
+        };
+        /**
+         * AcademicSessionUpdate
+         * @description Every field optional; only what is sent is changed.
+         */
+        AcademicSessionUpdate: {
+            /** Ends On */
+            ends_on?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Starts On */
+            starts_on?: string | null;
         };
         /**
          * AccountRead
@@ -2225,6 +2438,21 @@ export interface components {
          * @enum {string}
          */
         ClassTermState: "not_started" | "in_progress" | "submitted" | "returned" | "approved";
+        /**
+         * ClassUpdate
+         * @description Every field optional; only what is sent is changed.
+         */
+        ClassUpdate: {
+            /**
+             * Is Active
+             * @description Deactivate a class rather than deleting it once it has history.
+             */
+            is_active?: boolean | null;
+            /** Level Order */
+            level_order?: number | null;
+            /** Name */
+            name?: string | null;
+        };
         /** CommentCreate */
         CommentCreate: {
             /**
@@ -2258,6 +2486,11 @@ export interface components {
              * Format: uuid
              */
             pupil_id: string;
+        };
+        /** CommentUpdate */
+        CommentUpdate: {
+            /** Text */
+            text: string;
         };
         /**
          * CorrectableRowRead
@@ -2661,6 +2894,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Name */
+            name: string;
+        };
+        /** HouseUpdate */
+        HouseUpdate: {
             /** Name */
             name: string;
         };
@@ -3351,6 +3589,32 @@ export interface components {
             sex: string | null;
         };
         /**
+         * PupilUpdate
+         * @description Every field optional; only what is sent is changed. Null clears an
+         *     optional field, such as the house.
+         */
+        PupilUpdate: {
+            /** Admission Number */
+            admission_number?: string | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** House Id */
+            house_id?: string | null;
+            /**
+             * Is Active
+             * @description Deactivate a pupil who has left, rather than deleting them.
+             */
+            is_active?: boolean | null;
+            /** Last Name */
+            last_name?: string | null;
+            /** Middle Name */
+            middle_name?: string | null;
+            /** Sex */
+            sex?: ("M" | "F") | null;
+        };
+        /**
          * QueueEntryRead
          * @description One class in the review queue (§8.4).
          */
@@ -3880,6 +4144,24 @@ export interface components {
          * @enum {string}
          */
         UserRole: "admin" | "head_teacher" | "teacher" | "parent";
+        /**
+         * UserUpdate
+         * @description Every field optional; only what is sent is changed. The role is not
+         *     editable — make a new account instead.
+         */
+        UserUpdate: {
+            /** Email */
+            email?: string | null;
+            /** Full Name */
+            full_name?: string | null;
+            /**
+             * Is Active
+             * @description Deactivating signs the person out everywhere at once.
+             */
+            is_active?: boolean | null;
+            /** Phone */
+            phone?: string | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -4319,6 +4601,70 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_class_api_v1_classes__class_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_class_api_v1_classes__class_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5141,6 +5487,70 @@ export interface operations {
             };
         };
     };
+    delete_comment_api_v1_comment_bank__comment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_comment_api_v1_comment_bank__comment_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     edit_entry_api_v1_entries__entry_id__patch: {
         parameters: {
             query?: never;
@@ -5217,6 +5627,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GradingScaleRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_grading_scale_api_v1_grading_scales__scale_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scale_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5361,6 +5800,70 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HouseRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_house_api_v1_houses__house_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                house_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_house_api_v1_houses__house_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                house_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HouseUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5659,6 +6162,35 @@ export interface operations {
             };
         };
     };
+    delete_narrative_section_api_v1_narrative_sections__section_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                section_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     read_phrases_api_v1_phrases_get: {
         parameters: {
             query?: {
@@ -5742,6 +6274,70 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_pupil_api_v1_pupils__pupil_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_pupil_api_v1_pupils__pupil_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PupilUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6086,6 +6682,70 @@ export interface operations {
             };
         };
     };
+    delete_session_api_v1_sessions__session_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_session_api_v1_sessions__session_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcademicSessionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcademicSessionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     make_session_current_api_v1_sessions__session_id__current_post: {
         parameters: {
             query?: never;
@@ -6212,6 +6872,35 @@ export interface operations {
             };
         };
     };
+    delete_subject_api_v1_subjects__subject_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subject_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     update_subject_api_v1_subjects__subject_id__patch: {
         parameters: {
             query?: never;
@@ -6299,6 +6988,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TermRead"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_term_api_v1_terms__term_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                term_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6495,6 +7213,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CreatedAccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_user_api_v1_users__user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_user_api_v1_users__user_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"];
                 };
             };
             /** @description Validation Error */

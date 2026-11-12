@@ -12,13 +12,26 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import func, or_
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
-from app.models import AuditAction, Class, Enrollment, House, Pupil, User
+from app.models import (
+    AttendanceRecord,
+    AuditAction,
+    Class,
+    Enrollment,
+    GrowthRecord,
+    House,
+    NarrativeEntry,
+    Pupil,
+    ResultEntry,
+    TermReport,
+    User,
+)
 from app.services import academic, audit
 from app.services.errors import Invalid
+from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
@@ -321,3 +334,140 @@ async def classes_with_no_pupils(
         .order_by(Class.level_order),
     )
     return list(rows)
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+# ---------------------------------------------------------------------------
+
+PUPIL_UPDATABLE = frozenset(
+    {
+        "admission_number",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "sex",
+        "date_of_birth",
+        "house_id",
+        "is_active",
+    }
+)
+
+
+async def update_pupil(
+    db: AsyncSession,
+    actor: User,
+    pupil_id: uuid.UUID,
+    *,
+    changes: dict[str, object],
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Pupil:
+    """Correct a pupil's details, or deactivate a pupil who has left.
+
+    A correction to a name shows on the next card generated. Cards already
+    published keep the PDF they were issued with (R13).
+    """
+    record = await get_pupil(db, actor, pupil_id)
+    before = audit.snapshot(record, PUPIL_AUDIT_FIELDS)
+
+    unknown = set(changes) - PUPIL_UPDATABLE
+    if unknown:
+        raise Invalid(f"Cannot change {', '.join(sorted(unknown))} on a pupil.")
+
+    for field, value in changes.items():
+        if isinstance(value, str):
+            value = value.strip() or None
+        setattr(record, field, value)
+
+    if not record.admission_number:
+        raise Invalid("Give an admission number. It identifies the pupil on every card.")
+    if not record.first_name or not record.last_name:
+        raise Invalid("Give the pupil's first and last name.")
+    if record.sex is not None and record.sex not in ("M", "F"):
+        raise Invalid("Sex must be M or F, as the card records it.")
+    if record.house_id is not None:
+        await one_or_404(db, scope.scoped_houses(actor).where(House.id == record.house_id), "house")
+
+    async with integrity_guard(db, "A pupil with that admission number already exists."):
+        await db.flush()
+
+    # Which fields changed, not their values: names stay out of the log.
+    after = audit.snapshot(record, PUPIL_AUDIT_FIELDS)
+    after["changed"] = sorted(changes)
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.PUPIL_UPDATED,
+        entity_type="pupil",
+        entity_id=record.id,
+        before=before,
+        after=after,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_pupil(
+    db: AsyncSession,
+    actor: User,
+    pupil_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a pupil nothing has been recorded for, such as a duplicate.
+
+    Their enrolments and parent links go with them. Both are setup, and mean
+    nothing without the pupil.
+    """
+    record = await get_pupil(db, actor, pupil_id)
+
+    def count(model: type, column: object):
+        return select(func.count()).select_from(model).where(column == record.id)
+
+    await refuse_if_in_use(
+        db,
+        thing="This pupil",
+        dependents=[
+            Dependent("score", "scores", count(ResultEntry, ResultEntry.pupil_id)),
+            Dependent(
+                "written passage",
+                "written passages",
+                count(NarrativeEntry, NarrativeEntry.pupil_id),
+            ),
+            Dependent(
+                "attendance record",
+                "attendance records",
+                count(AttendanceRecord, AttendanceRecord.pupil_id),
+            ),
+            Dependent(
+                "growth record", "growth records", count(GrowthRecord, GrowthRecord.pupil_id)
+            ),
+            Dependent("report card", "report cards", count(TermReport, TermReport.pupil_id)),
+        ],
+        instead="Deactivate the pupil instead.",
+    )
+
+    before = audit.snapshot(record, PUPIL_AUDIT_FIELDS)
+    await db.execute(delete(Enrollment).where(Enrollment.pupil_id == record.id))
+    await db.delete(record)  # parent links cascade
+    async with integrity_guard(db, "Something now depends on this pupil, so they were kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.PUPIL_DELETED,
+        entity_type="pupil",
+        entity_id=pupil_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()

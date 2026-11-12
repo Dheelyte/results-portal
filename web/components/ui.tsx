@@ -224,6 +224,8 @@ const BUTTON_VARIANTS = {
     "border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-raised)]",
   ghost: "text-[var(--brand)] hover:bg-[var(--brand-soft)]",
   danger: "border border-[var(--danger)] text-[var(--danger)] hover:bg-[var(--danger-soft)]",
+  /** A row's Delete: quiet like `ghost`, red so it is never mistaken for Edit. */
+  "ghost-danger": "text-[var(--danger)] hover:bg-[var(--danger-soft)]",
 } as const;
 
 const BUTTON_SIZES = {

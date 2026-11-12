@@ -18,6 +18,7 @@ from app.authz.dependencies import AcademicStructureAdmin, AssessmentConfigAdmin
 from app.schemas.academic import (
     AcademicSessionCreate,
     AcademicSessionRead,
+    AcademicSessionUpdate,
     AssessmentPeriodRead,
     AssessmentPeriodSave,
     TermCreate,
@@ -281,3 +282,76 @@ async def save_marks_obtainable(
         user_agent=context.user_agent,
     )
     return MarksObtainableRead.model_validate(record)
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+# ---------------------------------------------------------------------------
+
+
+@router.patch(
+    "/sessions/{session_id}", response_model=AcademicSessionRead, summary="Update a session"
+)
+async def update_session(
+    session_id: uuid.UUID,
+    payload: AcademicSessionUpdate,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> AcademicSessionRead:
+    """Rename a session or move its dates. Its terms must stay inside them."""
+    record = await academic_service.update_session(
+        db,
+        admin,
+        session_id,
+        changes=payload.model_dump(exclude_unset=True),
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return AcademicSessionRead.model_validate(record)
+
+
+@router.delete(
+    "/sessions/{session_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused session",
+)
+async def delete_session(
+    session_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> None:
+    """Delete a session nothing was set up in. Refused with 409, naming what is in the way, once
+    anything depends on it (D121).
+    """
+    await academic_service.delete_session(
+        db,
+        admin,
+        session_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+
+
+@router.delete(
+    "/terms/{term_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused term",
+)
+async def delete_term(
+    term_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> None:
+    """Delete a term nothing was recorded in. Refused with 409, naming what is in the way, once
+    anything depends on it (D121).
+    """
+    await academic_service.delete_term(
+        db,
+        admin,
+        term_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )

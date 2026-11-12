@@ -8,13 +8,15 @@
  * the API refuses that, and this screen says so before an admin tries.
  *
  * The card leaves blank rows for additions, so the list is editable and the
- * order is configurable. Retiring is the only kind of removal: last term's
- * cards still cite the subject.
+ * order is configurable. Once a class is taught a subject, retiring is the
+ * only kind of removal: last term's cards still cite it. A subject no class
+ * was ever given can be deleted (D121).
  */
 
 import { BookOpen, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
 import {
   Badge,
@@ -50,6 +52,14 @@ export default function SubjectsPage() {
     is_group: false,
     is_specialist: false,
   });
+
+  const update = useAction(subjects.reload);
+  const [editing, setEditing] = useState<{
+    subject: Subject;
+    name: string;
+    parent_subject_id: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   const groups = (subjects.data ?? []).filter((subject) => subject.is_group);
   const ordered = orderForDisplay(subjects.data ?? []);
@@ -121,7 +131,27 @@ export default function SubjectsPage() {
                   <Cell>
                     <OrderInput subject={subject} onSaved={subjects.reload} />
                   </Cell>
-                  <Cell className="whitespace-nowrap text-right">
+                  <Cell className="text-right">
+                    <RowActions
+                      label={subject.name}
+                      disabled={action.busy}
+                      onEdit={() => {
+                        update.clear();
+                        setEditing({
+                          subject,
+                          name: subject.name,
+                          parent_subject_id: subject.parent_subject_id ?? "",
+                        });
+                      }}
+                      onDelete={() =>
+                        setDeleting({
+                          name: subject.name,
+                          consequence:
+                            "Only a subject no class has been given can be deleted. Once a class is taught it, retire it instead — past cards keep it.",
+                          run: () => api!.deleteSubject(subject.id),
+                        })
+                      }
+                    >
                     {!subject.is_group ? (
                       <Button
                         variant="ghost"
@@ -158,6 +188,7 @@ export default function SubjectsPage() {
                     >
                       {subject.is_active ? "Retire" : "Restore"}
                     </Button>
+                    </RowActions>
                   </Cell>
                 </Row>
               ))}
@@ -274,6 +305,70 @@ export default function SubjectsPage() {
           </div>
         </form>
       </Modal>
+
+      <Modal open={editing !== null} onClose={() => setEditing(null)} title="Edit subject">
+        {editing ? (
+          <form
+            className="grid gap-3 sm:grid-cols-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(
+                () =>
+                  api!.updateSubject(editing.subject.id, {
+                    name: editing.name,
+                    parent_subject_id: editing.parent_subject_id || null,
+                  }),
+                `${editing.name.trim()} saved.`,
+              );
+              if (saved) setEditing(null);
+            }}
+          >
+            <Field label="Name" hint="Printed on the card." required>
+              <Input
+                required
+                value={editing.name}
+                onChange={(event) => setEditing({ ...editing, name: event.target.value })}
+              />
+            </Field>
+            {editing.subject.is_group ? null : (
+              <Field label="Sits under">
+                <Select
+                  value={editing.parent_subject_id}
+                  onChange={(event) =>
+                    setEditing({ ...editing, parent_subject_id: event.target.value })
+                  }
+                >
+                  <option value="">Nothing — a subject in its own right</option>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {group.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            )}
+            {update.error ? (
+              <div className="sm:col-span-2">
+                <Notice>{update.error}</Notice>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <ConfirmDelete
+        target={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={subjects.reload}
+      />
     </>
   );
 }

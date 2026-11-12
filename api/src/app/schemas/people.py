@@ -40,6 +40,22 @@ class PupilCreate(BaseModel):
     )
 
 
+class PupilUpdate(BaseModel):
+    """Every field optional; only what is sent is changed. Null clears an
+    optional field, such as the house."""
+
+    admission_number: AdmissionNumber | None = None
+    first_name: Name | None = None
+    last_name: Name | None = None
+    middle_name: str | None = Field(default=None, max_length=200)
+    sex: Literal["M", "F"] | None = None
+    date_of_birth: dt.date | None = None
+    house_id: uuid.UUID | None = None
+    is_active: bool | None = Field(
+        default=None, description="Deactivate a pupil who has left, rather than deleting them."
+    )
+
+
 class PupilRead(OrmModel):
     id: uuid.UUID
     admission_number: str
@@ -90,6 +106,19 @@ class UserCreate(BaseModel):
             "Either an email address or a phone number is required — many parents' "
             "email addresses are inactive, and both sign in against one password (A7)."
         ),
+    )
+
+
+class UserUpdate(BaseModel):
+    """Every field optional; only what is sent is changed. The role is not
+    editable — make a new account instead."""
+
+    full_name: Name | None = None
+    email: str | None = Field(default=None, max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
+    is_active: bool | None = Field(
+        default=None,
+        description="Deactivating signs the person out everywhere at once.",
     )
 
 

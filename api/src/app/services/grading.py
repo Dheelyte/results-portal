@@ -23,14 +23,15 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
-from app.models import AuditAction, GradeBand, GradingScale, TermHalf, User
+from app.models import AuditAction, GradeBand, GradingScale, ResultEntry, TermHalf, User
 from app.services import audit
-from app.services.errors import Invalid
+from app.services.errors import Conflict, Invalid
 from app.services.marks import COLUMNS_BY_HALF
+from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
@@ -254,6 +255,57 @@ async def activate_scale(
     await db.commit()
     await db.refresh(scale)
     return scale
+
+
+async def delete_scale(
+    db: AsyncSession,
+    actor: User,
+    scale_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a scale version that was never used (docs/DECISIONS.md D121).
+
+    A scale is never edited: a grade already approved is read from the
+    version it was approved under (§4.4, §4.5). Deleting is allowed only for a
+    version no grade cites and that is not active — the one made by mistake.
+    """
+    scale = await get_scale(db, actor, scale_id)
+    if scale.is_active:
+        raise Conflict("This is the active scale. Make another version active first.")
+    await refuse_if_in_use(
+        db,
+        thing=f"The {scale.name} scale",
+        dependents=[
+            Dependent(
+                "grade approved under it",
+                "grades approved under it",
+                select(func.count())
+                .select_from(ResultEntry)
+                .where(ResultEntry.grading_scale_id == scale.id),
+            )
+        ],
+        instead="Approved grades keep the scale they were read from.",
+    )
+
+    before = {"name": scale.name, "effective_from": scale.effective_from.isoformat()}
+    await db.delete(scale)  # its bands cascade
+    async with integrity_guard(db, "A grade now cites this scale, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.GRADING_SCALE_DELETED,
+        entity_type="grading_scale",
+        entity_id=scale_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
 
 
 async def _activate(

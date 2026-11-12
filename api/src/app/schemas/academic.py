@@ -22,6 +22,14 @@ class AcademicSessionCreate(BaseModel):
     )
 
 
+class AcademicSessionUpdate(BaseModel):
+    """Every field optional; only what is sent is changed."""
+
+    name: Name | None = None
+    starts_on: dt.date | None = None
+    ends_on: dt.date | None = None
+
+
 class AcademicSessionRead(OrmModel):
     id: uuid.UUID
     name: str
@@ -94,6 +102,17 @@ class ClassCreate(BaseModel):
     )
 
 
+class ClassUpdate(BaseModel):
+    """Every field optional; only what is sent is changed."""
+
+    name: Name | None = None
+    level_order: int | None = Field(default=None, ge=0, le=100)
+    is_active: bool | None = Field(
+        default=None,
+        description="Deactivate a class rather than deleting it once it has history.",
+    )
+
+
 class ClassRead(OrmModel):
     id: uuid.UUID
     name: str
@@ -102,6 +121,10 @@ class ClassRead(OrmModel):
 
 
 class HouseCreate(BaseModel):
+    name: Name
+
+
+class HouseUpdate(BaseModel):
     name: Name
 
 

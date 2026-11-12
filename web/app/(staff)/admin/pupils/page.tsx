@@ -12,6 +12,7 @@
 import { ChevronLeft, ChevronRight, GraduationCap, Plus, UserPlus } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
 import {
   Avatar,
@@ -28,6 +29,7 @@ import {
   SkeletonTable,
   Table,
 } from "@/components/ui";
+import type { Pupil } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { formatDate, pupilName } from "@/lib/format";
 import { useAction, useResource } from "@/lib/use-async";
@@ -42,16 +44,20 @@ export default function PupilsPage() {
   const [filterClass, setFilterClass] = useState("");
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
+  // Off by default: a pupil who has left is deactivated, and drops out of the
+  // roll until this asks for them, so they can be found and reactivated.
+  const [showInactive, setShowInactive] = useState(false);
 
   const pupils = useResource(
     () =>
       api!.pupils({
         class_id: filterClass || undefined,
         search: search || undefined,
+        include_inactive: showInactive,
         limit: PAGE_SIZE,
         offset,
       }),
-    [api, filterClass, search, offset],
+    [api, filterClass, search, showInactive, offset],
     { enabled: Boolean(api) },
   );
 
@@ -68,6 +74,34 @@ export default function PupilsPage() {
     house_id: "",
     class_id: "",
   });
+
+  const update = useAction(pupils.reload);
+  const [editing, setEditing] = useState<{
+    id: string;
+    admission_number: string;
+    first_name: string;
+    middle_name: string;
+    last_name: string;
+    sex: string;
+    date_of_birth: string;
+    house_id: string;
+    is_active: boolean;
+  } | null>(null);
+  const startEditing = (pupil: Pupil) => {
+    update.clear();
+    setEditing({
+      id: pupil.id,
+      admission_number: pupil.admission_number,
+      first_name: pupil.first_name,
+      middle_name: pupil.middle_name ?? "",
+      last_name: pupil.last_name,
+      sex: pupil.sex ?? "",
+      date_of_birth: pupil.date_of_birth ?? "",
+      house_id: pupil.house_id ?? "",
+      is_active: pupil.is_active,
+    });
+  };
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   const total = pupils.data?.total ?? 0;
   const classNameOf = (id: string) =>
@@ -124,17 +158,28 @@ export default function PupilsPage() {
                 }}
               />
             </Field>
+            <label className="flex items-center gap-2 pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(event) => {
+                  setShowInactive(event.target.checked);
+                  setOffset(0);
+                }}
+              />
+              Show deactivated
+            </label>
           </div>
         }
       >
         {!api || pupils.loading ? (
-          <SkeletonTable rows={8} columns={6} label="Loading the roll…" />
+          <SkeletonTable rows={8} columns={7} label="Loading the roll…" />
         ) : (
           <>
             {pupils.error ? <Notice>{pupils.error}</Notice> : null}
 
             <Table
-              head={["Admission no.", "Name", "Sex", "Born", "House", "Class"]}
+              head={["Admission no.", "Name", "Sex", "Born", "House", "Class", ""]}
               empty="No pupils match."
             >
               {(pupils.data?.items ?? []).map((pupil) => (
@@ -165,6 +210,20 @@ export default function PupilsPage() {
                       classes={classes.data ?? []}
                       currentClassName={filterClass ? classNameOf(filterClass) : null}
                       onChanged={pupils.reload}
+                    />
+                  </Cell>
+                  <Cell className="text-right">
+                    <RowActions
+                      label={pupilName(pupil)}
+                      onEdit={() => startEditing(pupil)}
+                      onDelete={() =>
+                        setDeleting({
+                          name: pupilName(pupil),
+                          consequence:
+                            "Only a pupil with no scores, passages, attendance or report cards can be deleted — a duplicate, for example. Their class enrolment and parent links go with them. A pupil who has left should be deactivated instead.",
+                          run: () => api!.deletePupil(pupil.id),
+                        })
+                      }
                     />
                   </Cell>
                 </Row>
@@ -332,6 +391,125 @@ export default function PupilsPage() {
           </div>
         </form>
       </Modal>
+
+      <Modal
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title="Edit pupil"
+        description="A corrected name shows on the next card generated. Cards already published keep what they were issued with."
+        size="lg"
+      >
+        {editing ? (
+          <form
+            className="grid gap-3 sm:grid-cols-3"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(() =>
+                api!.updatePupil(editing.id, {
+                  admission_number: editing.admission_number,
+                  first_name: editing.first_name,
+                  middle_name: editing.middle_name || null,
+                  last_name: editing.last_name,
+                  sex: (editing.sex || null) as "M" | "F" | null,
+                  date_of_birth: editing.date_of_birth || null,
+                  house_id: editing.house_id || null,
+                  is_active: editing.is_active,
+                }),
+              );
+              if (saved) setEditing(null);
+            }}
+          >
+            <Field label="Admission number" required>
+              <Input
+                required
+                value={editing.admission_number}
+                onChange={(event) =>
+                  setEditing({ ...editing, admission_number: event.target.value })
+                }
+              />
+            </Field>
+            <Field label="First name" required>
+              <Input
+                required
+                value={editing.first_name}
+                onChange={(event) => setEditing({ ...editing, first_name: event.target.value })}
+              />
+            </Field>
+            <Field label="Middle name">
+              <Input
+                value={editing.middle_name}
+                onChange={(event) => setEditing({ ...editing, middle_name: event.target.value })}
+              />
+            </Field>
+            <Field label="Last name" required>
+              <Input
+                required
+                value={editing.last_name}
+                onChange={(event) => setEditing({ ...editing, last_name: event.target.value })}
+              />
+            </Field>
+            <Field label="Sex" hint="As the card records it.">
+              <Select
+                value={editing.sex}
+                onChange={(event) => setEditing({ ...editing, sex: event.target.value })}
+              >
+                <option value="">Not recorded</option>
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </Select>
+            </Field>
+            <Field label="Date of birth">
+              <Input
+                type="date"
+                value={editing.date_of_birth}
+                onChange={(event) => setEditing({ ...editing, date_of_birth: event.target.value })}
+              />
+            </Field>
+            <Field label="House">
+              <Select
+                value={editing.house_id}
+                onChange={(event) => setEditing({ ...editing, house_id: event.target.value })}
+              >
+                <option value="">Not assigned</option>
+                {(houses.data ?? []).map((house) => (
+                  <option key={house.id} value={house.id}>
+                    {house.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2 sm:self-end">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={editing.is_active}
+                onChange={(event) => setEditing({ ...editing, is_active: event.target.checked })}
+              />
+              <span>
+                <span className="font-medium">Active</span>
+                <span className="block text-[var(--muted)]">
+                  Untick for a pupil who has left. Their records and past cards are kept.
+                </span>
+              </span>
+            </label>
+            {update.error ? (
+              <div className="sm:col-span-3">
+                <Notice>{update.error}</Notice>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2 sm:col-span-3">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={pupils.reload} />
     </>
   );
 }

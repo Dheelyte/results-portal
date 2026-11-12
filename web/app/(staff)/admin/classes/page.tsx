@@ -13,6 +13,7 @@
 import { House, Layers, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
 import {
   Badge,
@@ -51,6 +52,24 @@ export default function ClassesPage() {
   const [className, setClassName] = useState("");
   const [levelOrder, setLevelOrder] = useState("");
   const [houseName, setHouseName] = useState("");
+
+  // Editing one class or one house (D121).
+  const update = useAction(() => {
+    classes.reload();
+    houses.reload();
+  });
+  const [editingClass, setEditingClass] = useState<{
+    id: string;
+    name: string;
+    level_order: string;
+    is_active: boolean;
+  } | null>(null);
+  const [editingHouse, setEditingHouse] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
+  const reloadAll = () => {
+    classes.reload();
+    houses.reload();
+  };
 
   const loading = !api || classes.loading;
 
@@ -100,9 +119,30 @@ export default function ClassesPage() {
                   </Cell>
                   <Cell className="tabular-nums text-[var(--muted)]">{item.level_order}</Cell>
                   <Cell className="text-right">
-                    <ButtonLink href={`/admin/classes/${item.id}`} size="sm">
-                      Subjects &amp; teachers
-                    </ButtonLink>
+                    <RowActions
+                      label={item.name}
+                      onEdit={() => {
+                        update.clear();
+                        setEditingClass({
+                          id: item.id,
+                          name: item.name,
+                          level_order: String(item.level_order),
+                          is_active: item.is_active,
+                        });
+                      }}
+                      onDelete={() =>
+                        setDeleting({
+                          name: item.name,
+                          consequence:
+                            "Only a class no pupil has been enrolled in can be deleted. Its subject list and teachers go with it. A class with history should be deactivated instead.",
+                          run: () => api!.deleteClass(item.id),
+                        })
+                      }
+                    >
+                      <ButtonLink href={`/admin/classes/${item.id}`} size="sm">
+                        Subjects &amp; teachers
+                      </ButtonLink>
+                    </RowActions>
                   </Cell>
                 </Row>
               ))}
@@ -113,18 +153,37 @@ export default function ClassesPage() {
 
       <Panel title="Houses" description="The card prints each pupil's house in its header.">
         {houses.loading ? (
-          <SkeletonTable rows={1} columns={4} label="Loading the houses…" />
+          <SkeletonTable rows={3} columns={2} label="Loading the houses…" />
         ) : (
           <>
             {houses.error ? <Notice>{houses.error}</Notice> : null}
             {houses.data?.length ? (
-              <div className="flex flex-wrap gap-2">
+              <Table head={["House", ""]} empty="No houses yet.">
                 {houses.data.map((house) => (
-                  <Badge key={house.id} tone="gold">
-                    {house.name}
-                  </Badge>
+                  <Row key={house.id}>
+                    <Cell>
+                      <Badge tone="gold">{house.name}</Badge>
+                    </Cell>
+                    <Cell className="text-right">
+                      <RowActions
+                        label={`${house.name} house`}
+                        onEdit={() => {
+                          update.clear();
+                          setEditingHouse({ id: house.id, name: house.name });
+                        }}
+                        onDelete={() =>
+                          setDeleting({
+                            name: `${house.name} house`,
+                            consequence:
+                              "Only a house no pupil belongs to can be deleted. Move its pupils to another house first.",
+                            run: () => api!.deleteHouse(house.id),
+                          })
+                        }
+                      />
+                    </Cell>
+                  </Row>
                 ))}
-              </div>
+              </Table>
             ) : (
               <EmptyState
                 title="No houses yet"
@@ -222,6 +281,108 @@ export default function ClassesPage() {
           </div>
         </form>
       </Modal>
+
+      <Modal open={editingClass !== null} onClose={() => setEditingClass(null)} title="Edit class">
+        {editingClass ? (
+          <form
+            className="grid gap-3 sm:grid-cols-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(() =>
+                api!.updateClass(editingClass.id, {
+                  name: editingClass.name,
+                  level_order: Number(editingClass.level_order || 0),
+                  is_active: editingClass.is_active,
+                }),
+              );
+              if (saved) setEditingClass(null);
+            }}
+          >
+            <Field label="Name" required>
+              <Input
+                required
+                value={editingClass.name}
+                onChange={(event) => setEditingClass({ ...editingClass, name: event.target.value })}
+              />
+            </Field>
+            <Field label="Level order" hint="Display order only — lower comes first." required>
+              <Input
+                type="number"
+                min={0}
+                required
+                value={editingClass.level_order}
+                onChange={(event) =>
+                  setEditingClass({ ...editingClass, level_order: event.target.value })
+                }
+              />
+            </Field>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={editingClass.is_active}
+                onChange={(event) =>
+                  setEditingClass({ ...editingClass, is_active: event.target.checked })
+                }
+              />
+              <span>
+                <span className="font-medium">Active</span>
+                <span className="block text-[var(--muted)]">
+                  Untick for a class the school no longer runs. Its history and past cards are
+                  kept.
+                </span>
+              </span>
+            </label>
+            {update.error ? (
+              <div className="sm:col-span-2">
+                <Notice>{update.error}</Notice>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <Button type="button" variant="secondary" onClick={() => setEditingClass(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <Modal open={editingHouse !== null} onClose={() => setEditingHouse(null)} title="Rename house">
+        {editingHouse ? (
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(() =>
+                api!.updateHouse(editingHouse.id, { name: editingHouse.name }),
+              );
+              if (saved) setEditingHouse(null);
+            }}
+          >
+            <Field label="Name" required>
+              <Input
+                required
+                value={editingHouse.name}
+                onChange={(event) => setEditingHouse({ ...editingHouse, name: event.target.value })}
+              />
+            </Field>
+            <Notice>{update.error}</Notice>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="secondary" onClick={() => setEditingHouse(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={reloadAll} />
     </>
   );
 }

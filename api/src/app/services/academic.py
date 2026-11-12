@@ -12,23 +12,36 @@ import logging
 import uuid
 from collections.abc import Sequence
 
-from sqlalchemy import case, update
+from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
 from app.models import (
     AcademicSession,
     AssessmentPeriod,
+    AttendanceRecord,
     AuditAction,
     Class,
+    ClassSubject,
+    ClassTeacher,
+    ClassTermStatus,
+    Enrollment,
+    GrowthRecord,
     House,
+    MarksObtainable,
+    NarrativeEntry,
+    NarrativeSectionAssignment,
+    Pupil,
+    ResultEntry,
     Term,
     TermHalf,
     TermNumber,
+    TermReport,
     User,
 )
 from app.services import audit
 from app.services.errors import Conflict, Invalid
+from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
@@ -46,6 +59,7 @@ TERM_FIELDS = (
     "is_current",
 )
 PERIOD_FIELDS = ("term_id", "half", "opens_on", "closes_on")
+CLASS_FIELDS = ("name", "level_order", "is_active")
 
 # Chronological, which the enum's own alphabetical order is not.
 TERM_ORDER = case(
@@ -604,3 +618,380 @@ async def current_session_or_none(db: AsyncSession, actor: User) -> AcademicSess
 
 async def current_term_or_none(db: AsyncSession, actor: User) -> Term | None:
     return await db.scalar(scope.scoped_terms(actor).where(Term.is_current.is_(True)))
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+#
+# A delete goes through only when nothing depends on the record yet. Once a
+# record has history, it is retired instead, so last term's cards keep their
+# meaning.
+# ---------------------------------------------------------------------------
+
+
+def _count(model: type, *where: object):
+    return select(func.count()).select_from(model).where(*where)
+
+
+async def update_session(
+    db: AsyncSession,
+    actor: User,
+    session_id: uuid.UUID,
+    *,
+    changes: dict[str, object],
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> AcademicSession:
+    """Rename a session or move its dates, keeping every term inside them."""
+    record = await get_session_record(db, actor, session_id)
+    before = audit.snapshot(record, SESSION_FIELDS)
+
+    for field, value in changes.items():
+        setattr(record, field, value.strip() if isinstance(value, str) else value)
+    if not record.name:
+        raise Invalid("Give the session a name, such as 2026/2027.")
+    _check_range(record.starts_on, record.ends_on, "session")
+
+    terms = await all_of(db, scope.scoped_terms(actor).where(Term.academic_session_id == record.id))
+    if any(term.starts_on < record.starts_on or term.ends_on > record.ends_on for term in terms):
+        raise Invalid(
+            "These dates would leave a term outside the session. Adjust the term dates first."
+        )
+
+    async with integrity_guard(db, "A session with that name already exists."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.SESSION_UPDATED,
+        entity_type="academic_session",
+        entity_id=record.id,
+        before=before,
+        after=audit.snapshot(record, SESSION_FIELDS),
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_session(
+    db: AsyncSession,
+    actor: User,
+    session_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a session nothing has been set up in yet."""
+    record = await get_session_record(db, actor, session_id)
+    if record.is_current:
+        raise Conflict(f"{record.name} is the current session. Make another session current first.")
+
+    await refuse_if_in_use(
+        db,
+        thing=f"The {record.name} session",
+        dependents=[
+            Dependent("term", "terms", _count(Term, Term.academic_session_id == record.id)),
+            Dependent(
+                "enrolment",
+                "enrolments",
+                _count(Enrollment, Enrollment.academic_session_id == record.id),
+            ),
+            Dependent(
+                "class subject",
+                "class subjects",
+                _count(ClassSubject, ClassSubject.academic_session_id == record.id),
+            ),
+            Dependent(
+                "class teacher",
+                "class teachers",
+                _count(ClassTeacher, ClassTeacher.academic_session_id == record.id),
+            ),
+            Dependent(
+                "narrative assignment",
+                "narrative assignments",
+                _count(
+                    NarrativeSectionAssignment,
+                    NarrativeSectionAssignment.academic_session_id == record.id,
+                ),
+            ),
+        ],
+        instead="Delete its terms and remove what was set up in it first.",
+    )
+
+    before = audit.snapshot(record, SESSION_FIELDS)
+    await db.delete(record)
+    async with integrity_guard(db, "Something now depends on this session, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.SESSION_DELETED,
+        entity_type="academic_session",
+        entity_id=session_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+
+
+async def delete_term(
+    db: AsyncSession,
+    actor: User,
+    term_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a term nothing has been recorded in yet.
+
+    Its two half terms and their marks obtainable go with it: they are the
+    term's own configuration, made with it by `create_term`.
+    """
+    record = await get_term(db, actor, term_id)
+    if record.is_current:
+        raise Conflict("This is the current term. Make another term current first.")
+
+    periods = select(AssessmentPeriod.id).where(AssessmentPeriod.term_id == record.id)
+    await refuse_if_in_use(
+        db,
+        thing="This term",
+        dependents=[
+            Dependent(
+                "score",
+                "scores",
+                _count(ResultEntry, ResultEntry.assessment_period_id.in_(periods)),
+            ),
+            Dependent(
+                "written passage",
+                "written passages",
+                _count(NarrativeEntry, NarrativeEntry.term_id == record.id),
+            ),
+            Dependent(
+                "attendance record",
+                "attendance records",
+                _count(AttendanceRecord, AttendanceRecord.term_id == record.id),
+            ),
+            Dependent(
+                "growth record",
+                "growth records",
+                _count(GrowthRecord, GrowthRecord.term_id == record.id),
+            ),
+            Dependent(
+                "class in review",
+                "classes in review",
+                _count(ClassTermStatus, ClassTermStatus.term_id == record.id),
+            ),
+            Dependent(
+                "report card", "report cards", _count(TermReport, TermReport.term_id == record.id)
+            ),
+        ],
+        instead="A term with results can't be removed; its cards must stay as they were.",
+    )
+
+    before = audit.snapshot(record, TERM_FIELDS)
+    await db.execute(
+        delete(MarksObtainable).where(MarksObtainable.assessment_period_id.in_(periods))
+    )
+    await db.delete(record)  # the half terms cascade
+    async with integrity_guard(db, "Something now depends on this term, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.TERM_DELETED,
+        entity_type="term",
+        entity_id=term_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+
+
+async def update_class(
+    db: AsyncSession,
+    actor: User,
+    class_id: uuid.UUID,
+    *,
+    changes: dict[str, object],
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Class:
+    """Rename, reorder, deactivate or reactivate a class."""
+    record = await get_class(db, actor, class_id)
+    before = audit.snapshot(record, CLASS_FIELDS)
+
+    for field, value in changes.items():
+        setattr(record, field, value.strip() if isinstance(value, str) else value)
+    if not record.name:
+        raise Invalid("Give the class a name.")
+
+    async with integrity_guard(db, "A class with that name already exists."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.CLASS_UPDATED,
+        entity_type="class",
+        entity_id=record.id,
+        before=before,
+        after=audit.snapshot(record, CLASS_FIELDS),
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_class(
+    db: AsyncSession,
+    actor: User,
+    class_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a class no pupil has been enrolled in and nothing recorded for.
+
+    Its subject list, teachers and narrative assignments go with it: they are
+    the class's own setup, and mean nothing without it.
+    """
+    record = await get_class(db, actor, class_id)
+    offerings = select(ClassSubject.id).where(ClassSubject.class_id == record.id)
+    await refuse_if_in_use(
+        db,
+        thing=f"{record.name}",
+        dependents=[
+            Dependent(
+                "enrolled pupil",
+                "enrolled pupils",
+                _count(Enrollment, Enrollment.class_id == record.id),
+            ),
+            Dependent(
+                "score", "scores", _count(ResultEntry, ResultEntry.class_subject_id.in_(offerings))
+            ),
+            Dependent(
+                "term in review",
+                "terms in review",
+                _count(ClassTermStatus, ClassTermStatus.class_id == record.id),
+            ),
+            Dependent(
+                "report card",
+                "report cards",
+                _count(TermReport, TermReport.class_id == record.id),
+            ),
+        ],
+        instead="Deactivate it instead.",
+    )
+
+    before = audit.snapshot(record, CLASS_FIELDS)
+    for model, column in (
+        (NarrativeSectionAssignment, NarrativeSectionAssignment.class_id),
+        (ClassTeacher, ClassTeacher.class_id),
+        (MarksObtainable, MarksObtainable.class_id),
+        (ClassSubject, ClassSubject.class_id),  # teaching assignments cascade
+    ):
+        await db.execute(delete(model).where(column == record.id))
+    await db.delete(record)
+    async with integrity_guard(db, "Something now depends on this class, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.CLASS_DELETED,
+        entity_type="class",
+        entity_id=class_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+
+
+async def get_house(db: AsyncSession, actor: User, house_id: uuid.UUID) -> House:
+    return await one_or_404(db, scope.scoped_houses(actor).where(House.id == house_id), "house")
+
+
+async def update_house(
+    db: AsyncSession,
+    actor: User,
+    house_id: uuid.UUID,
+    *,
+    name: str,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> House:
+    record = await get_house(db, actor, house_id)
+    before = {"name": record.name}
+    record.name = name.strip()
+    if not record.name:
+        raise Invalid("Give the house a name.")
+
+    async with integrity_guard(db, "A house with that name already exists."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.HOUSE_UPDATED,
+        entity_type="house",
+        entity_id=record.id,
+        before=before,
+        after={"name": record.name},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_house(
+    db: AsyncSession,
+    actor: User,
+    house_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    record = await get_house(db, actor, house_id)
+    await refuse_if_in_use(
+        db,
+        thing=f"{record.name} house",
+        dependents=[Dependent("pupil", "pupils", _count(Pupil, Pupil.house_id == record.id))],
+        instead="Move its pupils to another house first.",
+    )
+
+    before = {"name": record.name}
+    await db.delete(record)
+    async with integrity_guard(db, "A pupil now belongs to this house, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.HOUSE_DELETED,
+        entity_type="house",
+        entity_id=house_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()

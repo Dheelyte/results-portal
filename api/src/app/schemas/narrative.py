@@ -82,6 +82,10 @@ class CommentCreate(BaseModel):
     text: ShortText
 
 
+class CommentUpdate(BaseModel):
+    text: ShortText
+
+
 class CommentRead(OrmModel):
     id: uuid.UUID
     scope: str

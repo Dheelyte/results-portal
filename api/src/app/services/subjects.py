@@ -29,6 +29,7 @@ from app.models import (
 )
 from app.services import academic, audit
 from app.services.errors import Conflict, Invalid
+from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
@@ -531,3 +532,58 @@ async def class_subjects_without_a_teacher(
         .order_by(Class.level_order, Class.name, Subject.display_order)
     )
     return [(row[0], row[1]) for row in (await db.execute(stmt)).all()]
+
+
+async def delete_subject(
+    db: AsyncSession,
+    actor: User,
+    subject_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a subject no class has been given (docs/DECISIONS.md D121).
+
+    Once a class is taught it, its scores and its place on past cards depend
+    on it, so it is retired instead.
+    """
+    record = await get_subject(db, actor, subject_id)
+    await refuse_if_in_use(
+        db,
+        thing=record.name,
+        dependents=[
+            Dependent(
+                "class taught it",
+                "classes taught it",
+                select(func.count())
+                .select_from(ClassSubject)
+                .where(ClassSubject.subject_id == record.id),
+            ),
+            Dependent(
+                "subject under it",
+                "subjects under it",
+                select(func.count())
+                .select_from(Subject)
+                .where(Subject.parent_subject_id == record.id),
+            ),
+        ],
+        instead="Retire it instead (untick Active), or remove it from those classes first.",
+    )
+
+    before = audit.snapshot(record, SUBJECT_FIELDS)
+    await db.delete(record)
+    async with integrity_guard(db, "Something now depends on this subject, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.SUBJECT_DELETED,
+        entity_type="subject",
+        entity_id=subject_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()

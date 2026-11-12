@@ -21,6 +21,7 @@ from app.schemas.grading import (
 from app.schemas.narrative import (
     CommentCreate,
     CommentRead,
+    CommentUpdate,
     NarrativeAssignmentRead,
     NarrativeAssignmentsSave,
     NarrativeSectionCreate,
@@ -319,3 +320,95 @@ async def create_comment(
         user_agent=context.user_agent,
     )
     return CommentRead.model_validate(record)
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+# ---------------------------------------------------------------------------
+
+
+@router.delete(
+    "/grading-scales/{scale_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused scale version",
+)
+async def delete_grading_scale(
+    scale_id: uuid.UUID,
+    db: DbSession,
+    admin: AssessmentConfigAdmin,
+    context: Context,
+) -> None:
+    """Delete a scale version that is not active and no grade cites. Refused with 409, naming what
+    is in the way, once anything depends on it (D121).
+    """
+    await grading_service.delete_scale(
+        db,
+        admin,
+        scale_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+
+
+@router.delete(
+    "/narrative-sections/{section_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused narrative section",
+)
+async def delete_narrative_section(
+    section_id: uuid.UUID,
+    db: DbSession,
+    admin: AssessmentConfigAdmin,
+    context: Context,
+) -> None:
+    """Delete a section nobody has written in; its phrases go with it. Refused with 409, naming
+    what is in the way, once anything depends on it (D121).
+    """
+    await narrative_service.delete_section(
+        db,
+        admin,
+        section_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+
+
+@router.patch("/comment-bank/{comment_id}", response_model=CommentRead, summary="Reword a phrase")
+async def update_comment(
+    comment_id: uuid.UUID,
+    payload: CommentUpdate,
+    db: DbSession,
+    admin: AssessmentConfigAdmin,
+    context: Context,
+) -> CommentRead:
+    """Reword a phrase. Passages already written keep their own text."""
+    record = await narrative_service.update_comment(
+        db,
+        admin,
+        comment_id,
+        text=payload.text,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return CommentRead.model_validate(record)
+
+
+@router.delete(
+    "/comment-bank/{comment_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a phrase",
+)
+async def delete_comment(
+    comment_id: uuid.UUID,
+    db: DbSession,
+    admin: AssessmentConfigAdmin,
+    context: Context,
+) -> None:
+    """Delete a phrase. Always allowed: passages copy its words, not a link to it."""
+    await narrative_service.delete_comment(
+        db,
+        admin,
+        comment_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )

@@ -42,12 +42,18 @@ export function adminApi(token: string) {
     request<T>(path, { token, query });
   const send = <T>(method: "POST" | "PUT" | "PATCH", path: string, body?: unknown) =>
     request<T>(path, { method, token, body });
+  // D121: refused with a 409 that says what is in the way, while anything
+  // depends on the record.
+  const remove = (path: string) => request<void>(path, { method: "DELETE", token });
 
   return {
     /* --- Calendar ---------------------------------------------------- */
     sessions: () => get<AcademicSession[]>("/sessions"),
     createSession: (body: Schemas["AcademicSessionCreate"]) =>
       send<AcademicSession>("POST", "/sessions", body),
+    updateSession: (id: string, body: Schemas["AcademicSessionUpdate"]) =>
+      send<AcademicSession>("PATCH", `/sessions/${id}`, body),
+    deleteSession: (id: string) => remove(`/sessions/${id}`),
     makeSessionCurrent: (id: string) =>
       send<AcademicSession>("POST", `/sessions/${id}/current`),
 
@@ -108,6 +114,7 @@ export function adminApi(token: string) {
     updateTerm: (id: string, body: Schemas["TermUpdate"]) =>
       send<Term>("PATCH", `/terms/${id}`, body),
     makeTermCurrent: (id: string) => send<Term>("POST", `/terms/${id}/current`),
+    deleteTerm: (id: string) => remove(`/terms/${id}`),
 
     assessmentPeriods: (termId: string) =>
       get<AssessmentPeriod[]>(`/terms/${termId}/assessment-periods`),
@@ -123,15 +130,22 @@ export function adminApi(token: string) {
     classes: (includeInactive = false) =>
       get<SchoolClass[]>("/classes", { include_inactive: includeInactive }),
     createClass: (body: Schemas["ClassCreate"]) => send<SchoolClass>("POST", "/classes", body),
+    updateClass: (id: string, body: Schemas["ClassUpdate"]) =>
+      send<SchoolClass>("PATCH", `/classes/${id}`, body),
+    deleteClass: (id: string) => remove(`/classes/${id}`),
 
     houses: () => get<House[]>("/houses"),
     createHouse: (body: Schemas["HouseCreate"]) => send<House>("POST", "/houses", body),
+    updateHouse: (id: string, body: Schemas["HouseUpdate"]) =>
+      send<House>("PATCH", `/houses/${id}`, body),
+    deleteHouse: (id: string) => remove(`/houses/${id}`),
 
     subjects: (includeInactive = false) =>
       get<Subject[]>("/subjects", { include_inactive: includeInactive }),
     createSubject: (body: Schemas["SubjectCreate"]) => send<Subject>("POST", "/subjects", body),
     updateSubject: (id: string, body: Schemas["SubjectUpdate"]) =>
       send<Subject>("PATCH", `/subjects/${id}`, body),
+    deleteSubject: (id: string) => remove(`/subjects/${id}`),
 
     classSubjects: (classId: string) => get<ClassSubject[]>(`/classes/${classId}/subjects`),
     setClassSubjects: (classId: string, subjectIds: string[]) =>
@@ -150,14 +164,26 @@ export function adminApi(token: string) {
       }),
 
     /* --- People ------------------------------------------------------- */
-    pupils: (query: { class_id?: string; search?: string; limit?: number; offset?: number }) =>
+    pupils: (query: {
+      class_id?: string;
+      search?: string;
+      include_inactive?: boolean;
+      limit?: number;
+      offset?: number;
+    }) =>
       get<PupilPage>("/pupils", query),
     createPupil: (body: Schemas["PupilCreate"]) => send<Pupil>("POST", "/pupils", body),
+    updatePupil: (id: string, body: Schemas["PupilUpdate"]) =>
+      send<Pupil>("PATCH", `/pupils/${id}`, body),
+    deletePupil: (id: string) => remove(`/pupils/${id}`),
     setEnrollment: (pupilId: string, body: Schemas["EnrollmentSave"]) =>
       send<Schemas["EnrollmentRead"]>("PUT", `/pupils/${pupilId}/enrollment`, body),
 
     users: (role?: Role) => get<Account[]>("/users", { role }),
     createUser: (body: Schemas["UserCreate"]) => send<CreatedAccount>("POST", "/users", body),
+    updateUser: (id: string, body: Schemas["UserUpdate"]) =>
+      send<Account>("PATCH", `/users/${id}`, body),
+    deleteUser: (id: string) => remove(`/users/${id}`),
     resetPassword: (id: string) =>
       send<CreatedAccount>("POST", `/users/${id}/reset-password`),
 
@@ -167,6 +193,7 @@ export function adminApi(token: string) {
 
     /* --- Assessment configuration ------------------------------------ */
     gradingScales: () => get<GradingScale[]>("/grading-scales"),
+    deleteGradingScale: (id: string) => remove(`/grading-scales/${id}`),
     createGradingScale: (body: Schemas["GradingScaleCreate"]) =>
       send<GradingScale>("POST", "/grading-scales", body),
     activateGradingScale: (id: string) =>
@@ -177,6 +204,7 @@ export function adminApi(token: string) {
       send<NarrativeSection[]>("PUT", "/narrative-sections", body),
     createNarrativeSection: (body: Schemas["NarrativeSectionCreate"]) =>
       send<NarrativeSection>("POST", "/narrative-sections", body),
+    deleteNarrativeSection: (id: string) => remove(`/narrative-sections/${id}`),
 
     narrativeAssignments: (classId: string) =>
       get<NarrativeAssignment[]>(`/classes/${classId}/narrative-assignments`),
@@ -184,6 +212,9 @@ export function adminApi(token: string) {
       send<NarrativeAssignment[]>("PUT", `/classes/${classId}/narrative-assignments`, body),
 
     comments: (scope?: string) => get<Comment[]>("/comment-bank", { scope }),
+    updateComment: (id: string, body: Schemas["CommentUpdate"]) =>
+      send<Comment>("PATCH", `/comment-bank/${id}`, body),
+    deleteComment: (id: string) => remove(`/comment-bank/${id}`),
     createComment: (body: Schemas["CommentCreate"]) =>
       send<Comment>("POST", "/comment-bank", body),
 

@@ -13,7 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import Context, DbSession
 from app.authz.dependencies import AcademicStructureAdmin, UserAdmin
 from app.models import ClassSubject, User
-from app.schemas.academic import ClassCreate, ClassRead, HouseCreate, HouseRead
+from app.schemas.academic import (
+    ClassCreate,
+    ClassRead,
+    ClassUpdate,
+    HouseCreate,
+    HouseRead,
+    HouseUpdate,
+)
 from app.schemas.subjects import (
     ClassSubjectRead,
     ClassSubjectsSave,
@@ -301,3 +308,117 @@ async def set_class_teacher(
         user_agent=context.user_agent,
     )
     return ClassTeacherRead.model_validate(record)
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/classes/{class_id}", response_model=ClassRead, summary="Update a class")
+async def update_class(
+    class_id: uuid.UUID,
+    payload: ClassUpdate,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> ClassRead:
+    """Rename, reorder, deactivate or reactivate a class."""
+    record = await academic_service.update_class(
+        db,
+        admin,
+        class_id,
+        changes=payload.model_dump(exclude_unset=True),
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return ClassRead.model_validate(record)
+
+
+@router.delete(
+    "/classes/{class_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused class",
+)
+async def delete_class(
+    class_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> None:
+    """Delete a class no pupil was enrolled in. Refused with 409, naming what is in the way, once
+    anything depends on it (D121).
+    """
+    await academic_service.delete_class(
+        db,
+        admin,
+        class_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+
+
+@router.patch("/houses/{house_id}", response_model=HouseRead, summary="Rename a house")
+async def update_house(
+    house_id: uuid.UUID,
+    payload: HouseUpdate,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> HouseRead:
+    """Rename a house."""
+    record = await academic_service.update_house(
+        db,
+        admin,
+        house_id,
+        name=payload.name,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return HouseRead.model_validate(record)
+
+
+@router.delete(
+    "/houses/{house_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an empty house",
+)
+async def delete_house(
+    house_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> None:
+    """Delete a house no pupil belongs to. Refused with 409, naming what is in the way, once
+    anything depends on it (D121).
+    """
+    await academic_service.delete_house(
+        db,
+        admin,
+        house_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+
+
+@router.delete(
+    "/subjects/{subject_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete an unused subject",
+)
+async def delete_subject(
+    subject_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> None:
+    """Delete a subject no class was given. Refused with 409, naming what is in the way, once
+    anything depends on it (D121).
+    """
+    await subjects_service.delete_subject(
+        db,
+        admin,
+        subject_id,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )

@@ -23,7 +23,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import policy, scope
@@ -43,6 +43,7 @@ from app.models import (
 )
 from app.services import academic, audit, results, workflow
 from app.services.errors import Invalid, NotFound, RowErrors
+from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, has_text, integrity_guard, one_or_404, rows_of
 
 logger = logging.getLogger(__name__)
@@ -456,6 +457,127 @@ async def create_comment(
     await db.commit()
     await db.refresh(record)
     return record
+
+
+async def delete_section(
+    db: AsyncSession,
+    actor: User,
+    section_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a section nobody has written in yet (docs/DECISIONS.md D121).
+
+    Its per-class assignments and its phrases go with it: both exist only for
+    the section. Once a passage is written, the section is retired instead,
+    because that term's card has to keep printing it.
+    """
+    record = await one_or_404(
+        db,
+        scope.scoped_narrative_sections(actor).where(NarrativeSection.id == section_id),
+        "narrative section",
+    )
+    await refuse_if_in_use(
+        db,
+        thing=f"{record.label}",
+        dependents=[
+            Dependent(
+                "written passage",
+                "written passages",
+                select(func.count())
+                .select_from(NarrativeEntry)
+                .where(NarrativeEntry.section_id == record.id),
+            )
+        ],
+        instead="Retire it instead (untick Active).",
+    )
+
+    before = audit.snapshot(record, SECTION_FIELDS)
+    await db.execute(
+        delete(CommentBank).where(
+            CommentBank.school_id == actor.school_id, CommentBank.scope == record.code
+        )
+    )
+    await db.delete(record)  # its assignments cascade
+    async with integrity_guard(db, "A passage now cites this section, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.NARRATIVE_SECTION_DELETED,
+        entity_type="narrative_section",
+        entity_id=section_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+
+
+async def _comment(db: AsyncSession, actor: User, comment_id: uuid.UUID) -> CommentBank:
+    return await one_or_404(
+        db, scope.scoped_comment_bank(actor).where(CommentBank.id == comment_id), "phrase"
+    )
+
+
+async def update_comment(
+    db: AsyncSession,
+    actor: User,
+    comment_id: uuid.UUID,
+    *,
+    text: str,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> CommentBank:
+    """Reword a phrase. Passages already written from it keep their own text."""
+    record = await _comment(db, actor, comment_id)
+    record.text = text.strip()
+    if not record.text:
+        raise Invalid("A phrase cannot be empty.")
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.COMMENT_BANK_ENTRY_UPDATED,
+        entity_type="comment_bank",
+        entity_id=record.id,
+        after={"scope": record.scope},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_comment(
+    db: AsyncSession,
+    actor: User,
+    comment_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete a phrase. Always safe: a passage copies the phrase's words, not a link."""
+    record = await _comment(db, actor, comment_id)
+    scope_before = record.scope
+    await db.delete(record)
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.COMMENT_BANK_ENTRY_DELETED,
+        entity_type="comment_bank",
+        entity_id=comment_id,
+        before={"scope": scope_before},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
 
 
 async def count_comments_by_scope(db: AsyncSession, actor: User) -> dict[str, int]:

@@ -17,6 +17,7 @@
 import { KeyRound, Plus, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 
+import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
 import {
   Avatar,
@@ -35,7 +36,7 @@ import {
   SkeletonTable,
   Table,
 } from "@/components/ui";
-import type { CreatedAccount, Role } from "@/lib/api/admin";
+import type { Account, CreatedAccount, Role } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { formatDateTime, ROLE_LABELS } from "@/lib/format";
 import { useAction, useResource } from "@/lib/use-async";
@@ -66,6 +67,27 @@ export default function AccountsPage() {
     email: "",
     phone: "",
   });
+
+  // Editing one account: its id, and the fields as the admin is changing them.
+  const update = useAction(accounts.reload);
+  const [editing, setEditing] = useState<{
+    id: string;
+    full_name: string;
+    email: string;
+    phone: string;
+    is_active: boolean;
+  } | null>(null);
+  const startEditing = (account: Account) => {
+    update.clear();
+    setEditing({
+      id: account.id,
+      full_name: account.full_name,
+      email: account.email ?? "",
+      phone: account.phone ?? "",
+      is_active: account.is_active,
+    });
+  };
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   return (
     <>
@@ -150,32 +172,42 @@ export default function AccountsPage() {
                   <Cell className="text-[var(--muted)]">
                     {formatDateTime(account.last_login_at)}
                   </Cell>
-                  <Cell className="whitespace-nowrap text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      icon={KeyRound}
-                      loading={resetting === account.id}
+                  <Cell className="text-right">
+                    <RowActions
+                      label={account.full_name}
                       disabled={action.busy}
-                      onClick={async () => {
-                        setResetting(account.id);
-                        await action.run(async () => {
-                          setSecret(await api!.resetPassword(account.id));
-                        });
-                        setResetting(null);
-                      }}
+                      onEdit={() => startEditing(account)}
+                      onDelete={() =>
+                        setDeleting({
+                          name: account.full_name,
+                          consequence:
+                            "Only an account that has never been used can be deleted. Once someone has signed in, deactivate the account instead — it keeps the record of what they did.",
+                          run: () => api!.deleteUser(account.id),
+                        })
+                      }
                     >
-                      Reset password
-                    </Button>
-                    {account.role === "parent" ? (
-                      <ButtonLink
-                        href={`/admin/accounts/${account.id}`}
+                      <Button
+                        variant="ghost"
                         size="sm"
-                        className="ml-1.5"
+                        icon={KeyRound}
+                        loading={resetting === account.id}
+                        disabled={action.busy}
+                        onClick={async () => {
+                          setResetting(account.id);
+                          await action.run(async () => {
+                            setSecret(await api!.resetPassword(account.id));
+                          });
+                          setResetting(null);
+                        }}
                       >
-                        Children
-                      </ButtonLink>
-                    ) : null}
+                        Reset password
+                      </Button>
+                      {account.role === "parent" ? (
+                        <ButtonLink href={`/admin/accounts/${account.id}`} size="sm">
+                          Children
+                        </ButtonLink>
+                      ) : null}
+                    </RowActions>
                   </Cell>
                 </Row>
               ))}
@@ -263,6 +295,90 @@ export default function AccountsPage() {
           </div>
         </form>
       </Modal>
+
+      <Modal
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        title="Edit account"
+        description="The role can't be changed. If someone's role changes, create a new account for it."
+      >
+        {editing ? (
+          <form
+            className="grid gap-3 sm:grid-cols-2"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const saved = await update.run(() =>
+                api!.updateUser(editing.id, {
+                  full_name: editing.full_name,
+                  email: editing.email || null,
+                  phone: editing.phone || null,
+                  is_active: editing.is_active,
+                }),
+              );
+              if (saved) setEditing(null);
+            }}
+          >
+            <div className="sm:col-span-2">
+              <Field label="Full name" hint="Printed on the report card." required>
+                <Input
+                  required
+                  value={editing.full_name}
+                  onChange={(event) => setEditing({ ...editing, full_name: event.target.value })}
+                />
+              </Field>
+            </div>
+            <Field label="Email address">
+              <Input
+                type="email"
+                autoCapitalize="none"
+                value={editing.email}
+                onChange={(event) => setEditing({ ...editing, email: event.target.value })}
+              />
+            </Field>
+            <Field label="Phone number">
+              <Input
+                inputMode="tel"
+                value={editing.phone}
+                onChange={(event) => setEditing({ ...editing, phone: event.target.value })}
+              />
+            </Field>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={editing.is_active}
+                onChange={(event) => setEditing({ ...editing, is_active: event.target.checked })}
+              />
+              <span>
+                <span className="font-medium">Active</span>
+                <span className="block text-[var(--muted)]">
+                  Untick to deactivate: the person is signed out everywhere and can&apos;t sign
+                  in. Their history is kept, and you can reactivate them later.
+                </span>
+              </span>
+            </label>
+            {update.error ? (
+              <div className="sm:col-span-2">
+                <Notice>{update.error}</Notice>
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2 sm:col-span-2">
+              <Button type="button" variant="secondary" onClick={() => setEditing(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" loading={update.busy}>
+                Save changes
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      <ConfirmDelete
+        target={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={accounts.reload}
+      />
     </>
   );
 }

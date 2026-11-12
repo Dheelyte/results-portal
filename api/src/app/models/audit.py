@@ -60,6 +60,26 @@ class AuditAction(str):
     GRADING_SCALE_CREATED = "grading_scale.created"
     GRADING_SCALE_ACTIVATED = "grading_scale.activated"
     NARRATIVE_SECTIONS_SAVED = "narrative_sections.saved"
+
+    # Editing and deleting what setup created (docs/DECISIONS.md D121). A
+    # delete records what was there in `before`, because afterwards nothing
+    # else does.
+    USER_UPDATED = "user.updated"
+    USER_DELETED = "user.deleted"
+    PUPIL_UPDATED = "pupil.updated"
+    PUPIL_DELETED = "pupil.deleted"
+    CLASS_UPDATED = "class.updated"
+    CLASS_DELETED = "class.deleted"
+    HOUSE_UPDATED = "house.updated"
+    HOUSE_DELETED = "house.deleted"
+    SESSION_UPDATED = "academic_session.updated"
+    SESSION_DELETED = "academic_session.deleted"
+    TERM_DELETED = "term.deleted"
+    SUBJECT_DELETED = "subject.deleted"
+    GRADING_SCALE_DELETED = "grading_scale.deleted"
+    NARRATIVE_SECTION_DELETED = "narrative_section.deleted"
+    COMMENT_BANK_ENTRY_UPDATED = "comment_bank.updated"
+    COMMENT_BANK_ENTRY_DELETED = "comment_bank.deleted"
     NARRATIVE_SECTION_CREATED = "narrative_section.created"
     NARRATIVE_ASSIGNMENTS_SET = "narrative_assignments.set"
     COMMENT_BANK_ENTRY_CREATED = "comment_bank.created"

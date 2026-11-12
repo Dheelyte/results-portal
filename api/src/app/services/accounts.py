@@ -15,14 +15,32 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.password import generate_temporary_password, hash_password
 from app.authz import scope
-from app.models import AuditAction, GuardianPupil, Pupil, RefreshToken, User, UserRole
+from app.models import (
+    AttendanceRecord,
+    AuditAction,
+    AuditLog,
+    ClassTeacher,
+    ClassTermStatus,
+    GrowthRecord,
+    GuardianPupil,
+    NarrativeEntry,
+    NarrativeSectionAssignment,
+    Pupil,
+    RefreshToken,
+    ResultEntry,
+    TeachingAssignment,
+    TermReport,
+    User,
+    UserRole,
+)
 from app.services import audit
 from app.services.errors import Conflict, Invalid
+from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
@@ -322,3 +340,203 @@ async def ensure_no_conflict(
             taken.append("phone number")
     if taken:
         raise Conflict(f"An account with that {' and '.join(taken)} already exists.")
+
+
+# ---------------------------------------------------------------------------
+# Editing and deleting (docs/DECISIONS.md D121)
+# ---------------------------------------------------------------------------
+
+USER_UPDATABLE = frozenset({"full_name", "email", "phone", "is_active"})
+
+
+async def _revoke_sessions(db: AsyncSession, user_id: uuid.UUID) -> None:
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user_id, RefreshToken.revoked_at.is_(None))
+        .values(revoked_at=dt.datetime.now(dt.UTC))
+    )
+
+
+async def _other_active_admins(db: AsyncSession, actor: User, user_id: uuid.UUID) -> int:
+    return (
+        await db.scalar(
+            scope.scoped_users(actor)
+            .with_only_columns(func.count())
+            .where(User.role == UserRole.ADMIN, User.is_active.is_(True), User.id != user_id)
+            .order_by(None)
+        )
+        or 0
+    )
+
+
+async def update_user(
+    db: AsyncSession,
+    actor: User,
+    user_id: uuid.UUID,
+    *,
+    changes: dict[str, object],
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> User:
+    """Correct someone's name or sign-in details, or deactivate the account.
+
+    The role is not editable. It decides what a person can see, and a teacher
+    turned into a parent would keep class assignments no parent should hold;
+    the safe path is a new account. Deactivating signs the person out
+    everywhere at once.
+    """
+    record = await get_user(db, actor, user_id)
+    before = audit.snapshot(record, USER_FIELDS)
+
+    unknown = set(changes) - USER_UPDATABLE
+    if unknown:
+        raise Invalid(f"Cannot change {', '.join(sorted(unknown))} on an account.")
+
+    if changes.get("is_active") is False and record.is_active:
+        if record.id == actor.id:
+            raise Invalid("You can't deactivate your own account.")
+        if record.role is UserRole.ADMIN and not await _other_active_admins(db, actor, record.id):
+            raise Conflict("This is the only active admin. Make another admin first.")
+
+    if "full_name" in changes:
+        record.full_name = str(changes["full_name"] or "").strip()
+        if not record.full_name:
+            raise Invalid("Give the person's full name. It is printed on the report card.")
+    if "email" in changes or "phone" in changes:
+        email, phone = _normalise(
+            changes.get("email", record.email),  # type: ignore[arg-type]
+            changes.get("phone", record.phone),  # type: ignore[arg-type]
+        )
+        if email is None and phone is None:
+            raise Invalid(
+                "Give an email address or a phone number — the account signs in with one."
+            )
+        record.email, record.phone = email, phone
+    if "is_active" in changes and changes["is_active"] is not None:
+        record.is_active = bool(changes["is_active"])
+        if not record.is_active:
+            await _revoke_sessions(db, record.id)
+
+    async with integrity_guard(db, "An account with that email address or phone number exists."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.USER_UPDATED,
+        entity_type="user",
+        entity_id=record.id,
+        before=before,
+        after=audit.snapshot(record, USER_FIELDS),
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def delete_user(
+    db: AsyncSession,
+    actor: User,
+    user_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Delete an account that has never been used, such as a typo.
+
+    "Used" includes signing in: every sign-in is an audit row in the person's
+    name, and the audit log must keep saying who did what. A parent's links to
+    their children go with the account.
+    """
+    record = await get_user(db, actor, user_id)
+    if record.id == actor.id:
+        raise Invalid("You can't delete your own account.")
+    if (
+        record.role is UserRole.ADMIN
+        and record.is_active
+        and not await _other_active_admins(db, actor, record.id)
+    ):
+        raise Conflict("This is the only active admin. Make another admin first.")
+
+    def count(model: type, column: object):
+        return select(func.count()).select_from(model).where(column == record.id)
+
+    await refuse_if_in_use(
+        db,
+        thing="This account",
+        dependents=[
+            Dependent("recorded action", "recorded actions", count(AuditLog, AuditLog.actor_id)),
+            Dependent(
+                "subject they teach",
+                "subjects they teach",
+                count(TeachingAssignment, TeachingAssignment.teacher_user_id),
+            ),
+            Dependent(
+                "class they lead",
+                "classes they lead",
+                count(ClassTeacher, ClassTeacher.teacher_user_id),
+            ),
+            Dependent(
+                "narrative assignment",
+                "narrative assignments",
+                count(NarrativeSectionAssignment, NarrativeSectionAssignment.teacher_user_id),
+            ),
+            Dependent(
+                "score entered", "scores entered", count(ResultEntry, ResultEntry.entered_by)
+            ),
+            Dependent(
+                "written passage",
+                "written passages",
+                count(NarrativeEntry, NarrativeEntry.written_by),
+            ),
+            Dependent(
+                "attendance record",
+                "attendance records",
+                count(AttendanceRecord, AttendanceRecord.recorded_by),
+            ),
+            Dependent(
+                "growth record",
+                "growth records",
+                count(GrowthRecord, GrowthRecord.recorded_by),
+            ),
+            Dependent(
+                "review action",
+                "review actions",
+                select(func.count())
+                .select_from(ClassTermStatus)
+                .where(
+                    or_(
+                        ClassTermStatus.submitted_by == record.id,
+                        ClassTermStatus.reviewed_by == record.id,
+                    )
+                ),
+            ),
+            Dependent(
+                "published card",
+                "published cards",
+                count(TermReport, TermReport.published_by),
+            ),
+        ],
+        instead="Deactivate the account instead.",
+    )
+
+    before = audit.snapshot(record, USER_FIELDS)
+    await db.delete(record)  # sessions and parent links cascade
+    async with integrity_guard(db, "Something now depends on this account, so it was kept."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.USER_DELETED,
+        entity_type="user",
+        entity_id=user_id,
+        before=before,
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
