@@ -168,6 +168,7 @@ export function adminApi(token: string) {
       class_id?: string;
       search?: string;
       include_inactive?: boolean;
+      pending?: boolean;
       limit?: number;
       offset?: number;
     }) =>
@@ -176,10 +177,15 @@ export function adminApi(token: string) {
     updatePupil: (id: string, body: Schemas["PupilUpdate"]) =>
       send<Pupil>("PATCH", `/pupils/${id}`, body),
     deletePupil: (id: string) => remove(`/pupils/${id}`),
+    approvePupil: (id: string) => send<Pupil>("POST", `/pupils/${id}/approve`),
     setEnrollment: (pupilId: string, body: Schemas["EnrollmentSave"]) =>
       send<Schemas["EnrollmentRead"]>("PUT", `/pupils/${pupilId}/enrollment`, body),
 
     users: (role?: Role) => get<Account[]>("/users", { role }),
+    /** Parents who signed themselves up and wait for approval (D126). */
+    pendingUsers: () => get<Account[]>("/users", { pending: true }),
+    approveUser: (id: string) => send<Account>("POST", `/users/${id}/approve`),
+    rejectUser: (id: string) => send<{ detail: string }>("POST", `/users/${id}/reject`),
     createUser: (body: Schemas["UserCreate"]) => send<CreatedAccount>("POST", "/users", body),
     updateUser: (id: string, body: Schemas["UserUpdate"]) =>
       send<Account>("PATCH", `/users/${id}`, body),

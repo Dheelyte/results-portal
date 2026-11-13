@@ -424,7 +424,7 @@ async def test_a_parent_cannot_be_given_a_section_to_write(
     )
 
     assert response.status_code == 422
-    assert "not a teacher" in response.json()["detail"]
+    assert "parent account" in response.json()["detail"]
 
 
 # ---------------------------------------------------------------------------

@@ -12,7 +12,9 @@
 
 import {
   BookOpen,
+  BookOpenCheck,
   CalendarDays,
+  ClipboardCheck,
   ClipboardList,
   GraduationCap,
   LayoutDashboard,
@@ -36,6 +38,13 @@ export interface NavSection {
   heading?: string;
   items: NavItem[];
 }
+
+/** For a head teacher or admin who has been assigned a class (D123). */
+export const MY_TEACHING: NavItem = {
+  href: "/teacher",
+  label: "My teaching",
+  icon: BookOpenCheck,
+};
 
 export const ADMIN_NAV: NavSection[] = [
   {
@@ -61,9 +70,12 @@ export const ADMIN_NAV: NavSection[] = [
     heading: "Results",
     items: [
       { href: "/admin/publish", label: "Publish", icon: Send },
+      // Only the classes a head teacher teaches in reach an admin (D123).
+      { href: "/review", label: "Reviews", icon: ClipboardCheck },
       { href: "/admin/audit", label: "Audit log", icon: ScrollText },
     ],
   },
+  { heading: "Your teaching", items: [MY_TEACHING] },
 ];
 
 export const TEACHER_ROOT: NavItem = {

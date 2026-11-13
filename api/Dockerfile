@@ -44,7 +44,11 @@ RUN apt-get update && apt-get install --no-install-recommends --yes \
 # The key is fetched to a keyring file and the repository is signed by it —
 # never `apt-key`, which trusts a key for every repository on the system.
 # ---------------------------------------------------------------------------
-ARG PG_MAJOR=16
+# 17, not 16: Supabase runs PostgreSQL 17, and a 16 client refuses it
+# ("server version mismatch"), which failed every pre-publish dump. A newer
+# pg_dump reads older servers, so 17 also dumps the local postgres:16
+# container (docs/DECISIONS.md D122).
+ARG PG_MAJOR=17
 
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes ca-certificates curl gnupg \

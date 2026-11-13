@@ -492,7 +492,10 @@ async def test_a_missing_attendance_record_blocks(client, teacher, ready_class, 
     assert "Bello" in whats(body)
 
 
-async def test_a_missing_growth_record_blocks(client, teacher, ready_class, session) -> None:
+async def test_a_missing_growth_record_does_not_block(
+    client, teacher, ready_class, session
+) -> None:
+    """Height and weight are optional (D122): a pupil never measured is still ready."""
     await session.execute(
         GrowthRecord.__table__.delete().where(GrowthRecord.pupil_id == ready_class.pupils[0].id)
     )
@@ -500,8 +503,8 @@ async def test_a_missing_growth_record_blocks(client, teacher, ready_class, sess
 
     body = await progress(client, teacher, ready_class)
 
-    assert body["ready"] is False
-    assert "height and weight" in whats(body)
+    assert body["ready"] is True
+    assert "height and weight" not in whats(body)
 
 
 async def test_an_unset_times_school_opened_blocks(client, teacher, ready_class, session) -> None:
@@ -588,22 +591,26 @@ async def test_every_outstanding_item_is_reported_not_just_the_first(
     # Both pupils, and both of their problems named in each line.
     assert len(body["outstanding"]) == 2
     assert all("narrative" in item["what"] for item in body["outstanding"])
-    assert all("height and weight" in item["what"] for item in body["outstanding"])
+    # Height and weight are optional (D122), so they are never listed.
+    assert not any("height and weight" in item["what"] for item in body["outstanding"])
 
 
 async def test_fixing_the_last_item_makes_it_ready(client, teacher, ready_class, session) -> None:
     """The half of the criterion that is easy to forget: the gate has to stop
     refusing."""
-    await session.execute(
-        GrowthRecord.__table__.delete().where(GrowthRecord.pupil_id == ready_class.pupils[0].id)
-    )
+    report = (
+        await session.execute(
+            select(TermReport).where(TermReport.pupil_id == ready_class.pupils[0].id)
+        )
+    ).scalar_one()
+    report.class_teacher_comment = None
     await session.commit()
     assert (await progress(client, teacher, ready_class))["ready"] is False
 
     response = await client.put(
-        f"{API}/classes/{ready_class.klass.id}/growth",
+        f"{API}/classes/{ready_class.klass.id}/comments",
         params={"term_id": str(ready_class.term.id)},
-        json={"rows": [{"pupil_id": str(ready_class.pupils[0].id), "height_start_m": "1.20"}]},
+        json={"rows": [{"pupil_id": str(ready_class.pupils[0].id), "comment": "A good term."}]},
         headers=teacher,
     )
     assert response.status_code == 200, response.text

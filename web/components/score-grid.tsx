@@ -72,6 +72,9 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
   const periodId = sheet.assessment_period_id;
   const classSubjectId = sheet.class_subject_id;
   const locked = !sheet.editable || !sheet.maxima_configured;
+  // The second half's CA tests, carried over from the first and read-only
+  // here (D127). Shown so the sheet reads like the card; never sent.
+  const carried = useMemo(() => new Set(sheet.locked_columns ?? []), [sheet.locked_columns]);
 
   /* --- Recovery (§8.1: "reconcile on reload and say what was recovered") -- */
   useEffect(() => {
@@ -111,7 +114,15 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
     // sent: the save applies all or none, so one bad cell would reject the
     // whole class's work.
     const clean: Cells = Object.fromEntries(
-      Object.entries(dirty).filter(([pupilId]) => !localErrors[pupilId]),
+      Object.entries(dirty)
+        .filter(([pupilId]) => !localErrors[pupilId])
+        // A draft saved on this device before D127 may still hold a
+        // second-half CA cell; the server would refuse the whole save.
+        .map(([pupilId, cells]) => [
+          pupilId,
+          Object.fromEntries(Object.entries(cells).filter(([column]) => !carried.has(column))),
+        ])
+        .filter(([, cells]) => Object.keys(cells as Record<string, string>).length > 0),
     );
     const payload = payloadFrom(clean) as unknown as EntryRow[];
 
@@ -142,7 +153,7 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
       return remaining;
     });
     clearDraft(classSubjectId, periodId);
-  }, [api, classSubjectId, dirty, localErrors, periodId]);
+  }, [api, carried, classSubjectId, dirty, localErrors, periodId]);
 
   const autosave = useAutosave({
     hasPending: dirtyCount > 0 && !hasLocalErrors,
@@ -286,6 +297,11 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
               {sheet.columns.map((column) => (
                 <th scope="col" key={column} className="cell head">
                   {labelOf(column)}
+                  {carried.has(column) ? (
+                    <span className="block text-[0.65rem] font-normal text-[var(--muted)]">
+                      from 1st half
+                    </span>
+                  ) : null}
                 </th>
               ))}
               <th scope="col" className="cell head">
@@ -345,7 +361,12 @@ export function ScoreGrid({ sheet, api }: { sheet: Sheet; api: TeacherApi }) {
                         onChange={(event) => change(row.pupil_id, column, event.target.value)}
                         onBlur={autosave.saveNow}
                         onKeyDown={(event) => onKeyDown(event, rowIndex, column)}
-                        disabled={locked}
+                        disabled={locked || carried.has(column)}
+                        title={
+                          carried.has(column)
+                            ? "Carried over from the first half. Change it on the first-half sheet."
+                            : undefined
+                        }
                         // The Android numeric keypad, which is the whole point
                         // of §8.1's "on an Android phone".
                         inputMode="decimal"

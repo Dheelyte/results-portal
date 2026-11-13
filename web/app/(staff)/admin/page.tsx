@@ -13,11 +13,13 @@ import {
   Check,
   CircleAlert,
   GraduationCap,
+  Inbox,
   Layers,
   ListChecks,
   RefreshCw,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -38,8 +40,8 @@ import {
 } from "@/components/ui";
 import type { ChecklistItem } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
-import { TERM_LABELS } from "@/lib/format";
-import { useResource } from "@/lib/use-async";
+import { pupilName, TERM_LABELS } from "@/lib/format";
+import { useAction, useResource } from "@/lib/use-async";
 import { useState } from "react";
 
 /** Where an admin goes to fix each item. */
@@ -182,6 +184,8 @@ export default function SetupPage() {
         </StatRow>
       )}
 
+      <Approvals />
+
       <Panel
         icon={ListChecks}
         title={
@@ -305,5 +309,147 @@ function ChecklistRow({ item }: { item: ChecklistItem }) {
         ) : null}
       </div>
     </li>
+  );
+}
+
+
+/**
+ * What is waiting for the admin (D125, D126): parents who signed themselves
+ * up, and pupils a class teacher added. Hidden when there is nothing, so the
+ * dashboard isn't one panel longer every day for no reason.
+ */
+function Approvals() {
+  const api = useAdminApi()!;
+  const parents = useResource(() => api.pendingUsers(), [api]);
+  const pupils = useResource(() => api.pupils({ pending: true, limit: 50 }), [api]);
+  const action = useAction(() => {
+    parents.reload();
+    pupils.reload();
+  });
+  const [working, setWorking] = useState<string | null>(null);
+
+  const waitingParents = parents.data ?? [];
+  const waitingPupils = pupils.data?.items ?? [];
+  if (!waitingParents.length && !waitingPupils.length && !action.success) return null;
+
+  const act = async (key: string, task: () => Promise<unknown>, message: string) => {
+    setWorking(key);
+    await action.run(task, message);
+    setWorking(null);
+  };
+
+  return (
+    <Panel
+      icon={Inbox}
+      title="Waiting for your approval"
+      description="Nobody here can sign in, or appears on a class list, until you approve them."
+    >
+      <div className="flex flex-col gap-4">
+        <Notice>{action.error}</Notice>
+        <Notice tone="success">{action.success}</Notice>
+
+        {waitingParents.length ? (
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">Parents who asked for an account</h3>
+            {waitingParents.map((account) => (
+              <div
+                key={account.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+              >
+                <span>
+                  <span className="font-medium">{account.full_name}</span>
+                  <span className="block text-[var(--muted)]">
+                    {[account.phone, account.email].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+                <span className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    icon={Check}
+                    loading={working === `approve-${account.id}`}
+                    disabled={working !== null}
+                    onClick={() =>
+                      void act(
+                        `approve-${account.id}`,
+                        () => api.approveUser(account.id),
+                        `${account.full_name} approved. Link their children from Accounts → Children.`,
+                      )
+                    }
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost-danger"
+                    icon={X}
+                    loading={working === `reject-${account.id}`}
+                    disabled={working !== null}
+                    onClick={() =>
+                      void act(
+                        `reject-${account.id}`,
+                        () => api.rejectUser(account.id),
+                        `${account.full_name}'s request was turned away.`,
+                      )
+                    }
+                  >
+                    Turn away
+                  </Button>
+                </span>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        {waitingPupils.length ? (
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">Pupils added by class teachers</h3>
+            {waitingPupils.map((pupil) => (
+              <div
+                key={pupil.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{pupilName(pupil)}</span>
+                <span className="flex gap-1.5">
+                  <Button
+                    size="sm"
+                    icon={Check}
+                    loading={working === `pupil-${pupil.id}`}
+                    disabled={working !== null}
+                    onClick={() =>
+                      void act(
+                        `pupil-${pupil.id}`,
+                        () => api.approvePupil(pupil.id),
+                        `${pupilName(pupil)} approved and added to the class.`,
+                      )
+                    }
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost-danger"
+                    icon={X}
+                    loading={working === `reject-pupil-${pupil.id}`}
+                    disabled={working !== null}
+                    onClick={() =>
+                      void act(
+                        `reject-pupil-${pupil.id}`,
+                        () => api.deletePupil(pupil.id),
+                        `${pupilName(pupil)} was turned away.`,
+                      )
+                    }
+                  >
+                    Turn away
+                  </Button>
+                </span>
+              </div>
+            ))}
+            <Link href="/admin/pupils?pending=1" className="text-sm text-[var(--brand)] hover:underline">
+              Review or correct their details on the Pupils page
+            </Link>
+          </section>
+        ) : null}
+      </div>
+    </Panel>
   );
 }

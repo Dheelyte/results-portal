@@ -49,7 +49,6 @@ async def test_setting_the_school_wide_maxima(client: AsyncClient, admin_headers
             "ca_test_2": "8",
             "ca_test_3": "8",
             "ca_test_4": "8",
-            "ca_test_5": "8",
             "mid_term_test": "60",
         },
     )
@@ -382,7 +381,15 @@ async def test_per_class_overrides_alone_can_configure_a_sheet(
     await client.put(
         marks_url(periods[TermHalf.SECOND_HALF.value]),
         headers=admin_headers,
-        json={"ca_test_1": "10", "exam": "50"},
+        json={"class_id": str(world.class_4a.id), "exam": "50"},
+    )
+    # D127: a second-half row takes its CA maxima from the matching
+    # first-half row, so per-class first-half rows need per-class second-half
+    # rows. A school-wide second-half row would have no CA maxima to inherit.
+    await client.put(
+        marks_url(periods[TermHalf.SECOND_HALF.value]),
+        headers=admin_headers,
+        json={"class_id": str(world.class_5b.id), "exam": "50"},
     )
 
     checklist = await client.get(

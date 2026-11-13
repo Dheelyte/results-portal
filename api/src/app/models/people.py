@@ -36,10 +36,11 @@ class Pupil(Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     school_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("schools.id"), nullable=False)
 
-    # The pupil's permanent identifier. It reaches the PDF object key of every
-    # report card they will ever receive (§9), so it must never be reused.
-    # Assigned in the platform, since there is no external source (N8).
-    admission_number: Mapped[str] = mapped_column(Text, nullable=False)
+    # Optional since D124: the school doesn't use admission numbers. Where one
+    # is given it is still unique within the school (Postgres lets any number
+    # of NULLs past the unique constraint), and still names the card's PDF;
+    # without one the pupil's id does (`services/cards.py`).
+    admission_number: Mapped[str | None] = mapped_column(Text)
 
     first_name: Mapped[str] = mapped_column(Text, nullable=False)
     middle_name: Mapped[str | None] = mapped_column(Text)
@@ -50,6 +51,16 @@ class Pupil(Base):
     photo_url: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
+    )
+    # Added by a class teacher and not yet approved by an admin (D125). Such a
+    # pupil is also inactive, which is what keeps them off every class list,
+    # score sheet and card until approval. The flag says *why* they are
+    # inactive, so a pupil who has left is never mistaken for one waiting.
+    pending_approval: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    proposed_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
     )
     created_at: Mapped[dt.datetime] = utc_now_column(nullable=False)
 

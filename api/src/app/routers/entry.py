@@ -79,6 +79,7 @@ def _sheet_read(sheet: results.Sheet) -> SheetRead:
         term_id=sheet.term.id,
         half=sheet.period.half,
         columns=list(sheet.columns),
+        locked_columns=list(sheet.locked_columns),
         maxima=maxima,
         maxima_configured=sheet.configured,
         state=sheet.state,

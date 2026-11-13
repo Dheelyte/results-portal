@@ -23,7 +23,7 @@ import { apiGet, sessionState } from "@/lib/server/session";
 
 interface Child {
   pupil_id: string;
-  admission_number: string;
+  admission_number: string | null;
   first_name: string;
   middle_name?: string | null;
   last_name: string;

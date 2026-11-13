@@ -76,7 +76,6 @@ PRINTED_COLUMNS = {
         ("ca_test_2", "CA TEST 2"),
         ("ca_test_3", "CA TEST 3"),
         ("ca_test_4", "CA TEST 4"),
-        ("ca_test_5", "CA TEST 5"),
         ("ca_test_total", "CA TEST TOTAL"),
         ("mid_term_test", "MID TERM TEST"),
         ("period_average", "MID TERM AVE."),
@@ -86,7 +85,6 @@ PRINTED_COLUMNS = {
         ("ca_test_2", "CA TEST 2"),
         ("ca_test_3", "CA TEST 3"),
         ("ca_test_4", "CA TEST 4"),
-        ("ca_test_5", "CA TEST 5"),
         ("ca_test_total", "CA TEST TOTAL"),
         ("exam", "EXAM"),
         ("period_average", "TOTAL WEIGHTED AVERAGE"),
@@ -123,7 +121,7 @@ class Card:
 
     date: dt.date | None
     pupil_name: str
-    admission_number: str
+    admission_number: str | None
     overall_percentage: decimal.Decimal | None
     position_text: str | None
     class_name: str

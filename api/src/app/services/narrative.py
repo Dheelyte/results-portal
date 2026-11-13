@@ -39,7 +39,6 @@ from app.models import (
     Pupil,
     Term,
     User,
-    UserRole,
 )
 from app.services import academic, audit, results, workflow
 from app.services.errors import Invalid, NotFound, RowErrors
@@ -330,9 +329,10 @@ async def set_assignments(
             teacher = await one_or_404(
                 db, scope.scoped_users(actor).where(User.id == teacher_user_id), "user"
             )
-            if teacher.role is not UserRole.TEACHER:
+            if teacher.role not in policy.TEACHING_ROLES:
                 raise Invalid(
-                    f"{teacher.full_name} is not a teacher, so cannot be given a section to write."
+                    f"{teacher.full_name} is a parent account, so cannot be given a section "
+                    "to write."
                 )
 
     existing = {
@@ -648,7 +648,7 @@ class PupilProgress:
     """One line of the class list: how far this pupil's narrative has got."""
 
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None
     first_name: str
     middle_name: str | None
     last_name: str

@@ -30,7 +30,6 @@ class MarksObtainableSave(BaseModel):
     ca_test_2: ScoreValue | None = None
     ca_test_3: ScoreValue | None = None
     ca_test_4: ScoreValue | None = None
-    ca_test_5: ScoreValue | None = None
     mid_term_test: ScoreValue | None = Field(default=None, description="First half term only.")
     exam: ScoreValue | None = Field(default=None, description="Second half term only.")
 
@@ -46,6 +45,5 @@ class MarksObtainableRead(OrmModel):
     ca_test_2: ScoreValue | None
     ca_test_3: ScoreValue | None
     ca_test_4: ScoreValue | None
-    ca_test_5: ScoreValue | None
     mid_term_test: ScoreValue | None
     exam: ScoreValue | None

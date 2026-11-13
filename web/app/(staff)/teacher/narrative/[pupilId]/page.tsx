@@ -13,7 +13,7 @@ import { useParams, useRouter } from "next/navigation";
 import { NarrativeForm } from "@/components/narrative-form";
 import { Avatar, Notice, PageHeader, SkeletonPanel } from "@/components/ui";
 import { useTeacherApi } from "@/lib/api/use-teacher";
-import { TERM_LABELS, pupilName } from "@/lib/format";
+import { joinParts, TERM_LABELS, pupilName } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
 
 export default function PupilNarrativePage() {
@@ -67,9 +67,10 @@ export default function PupilNarrativePage() {
             {name}
           </span>
         }
-        description={`${page.data.admission_number}${
-          term ? ` · ${TERM_LABELS[term.number] ?? term.number}, ${term.academic_session_name}` : ""
-        }`}
+        description={joinParts(
+          page.data.admission_number,
+          term && `${TERM_LABELS[term.number] ?? term.number}, ${term.academic_session_name}`,
+        )}
       />
 
       {/* Keyed on the pupil so moving to the next one rebuilds the form's

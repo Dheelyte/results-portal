@@ -15,16 +15,18 @@
  * they only have sheets.
  */
 
-import { BookOpenCheck } from "lucide-react";
+import { ArrowLeft, BookOpenCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { classItem, TEACHER_ROOT, type NavSection } from "@/components/shell/nav";
 import { StaffShell } from "@/components/shell/staff-shell";
 import { useTeacherApi } from "@/lib/api/use-teacher";
+import { useAuth } from "@/lib/auth";
 import { useResource } from "@/lib/use-async";
 
 export default function TeacherLayout({ children }: { children: ReactNode }) {
   const api = useTeacherApi();
+  const { user } = useAuth();
   const workload = useResource((signal) => api!.workload(undefined, signal), [api], {
     enabled: Boolean(api),
   });
@@ -33,6 +35,13 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
 
   const sections: NavSection[] = [
     { items: [TEACHER_ROOT] },
+    // A head teacher or admin who teaches comes here from their own area,
+    // and needs the way back (D123).
+    ...(user?.role === "admin"
+      ? [{ items: [{ href: "/admin", label: "Back to setup", icon: ArrowLeft }] }]
+      : user?.role === "head_teacher"
+        ? [{ items: [{ href: "/review", label: "Back to reviews", icon: ArrowLeft }] }]
+        : []),
     ...(myClasses.length > 0
       ? [
           {
@@ -48,6 +57,7 @@ export default function TeacherLayout({ children }: { children: ReactNode }) {
   return (
     <StaffShell
       role="teacher"
+      alsoFor={["head_teacher", "admin"]}
       roleLabel="Teacher"
       area="My sheets"
       areaHref="/teacher"

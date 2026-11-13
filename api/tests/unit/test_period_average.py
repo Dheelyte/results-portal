@@ -45,7 +45,6 @@ def maxima(**overrides: int | None) -> dict[str, Decimal | None]:
         "ca_test_2": Decimal(10),
         "ca_test_3": Decimal(10),
         "ca_test_4": Decimal(10),
-        "ca_test_5": Decimal(10),
         "mid_term_test": Decimal(40),
         "exam": Decimal(40),
     }
@@ -69,7 +68,6 @@ def test_a_full_first_half_row_is_a_percentage_of_the_marks_obtainable() -> None
         ca_test_2="10",
         ca_test_3="10",
         ca_test_4="10",
-        ca_test_5="10",
         mid_term_test="40",
     )
 
@@ -93,14 +91,14 @@ def test_a_blank_cell_counts_as_zero_once_the_row_has_started() -> None:
     """
     half_entered = scores(ca_test_1="10", ca_test_2="10")
 
-    # 20 earned out of 90 obtainable.
-    assert mid_term_average(half_entered, maxima()) == Decimal("22.22")
+    # 20 earned out of 80 obtainable (four CA tests since D127).
+    assert mid_term_average(half_entered, maxima()) == Decimal("25.00")
 
 
 def test_a_column_with_no_maximum_is_not_on_the_sheet() -> None:
     """A school using three CA tests sets three maxima, and the average is out
-    of those three plus the terminal column — not out of five."""
-    three_tests = maxima(ca_test_4=None, ca_test_5=None)
+    of those three plus the terminal column — not out of four."""
+    three_tests = maxima(ca_test_4=None)
     full = scores(ca_test_1="10", ca_test_2="10", ca_test_3="10", mid_term_test="40")
 
     assert mid_term_average(full, three_tests) == Decimal("100.00")
@@ -111,18 +109,18 @@ def test_a_score_against_a_column_that_is_not_on_the_sheet_is_ignored() -> None:
     not quietly fold an exam mark into a first-half average either."""
     with_stray_exam = scores(ca_test_1="10", exam="40")
 
-    assert mid_term_average(with_stray_exam, maxima()) == Decimal("11.11")
+    assert mid_term_average(with_stray_exam, maxima()) == Decimal("12.50")
 
 
 def test_the_two_halves_read_their_own_terminal_column() -> None:
     first = scores(ca_test_1="10", mid_term_test="40")
     second = scores(ca_test_1="10", exam="40")
 
-    assert mid_term_average(first, maxima()) == Decimal("55.56")
-    assert total_weighted_average(second, maxima()) == Decimal("55.56")
+    assert mid_term_average(first, maxima()) == Decimal("62.50")
+    assert total_weighted_average(second, maxima()) == Decimal("62.50")
     # Each ignores the other's column entirely.
-    assert mid_term_average(second, maxima()) == Decimal("11.11")
-    assert total_weighted_average(first, maxima()) == Decimal("11.11")
+    assert mid_term_average(second, maxima()) == Decimal("12.50")
+    assert total_weighted_average(first, maxima()) == Decimal("12.50")
 
 
 def test_period_average_dispatches_on_the_half() -> None:
@@ -148,7 +146,7 @@ def test_the_average_is_scale_free() -> None:
     describe. Marks out of 7 and marks out of 700 give the same average."""
     small = {"ca_test_1": Decimal(7), "mid_term_test": None, "exam": None}
     large = {"ca_test_1": Decimal(700), "mid_term_test": None, "exam": None}
-    for column in ("ca_test_2", "ca_test_3", "ca_test_4", "ca_test_5"):
+    for column in ("ca_test_2", "ca_test_3", "ca_test_4"):
         small[column] = None
         large[column] = None
 

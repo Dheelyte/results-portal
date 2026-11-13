@@ -20,7 +20,7 @@ from app.auth.tokens import (
     refresh_token_expiry,
 )
 from app.config import settings
-from app.models import AuditAction, RefreshToken, User
+from app.models import AuditAction, RefreshToken, School, User, UserRole
 from app.services import audit, ratelimit
 
 logger = logging.getLogger(__name__)
@@ -44,6 +44,20 @@ class AccountLocked(AuthError):
         super().__init__(
             "This account is temporarily locked after too many failed attempts. "
             "Please try again later or contact the school."
+        )
+
+
+class AwaitingApproval(AuthError):
+    """A self-registered parent whose account an admin hasn't approved (D126).
+
+    Raised only after the password has been verified, so it tells nobody
+    anything they couldn't already: the person typing it owns the account.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Your account is waiting for the school to approve it. You'll be able to sign in "
+            "once an administrator has checked your details."
         )
 
 
@@ -172,7 +186,10 @@ async def authenticate(
         await session.commit()
         raise AccountLocked(user.locked_until)
 
-    if not user.is_active or not verify_password(user.password_hash, password):
+    password_ok = verify_password(user.password_hash, password)
+    if password_ok and user.pending_approval:
+        raise AwaitingApproval
+    if not user.is_active or not password_ok:
         await _register_failed_attempt(
             session, user, now=now, ip_address=ip_address, user_agent=user_agent
         )
@@ -470,3 +487,92 @@ def validate_password_strength(password: str) -> None:
     """Reject a password that is too short. Raises AuthError."""
     if len(password) < MIN_PASSWORD_LENGTH:
         raise AuthError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters.")
+
+
+# ---------------------------------------------------------------------------
+# A parent signs themselves up (D126)
+# ---------------------------------------------------------------------------
+
+#: What every sign-up is told, whether or not an account was created. A
+#: different answer for "that phone number is taken" would let anyone test
+#: whether a number belongs to a parent at the school (§5.1's reasoning).
+REGISTRATION_RECEIVED = (
+    "Thank you. The school will check your details and approve your account. "
+    "You'll be able to sign in once it's approved."
+)
+
+
+async def register_parent(
+    session: AsyncSession,
+    *,
+    full_name: str,
+    email: str | None,
+    phone: str | None,
+    password: str,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> None:
+    """Create a parent account that can't sign in until an admin approves it.
+
+    The account is inactive and `pending_approval`, so `get_active_user`
+    refuses every request and sign-in answers `AwaitingApproval`. Linking it
+    to children is still the admin's act, after approval: signing up grants
+    nothing.
+
+    Shares login's per-IP rate limit, so the form can't be used to flood the
+    admin's approval list or to burn CPU on Argon2.
+    """
+    await ratelimit.enforce(session, ip_address)
+    await ratelimit.record(session, ip_address)
+    await session.commit()
+
+    full_name = full_name.strip()
+    email = (email or "").strip() or None
+    phone = (phone or "").strip() or None
+    if not full_name:
+        raise AuthError("Give your full name.")
+    if email is None and phone is None:
+        raise AuthError("Give an email address or a phone number. You'll sign in with it.")
+    validate_password_strength(password)
+
+    clashes = []
+    if email:
+        clashes.append(User.email == email)
+    if phone:
+        clashes.append(User.phone == phone)
+    taken = await session.scalar(select(func.count()).select_from(User).where(or_(*clashes)))
+    if taken:
+        # The same answer as success; see REGISTRATION_RECEIVED.
+        logger.info("registration skipped: identifier in use", extra={"outcome": "duplicate"})
+        return
+
+    school = await session.scalar(select(School).order_by(School.id).limit(1))
+    if school is None:
+        raise AuthError("The portal isn't set up yet. Please contact the school.")
+
+    user = User(
+        school_id=school.id,
+        role=UserRole.PARENT,
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        password_hash=hash_password(password),
+        must_change_password=False,
+        is_active=False,
+        pending_approval=True,
+    )
+    session.add(user)
+    await session.flush()
+    # No actor: nobody was signed in. That also leaves the account deletable
+    # if the admin rejects it (D121 counts audit rows in a person's name).
+    await audit.record(
+        session,
+        school_id=school.id,
+        action=AuditAction.USER_REGISTERED,
+        entity_type="user",
+        entity_id=user.id,
+        after={"role": UserRole.PARENT.value, "pending_approval": True},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await session.commit()

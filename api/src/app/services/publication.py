@@ -54,6 +54,7 @@ from app.models import (
     ResultEntry,
     Subject,
     Term,
+    TermHalf,
     TermReport,
     User,
 )
@@ -93,7 +94,7 @@ class ReportState:
     report_id: uuid.UUID
     pupil_id: uuid.UUID
     name: str
-    admission_number: str
+    admission_number: str | None
     state: PublicationState
     published_at: dt.datetime | None
     withheld_reason: str | None
@@ -549,6 +550,11 @@ async def edit_entry(
 
     # R1, the same rule the grid enforces, reached by a different door.
     for column, value in scores.items():
+        if period.half is TermHalf.SECOND_HALF and column in marks.CARRIED_COLUMNS:
+            raise Invalid(
+                "The second half's CA tests are carried over from the first half. Correct "
+                "the first-half score and it carries over (D127)."
+            )
         if column not in columns:
             raise Invalid(
                 f"This sheet has no {column} column. Corrections must fit the sheet the "
@@ -574,6 +580,14 @@ async def edit_entry(
     )
 
     regraded_against = await _regrade_against_snapshot(db, actor, entry)
+
+    # A corrected first-half CA test is the second half's too (D127).
+    if period.half is TermHalf.FIRST_HALF and set(scores) & set(marks.CARRIED_COLUMNS):
+        second = await results.carry_forward(
+            db, actor, entry, period=period, class_id=offering.class_id
+        )
+        if second is not None:
+            await _regrade_against_snapshot(db, actor, second)
 
     await db.flush()
     await db.refresh(entry)

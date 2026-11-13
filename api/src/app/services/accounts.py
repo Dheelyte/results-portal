@@ -45,7 +45,15 @@ from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
 
-USER_FIELDS = ("role", "full_name", "email", "phone", "must_change_password", "is_active")
+USER_FIELDS = (
+    "role",
+    "full_name",
+    "email",
+    "phone",
+    "must_change_password",
+    "is_active",
+    "pending_approval",
+)
 
 
 @dataclass(frozen=True)
@@ -83,8 +91,11 @@ async def list_users(
     *,
     role: UserRole | None = None,
     include_inactive: bool = True,
+    pending: bool = False,
 ) -> Sequence[User]:
     stmt = scope.scoped_users(actor)
+    if pending:
+        stmt = stmt.where(User.pending_approval.is_(True))
     if role is not None:
         stmt = stmt.where(User.role == role)
     if not include_inactive:
@@ -262,6 +273,18 @@ async def link_children(
         # Deliberately vague: confirming which identifier is unknown would let
         # an id be probed for existence.
         raise Invalid("One or more of those pupils does not exist.")
+    waiting = await db.scalar(
+        select(func.count())
+        .select_from(Pupil)
+        .where(Pupil.id.in_(pupil_ids), Pupil.pending_approval.is_(True))
+    )
+    if waiting:
+        raise Invalid(
+            "A pupil added by a class teacher must be approved before a parent can be linked."
+        )
+    guardian_record = await get_user(db, actor, guardian_user_id)
+    if guardian_record.pending_approval:
+        raise Invalid("Approve this parent's account before linking children to it.")
 
     # `guardian_pupils` carries no school_id of its own (§4.1) — it is a join
     # table between two tables that do — so the tenant filter comes through
@@ -540,3 +563,82 @@ async def delete_user(
         user_agent=user_agent,
     )
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Parents who signed themselves up (D126)
+# ---------------------------------------------------------------------------
+
+
+async def approve_user(
+    db: AsyncSession,
+    actor: User,
+    user_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> User:
+    """Open a self-registered parent's account. Linking children follows."""
+    record = await get_user(db, actor, user_id)
+    if not record.pending_approval:
+        raise Conflict("This account isn't waiting for approval.")
+    record.pending_approval = False
+    record.is_active = True
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.USER_APPROVED,
+        entity_type="user",
+        entity_id=record.id,
+        after={"pending_approval": False, "is_active": True},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def reject_user(
+    db: AsyncSession,
+    actor: User,
+    user_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> bool:
+    """Turn a sign-up away. Returns True if the account was deleted.
+
+    Deleted where possible, so the person can sign up again with corrected
+    details. If they have already tried to sign in, those attempts are audit
+    rows in their name and D121 keeps the account, so it stays deactivated
+    with the request closed instead.
+    """
+    record = await get_user(db, actor, user_id)
+    if not record.pending_approval:
+        raise Conflict("This account isn't waiting for approval.")
+    try:
+        await delete_user(db, actor, user_id, ip_address=ip_address, user_agent=user_agent)
+        return True
+    except Conflict:
+        # The rollback expires everything the session holds, the admin's own
+        # row included, and every query below is scoped by it.
+        await db.rollback()
+        await db.refresh(actor)
+    record = await get_user(db, actor, user_id)
+    record.pending_approval = False
+    record.is_active = False
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.USER_UPDATED,
+        entity_type="user",
+        entity_id=record.id,
+        after={"pending_approval": False, "is_active": False, "rejected": True},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    return False

@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.authz import scope
+from app.authz import policy, scope
 from app.models import (
     AcademicSession,
     AssessmentPeriod,
@@ -58,6 +58,7 @@ from app.models import (
     TermNumber,
     TermReport,
     User,
+    UserRole,
 )
 from app.services import audit, grading, results, workflow
 from app.services.errors import Conflict, RowErrors
@@ -91,6 +92,7 @@ class QueueEntry:
     submitted_at: object | None
     submitted_by: str | None
     remarks_written: int
+    decision_blocked: str | None = None
 
 
 @dataclass(frozen=True)
@@ -137,6 +139,9 @@ class ClassReview:
     return_note: str | None
     # Third term only (§8.4). Not a code branch on the number anywhere else.
     promotion_applies: bool
+    # Why this reviewer may not approve or return the class, if they may not
+    # (D123: nobody decides on a class they teach in).
+    decision_blocked: str | None = None
 
 
 @dataclass(frozen=True)
@@ -216,6 +221,11 @@ async def queue(
 
     entries: list[QueueEntry] = []
     for status, klass, submitted_by in rows:
+        blocked = await policy.review_refusal(db, actor, klass.id, term.academic_session_id)
+        # An admin's queue is only the classes handed to them (D123). The head
+        # teacher sees every class, each one they teach in marked as such.
+        if actor.role is UserRole.ADMIN and blocked:
+            continue
         pupils = await results.pupils_of(
             db, actor, class_id=klass.id, academic_session_id=term.academic_session_id
         )
@@ -240,6 +250,7 @@ async def queue(
                 submitted_at=status.submitted_at,
                 submitted_by=submitted_by,
                 remarks_written=written or 0,
+                decision_blocked=blocked,
             )
         )
     return entries
@@ -413,6 +424,7 @@ async def class_review(
         cards=cards,
         return_note=status.return_note if status is not None else None,
         promotion_applies=term.number is TermNumber.THIRD,
+        decision_blocked=await policy.review_refusal(db, actor, class_id, term.academic_session_id),
     )
 
 
@@ -460,7 +472,6 @@ def _subject_row(
             "ca_test_2": entry.ca_test_2,
             "ca_test_3": entry.ca_test_3,
             "ca_test_4": entry.ca_test_4,
-            "ca_test_5": entry.ca_test_5,
             "ca_test_total": entry.ca_test_total,
             "mid_term_test": entry.mid_term_test,
             "exam": entry.exam,
@@ -631,6 +642,8 @@ async def approve(
     be to recompute — which is the thing §4.5 forbids.
     """
     review = await class_review(db, actor, class_id=class_id, term_id=term_id)
+    if review.decision_blocked:
+        raise Conflict(review.decision_blocked)
 
     if review.state is not ClassTermState.SUBMITTED:
         # R14's table says the same thing; this says it first so the message
@@ -809,6 +822,8 @@ async def return_class(
         )
 
     review = await class_review(db, actor, class_id=class_id, term_id=term_id)
+    if review.decision_blocked:
+        raise Conflict(review.decision_blocked)
     if review.state is not ClassTermState.SUBMITTED:
         raise Conflict(
             "Only a class that has been submitted for review can be returned. "

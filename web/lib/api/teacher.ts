@@ -35,6 +35,7 @@ export type Progress = Schemas["ProgressRead"];
 export type SheetProgress = Schemas["SheetProgressRead"];
 export type PupilProgress = Schemas["PupilProgressRead"];
 export type OutstandingItem = Schemas["OutstandingItem"];
+export type ProposedPupil = Schemas["PupilRead"];
 
 export function teacherApi(token: string) {
   return {
@@ -152,6 +153,12 @@ export function teacherApi(token: string) {
         query: { term_id: termId },
         body: { rows },
       }),
+
+    /* --- Pupils the class teacher adds, for an admin to approve (D125) --- */
+    proposedPupils: (classId: string, signal?: AbortSignal) =>
+      request<ProposedPupil[]>(`/classes/${classId}/pupils/proposed`, { token, signal }),
+    proposePupil: (classId: string, body: Schemas["PupilProposal"]) =>
+      request<ProposedPupil>(`/classes/${classId}/pupils`, { method: "POST", token, body }),
   };
 }
 

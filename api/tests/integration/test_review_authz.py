@@ -30,7 +30,9 @@ REVIEW_ENDPOINTS: list[tuple[str, str, dict | None]] = [
 ]
 
 # Every column of §5.2's review rows that holds a dash.
-ROLES_WITHOUT_REVIEW = [UserRole.ADMIN, UserRole.TEACHER, UserRole.PARENT]
+# The admin reviews a class a head teacher teaches in (D123), so is refused by
+# `policy.review_refusal` rather than by role; `test_teaching_roles.py`.
+ROLES_WITHOUT_REVIEW = [UserRole.TEACHER, UserRole.PARENT]
 
 
 @pytest.mark.parametrize("case", REVIEW_ENDPOINTS, ids=ids_for)

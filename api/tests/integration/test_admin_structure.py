@@ -431,7 +431,7 @@ async def test_a_parent_cannot_be_assigned_to_teach(
     )
 
     assert response.status_code == 422
-    assert "not a teacher" in response.json()["detail"]
+    assert "parent account" in response.json()["detail"]
 
 
 async def test_a_deactivated_teacher_cannot_be_assigned(

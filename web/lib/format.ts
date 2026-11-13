@@ -57,3 +57,12 @@ export function pupilName(pupil: {
 }): string {
   return [pupil.first_name, pupil.middle_name, pupil.last_name].filter(Boolean).join(" ");
 }
+
+
+/**
+ * "SSHMS/26/004 · Primary 4", leaving out whatever is missing. An admission
+ * number is optional (D124), and a template string would print "null".
+ */
+export function joinParts(...parts: (string | null | undefined | false)[]): string {
+  return parts.filter((part): part is string => Boolean(part)).join(" · ");
+}

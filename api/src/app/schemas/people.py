@@ -17,7 +17,9 @@ AdmissionNumber = Annotated[str, Field(min_length=1, max_length=50)]
 
 
 class PupilCreate(BaseModel):
-    admission_number: AdmissionNumber
+    admission_number: AdmissionNumber | None = Field(
+        default=None, description="Optional (D124). Unique within the school when given."
+    )
     first_name: Name
     last_name: Name
     middle_name: str | None = Field(default=None, max_length=200)
@@ -40,6 +42,18 @@ class PupilCreate(BaseModel):
     )
 
 
+class PupilProposal(BaseModel):
+    """What a class teacher can give for a new pupil (D125). The house and
+    the class are the admin's: the class is the teacher's own."""
+
+    first_name: Name
+    last_name: Name
+    middle_name: str | None = Field(default=None, max_length=200)
+    sex: Literal["M", "F"] | None = None
+    date_of_birth: dt.date | None = None
+    admission_number: AdmissionNumber | None = None
+
+
 class PupilUpdate(BaseModel):
     """Every field optional; only what is sent is changed. Null clears an
     optional field, such as the house."""
@@ -58,7 +72,7 @@ class PupilUpdate(BaseModel):
 
 class PupilRead(OrmModel):
     id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None
     last_name: str
@@ -66,6 +80,8 @@ class PupilRead(OrmModel):
     date_of_birth: dt.date | None
     house_id: uuid.UUID | None
     is_active: bool
+    # Added by a class teacher and waiting for an admin (D125).
+    pending_approval: bool = False
 
 
 class PupilPageRead(BaseModel):
@@ -132,6 +148,8 @@ class AccountRead(OrmModel):
     phone: str | None
     must_change_password: bool
     is_active: bool
+    # Signed up and waiting for an admin (D126).
+    pending_approval: bool = False
     last_login_at: dt.datetime | None
     created_at: dt.datetime
 

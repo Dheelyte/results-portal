@@ -14,7 +14,7 @@
  * rather than unfolding under a table of forty accounts.
  */
 
-import { KeyRound, Plus, UserPlus, Users } from "lucide-react";
+import { Check, KeyRound, Plus, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 
 import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
@@ -115,6 +115,7 @@ export default function AccountsPage() {
       ) : null}
 
       <Notice>{action.error}</Notice>
+      <Notice tone="success">{action.success}</Notice>
 
       <Panel
         title="Everyone with an account"
@@ -158,7 +159,11 @@ export default function AccountsPage() {
                           {account.must_change_password ? (
                             <Badge tone="warn">Password not changed</Badge>
                           ) : null}
-                          {account.is_active ? null : <Badge tone="bad">Deactivated</Badge>}
+                          {account.pending_approval ? (
+                            <Badge tone="warn">Awaiting approval</Badge>
+                          ) : account.is_active ? null : (
+                            <Badge tone="bad">Deactivated</Badge>
+                          )}
                         </span>
                       </span>
                     </span>
@@ -186,6 +191,21 @@ export default function AccountsPage() {
                         })
                       }
                     >
+                      {account.pending_approval ? (
+                        <Button
+                          size="sm"
+                          icon={Check}
+                          disabled={action.busy}
+                          onClick={() =>
+                            void action.run(
+                              () => api!.approveUser(account.id),
+                              `${account.full_name} approved.`,
+                            )
+                          }
+                        >
+                          Approve
+                        </Button>
+                      ) : null}
                       <Button
                         variant="ghost"
                         size="sm"

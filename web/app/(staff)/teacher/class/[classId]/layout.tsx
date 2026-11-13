@@ -36,6 +36,7 @@ const TABS = [
   { segment: "attendance", label: "Attendance" },
   { segment: "growth", label: "Height & weight" },
   { segment: "comments", label: "Class teacher's comment" },
+  { segment: "pupils", label: "Add pupils" },
 ] as const;
 
 export default function ClassLayout({ children }: { children: ReactNode }) {

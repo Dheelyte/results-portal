@@ -22,9 +22,11 @@ import type { NavSection } from "@/components/shell/nav";
 import { Card, Notice, Skeleton } from "@/components/ui";
 import { useAuth, useRequireRole } from "@/lib/auth";
 import type { CurrentUser } from "@/lib/api/client";
+import { ROLE_LABELS } from "@/lib/format";
 
 export function StaffShell({
   role,
+  alsoFor = [],
   roleLabel,
   area,
   areaHref,
@@ -35,6 +37,9 @@ export function StaffShell({
   children,
 }: {
   role: CurrentUser["role"];
+  /** Other roles these pages also serve: the teaching pages serve a head
+   *  teacher or an admin who has been assigned a class (D123). */
+  alsoFor?: CurrentUser["role"][];
   roleLabel: string;
   area: string;
   areaHref: string;
@@ -55,7 +60,7 @@ export function StaffShell({
 
   if (!user) return null; // the redirect in useRequireRole is in flight
 
-  if (user.role !== role) {
+  if (user.role !== role && !alsoFor.includes(user.role)) {
     return (
       <main className="mx-auto max-w-xl px-6 py-16">
         <Notice tone="info">{refusal}</Notice>
@@ -71,7 +76,7 @@ export function StaffShell({
       areaHref={areaHref}
       areaIcon={areaIcon}
       user={user}
-      roleLabel={roleLabel}
+      roleLabel={user.role === role ? roleLabel : (ROLE_LABELS[user.role] ?? roleLabel)}
       onSignOut={() => void signOut()}
     >
       {children}

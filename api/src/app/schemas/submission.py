@@ -51,7 +51,7 @@ class PupilProgressRead(BaseModel):
 
     pupil_id: uuid.UUID
     name: str
-    admission_number: str
+    admission_number: str | None = None
     sections_written: int
     sections_total: int
     missing_sections: list[str] = Field(default_factory=list)

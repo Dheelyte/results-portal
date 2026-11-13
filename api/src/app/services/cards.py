@@ -72,7 +72,8 @@ async def card_pdf(
     key = storage.object_key(
         session_name=card.session_name,
         term=f"{card.subtitle.split()[0].lower()}-half-{_term_slug(card.title)}",
-        admission_number=card.admission_number,
+        # Without an admission number (D124), the pupil's id names the file.
+        admission_number=card.admission_number or str(pupil_id),
         version=card.version,
     )
 

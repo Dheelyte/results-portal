@@ -25,11 +25,20 @@ EXPECTED_ROLE_GRANTS: dict[Action, set[UserRole]] = {
     Action.MANAGE_ACADEMIC_STRUCTURE: {UserRole.ADMIN},
     Action.MANAGE_USERS: {UserRole.ADMIN},
     Action.MANAGE_ASSESSMENT_CONFIG: {UserRole.ADMIN},
-    Action.ENTER_SCORES: {UserRole.TEACHER},
-    Action.WRITE_NARRATIVE: {UserRole.TEACHER},
-    Action.RECORD_ATTENDANCE_AND_GROWTH: {UserRole.TEACHER},
-    Action.SUBMIT_CLASS: {UserRole.TEACHER},
-    Action.REVIEW_CLASS: {UserRole.HEAD_TEACHER},
+    # D123: a head teacher or an admin can be assigned to teach. The grants
+    # are scoped, so without an assignment row none of these lets them act.
+    Action.ENTER_SCORES: {UserRole.TEACHER, UserRole.HEAD_TEACHER, UserRole.ADMIN},
+    Action.WRITE_NARRATIVE: {UserRole.TEACHER, UserRole.HEAD_TEACHER, UserRole.ADMIN},
+    Action.RECORD_ATTENDANCE_AND_GROWTH: {
+        UserRole.TEACHER,
+        UserRole.HEAD_TEACHER,
+        UserRole.ADMIN,
+    },
+    Action.SUBMIT_CLASS: {UserRole.TEACHER, UserRole.HEAD_TEACHER, UserRole.ADMIN},
+    # D125: scoped to one's own class as class teacher.
+    Action.PROPOSE_PUPIL: {UserRole.TEACHER, UserRole.HEAD_TEACHER, UserRole.ADMIN},
+    # The admin reviews only a class a head teacher teaches in (D123).
+    Action.REVIEW_CLASS: {UserRole.HEAD_TEACHER, UserRole.ADMIN},
     Action.SET_HEAD_TEACHER_REMARK: {UserRole.HEAD_TEACHER},
     Action.PUBLISH: {UserRole.ADMIN},
     Action.EDIT_AFTER_PUBLICATION: {UserRole.ADMIN},
@@ -102,8 +111,12 @@ def test_the_head_teacher_sees_the_audit_log_read_only() -> None:
 
 def test_approve_and_publish_stay_in_different_hands() -> None:
     """B2 confirmed the head teacher and the admin are two people. The
-    separation is what gives §4.9's audit trail two signatures; collapsing it
-    would be a product decision, not an accident."""
+    separation is what gives §4.9's audit trail two signatures.
+
+    D123 narrowed it, as a product decision: an admin now holds the review
+    grant, but `policy.review_refusal` lets them use it only on a class a head
+    teacher teaches in, the one class the head teacher can't approve. Every
+    other class still needs both people. The head teacher never publishes."""
     admin = make_user(UserRole.ADMIN)
     head = make_user(UserRole.HEAD_TEACHER)
 
@@ -111,7 +124,7 @@ def test_approve_and_publish_stay_in_different_hands() -> None:
     assert not policy.can(head, Action.PUBLISH)
 
     assert policy.can(admin, Action.PUBLISH)
-    assert not policy.can(admin, Action.REVIEW_CLASS)
+    assert policy.can(admin, Action.REVIEW_CLASS)  # scoped by review_refusal
 
 
 def test_no_staff_role_can_act_as_a_parent() -> None:

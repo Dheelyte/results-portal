@@ -536,3 +536,47 @@ async def test_deleting_what_is_not_there_is_a_404(client: AsyncClient, admin_he
     ):
         response = await client.delete(f"{API}/{path}/{missing}", headers=admin_headers)
         assert response.status_code == 404, path
+
+
+# ---------------------------------------------------------------------------
+# Admission numbers are optional (D124)
+# ---------------------------------------------------------------------------
+
+
+async def test_pupils_need_no_admission_number(client: AsyncClient, admin_headers) -> None:
+    """Two pupils without one never collide; a blank is the same as none."""
+    first = await created(
+        client, admin_headers, "/pupils", {"first_name": "Ada", "last_name": "Obi"}
+    )
+    second = await created(
+        client,
+        admin_headers,
+        "/pupils",
+        {"admission_number": "  ", "first_name": "Ada", "last_name": "Eze"},
+    )
+
+    assert first["admission_number"] is None
+    assert second["admission_number"] is None
+
+
+async def test_a_given_admission_number_is_still_unique(client: AsyncClient, admin_headers) -> None:
+    await a_pupil(client, admin_headers, admission_number="SSHMS/26/009")
+
+    response = await client.post(
+        f"{API}/pupils",
+        headers=admin_headers,
+        json={"admission_number": "SSHMS/26/009", "first_name": "B", "last_name": "C"},
+    )
+
+    assert response.status_code == 409
+
+
+async def test_an_admission_number_can_be_cleared(client: AsyncClient, admin_headers) -> None:
+    pupil = await a_pupil(client, admin_headers)
+
+    response = await client.patch(
+        f"{API}/pupils/{pupil['id']}", headers=admin_headers, json={"admission_number": None}
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["admission_number"] is None

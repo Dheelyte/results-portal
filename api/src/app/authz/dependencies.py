@@ -69,6 +69,7 @@ NarrativeWriter = Annotated[User, Depends(requires(Action.WRITE_NARRATIVE))]
 # subject teacher who happens to teach the class does not record its
 # attendance; `policy.can_record_attendance_and_growth` enforces that half.
 WellbeingRecorder = Annotated[User, Depends(requires(Action.RECORD_ATTENDANCE_AND_GROWTH))]
+PupilProposer = Annotated[User, Depends(requires(Action.PROPOSE_PUPIL))]
 
 # Reading the phrase bank, which every member of staff does and no parent does
 # (§4.6, §8.2, docs/DECISIONS.md D55). Editing it stays `AssessmentConfigAdmin`.

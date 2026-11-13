@@ -118,7 +118,7 @@ class PupilProgress:
 
     pupil_id: uuid.UUID
     name: str
-    admission_number: str
+    admission_number: str | None
     sections_written: int
     sections_total: int
     missing_sections: list[str] = field(default_factory=list)
@@ -133,7 +133,8 @@ class PupilProgress:
             and self.sections_written >= self.sections_total
             and self.has_comment
             and self.has_attendance
-            and self.has_growth
+            # Height and weight are optional (docs/DECISIONS.md D122): many
+            # pupils are never measured, so their absence never blocks.
         )
 
 
@@ -150,8 +151,6 @@ def _pupil_gaps(pupil: "PupilProgress") -> list[str]:
         gaps.append("class teacher's comment")
     if not pupil.has_attendance:
         gaps.append("attendance")
-    if not pupil.has_growth:
-        gaps.append("height and weight")
     return gaps
 
 

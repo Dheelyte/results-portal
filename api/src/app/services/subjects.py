@@ -15,7 +15,7 @@ from collections.abc import Sequence
 from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.authz import scope
+from app.authz import policy, scope
 from app.models import (
     AuditAction,
     Class,
@@ -25,7 +25,6 @@ from app.models import (
     Subject,
     TeachingAssignment,
     User,
-    UserRole,
 )
 from app.services import academic, audit
 from app.services.errors import Conflict, Invalid
@@ -357,8 +356,8 @@ async def _teacher(db: AsyncSession, actor: User, teacher_user_id: uuid.UUID) ->
     record = await one_or_404(
         db, scope.scoped_users(actor).where(User.id == teacher_user_id), "user"
     )
-    if record.role is not UserRole.TEACHER:
-        raise Invalid(f"{record.full_name} is not a teacher, so cannot be assigned a class.")
+    if record.role not in policy.TEACHING_ROLES:
+        raise Invalid(f"{record.full_name} is a parent account, so cannot be assigned a class.")
     if not record.is_active:
         raise Invalid(f"{record.full_name}'s account is deactivated.")
     return record

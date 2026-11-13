@@ -23,6 +23,20 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=1024)
 
 
+class RegisterRequest(BaseModel):
+    """A parent signing themselves up (D126). Nothing is granted by it: the
+    account waits for an admin, who then links it to the parent's children."""
+
+    full_name: str = Field(min_length=1, max_length=200)
+    email: str | None = Field(default=None, max_length=320)
+    phone: str | None = Field(default=None, max_length=40)
+    password: str = Field(min_length=1, max_length=1024)
+
+
+class RegisterResponse(BaseModel):
+    detail: str
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=1024)
     new_password: str = Field(min_length=1, max_length=1024)

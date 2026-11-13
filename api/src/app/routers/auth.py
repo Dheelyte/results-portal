@@ -15,11 +15,19 @@ from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
     MessageResponse,
+    RegisterRequest,
+    RegisterResponse,
     TokenResponse,
     UserRead,
 )
 from app.services import auth as auth_service
-from app.services.auth import AccountLocked, AuthError, InvalidCredentials, IssuedTokens
+from app.services.auth import (
+    AccountLocked,
+    AuthError,
+    AwaitingApproval,
+    InvalidCredentials,
+    IssuedTokens,
+)
 from app.services.ratelimit import TooManyAttempts
 
 logger = logging.getLogger(__name__)
@@ -102,11 +110,51 @@ async def login(
         # 423 Locked says precisely what happened without revealing whether
         # the password was right.
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(exc)) from None
+    except AwaitingApproval as exc:
+        # D126. 403: the credentials are right, the account isn't open yet.
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from None
     except InvalidCredentials as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from None
 
     _set_refresh_cookie(response, tokens)
     return _token_response(tokens)
+
+
+@router.post(
+    "/register",
+    response_model=RegisterResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="A parent asks for an account",
+)
+async def register(
+    payload: RegisterRequest, request: Request, session: DbSession
+) -> RegisterResponse:
+    """Create a parent account that waits for an admin's approval (D126).
+
+    Unauthenticated by design, and so deliberately uninformative: the answer
+    is the same whether or not an account was made, so the form can't be used
+    to find out which phone numbers belong to parents. Rate-limited per IP
+    together with sign-in.
+    """
+    try:
+        await auth_service.register_parent(
+            session,
+            full_name=payload.full_name,
+            email=payload.email,
+            phone=payload.phone,
+            password=payload.password,
+            ip_address=client_ip(request),
+            user_agent=request.headers.get("user-agent"),
+        )
+    except TooManyAttempts as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+            headers={"Retry-After": str(exc.retry_after)},
+        ) from None
+    except AuthError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from None
+    return RegisterResponse(detail=auth_service.REGISTRATION_RECEIVED)
 
 
 @router.post("/refresh", response_model=TokenResponse, summary="Rotate the session")

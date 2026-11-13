@@ -9,8 +9,9 @@ import uuid
 from fastapi import APIRouter, Query, status
 
 from app.auth.dependencies import Context, DbSession
-from app.authz.dependencies import AcademicStructureAdmin, UserAdmin
+from app.authz.dependencies import AcademicStructureAdmin, PupilProposer, UserAdmin
 from app.models import UserRole
+from app.schemas.auth import MessageResponse
 from app.schemas.people import (
     AccountRead,
     CreatedAccountRead,
@@ -19,6 +20,7 @@ from app.schemas.people import (
     GuardianChildrenSave,
     PupilCreate,
     PupilPageRead,
+    PupilProposal,
     PupilRead,
     PupilUpdate,
     UserCreate,
@@ -43,6 +45,9 @@ async def list_pupils(
     academic_session_id: uuid.UUID | None = None,
     search: str | None = Query(default=None, max_length=100),
     include_inactive: bool = False,
+    pending: bool = Query(
+        default=False, description="Only pupils a class teacher added, awaiting approval."
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> PupilPageRead:
@@ -54,6 +59,7 @@ async def list_pupils(
         academic_session_id=academic_session_id,
         search=search,
         include_inactive=include_inactive,
+        pending=pending,
         limit=limit,
         offset=offset,
     )
@@ -138,9 +144,10 @@ async def list_users(
     admin: UserAdmin,
     role: UserRole | None = None,
     include_inactive: bool = True,
+    pending: bool = Query(default=False, description="Only parents waiting for approval."),
 ) -> list[AccountRead]:
     records = await accounts_service.list_users(
-        db, admin, role=role, include_inactive=include_inactive
+        db, admin, role=role, include_inactive=include_inactive, pending=pending
     )
     return [AccountRead.model_validate(record) for record in records]
 
@@ -340,4 +347,105 @@ async def delete_user(
         user_id,
         ip_address=context.ip_address,
         user_agent=context.user_agent,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Pupils added by a class teacher (D125)
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/classes/{class_id}/pupils",
+    response_model=PupilRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a pupil to my class, for an admin to approve",
+)
+async def propose_pupil(
+    class_id: uuid.UUID,
+    payload: PupilProposal,
+    db: DbSession,
+    teacher: PupilProposer,
+    context: Context,
+) -> PupilRead:
+    """The class teacher of this class only. The pupil stays off every list,
+    sheet and card until an admin approves them."""
+    record = await pupils_service.propose_pupil(
+        db,
+        teacher,
+        class_id,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        middle_name=payload.middle_name,
+        sex=payload.sex,
+        date_of_birth=payload.date_of_birth,
+        admission_number=payload.admission_number,
+        ip_address=context.ip_address,
+        user_agent=context.user_agent,
+    )
+    return PupilRead.model_validate(record)
+
+
+@router.get(
+    "/classes/{class_id}/pupils/proposed",
+    response_model=list[PupilRead],
+    summary="Pupils I added that are still waiting",
+)
+async def proposed_pupils(
+    class_id: uuid.UUID, db: DbSession, teacher: PupilProposer
+) -> list[PupilRead]:
+    records = await pupils_service.proposed_for_class(db, teacher, class_id)
+    return [PupilRead.model_validate(record) for record in records]
+
+
+@router.post(
+    "/pupils/{pupil_id}/approve", response_model=PupilRead, summary="Approve an added pupil"
+)
+async def approve_pupil(
+    pupil_id: uuid.UUID,
+    db: DbSession,
+    admin: AcademicStructureAdmin,
+    context: Context,
+) -> PupilRead:
+    """Rejecting is `DELETE /pupils/{id}`: nothing is ever recorded for a
+    pupil who was never approved, so the delete always goes through."""
+    record = await pupils_service.approve_pupil(
+        db, admin, pupil_id, ip_address=context.ip_address, user_agent=context.user_agent
+    )
+    return PupilRead.model_validate(record)
+
+
+# ---------------------------------------------------------------------------
+# Parents who signed themselves up (D126)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/users/{user_id}/approve", response_model=AccountRead, summary="Approve a sign-up")
+async def approve_user(
+    user_id: uuid.UUID, db: DbSession, admin: UserAdmin, context: Context
+) -> AccountRead:
+    record = await accounts_service.approve_user(
+        db, admin, user_id, ip_address=context.ip_address, user_agent=context.user_agent
+    )
+    return AccountRead.model_validate(record)
+
+
+@router.post(
+    "/users/{user_id}/reject",
+    response_model=MessageResponse,
+    summary="Turn a sign-up away",
+)
+async def reject_user(
+    user_id: uuid.UUID, db: DbSession, admin: UserAdmin, context: Context
+) -> MessageResponse:
+    """Deleted where possible, so they can sign up again; otherwise kept
+    deactivated (D121 keeps an account with sign-in attempts on record)."""
+    deleted = await accounts_service.reject_user(
+        db, admin, user_id, ip_address=context.ip_address, user_agent=context.user_agent
+    )
+    return MessageResponse(
+        detail="Sign-up turned away and removed."
+        if deleted
+        else "Sign-up turned away. The account is kept, deactivated, because it has sign-in "
+        "attempts on record."
     )

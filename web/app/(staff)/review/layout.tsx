@@ -12,16 +12,18 @@
  * action is nearly always the next class down.
  */
 
-import { ClipboardCheck } from "lucide-react";
+import { ArrowLeft, ClipboardCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { classItem, REVIEW_ROOT, type NavSection } from "@/components/shell/nav";
+import { classItem, MY_TEACHING, REVIEW_ROOT, type NavSection } from "@/components/shell/nav";
 import { StaffShell } from "@/components/shell/staff-shell";
 import { useHeadApi } from "@/lib/api/use-head";
+import { useAuth } from "@/lib/auth";
 import { useResource } from "@/lib/use-async";
 
 export default function ReviewLayout({ children }: { children: ReactNode }) {
   const api = useHeadApi();
+  const { user } = useAuth();
   const queue = useResource((signal) => api!.queue(undefined, signal), [api], {
     enabled: Boolean(api),
   });
@@ -30,6 +32,9 @@ export default function ReviewLayout({ children }: { children: ReactNode }) {
 
   const sections: NavSection[] = [
     { items: [REVIEW_ROOT] },
+    user?.role === "admin"
+      ? { items: [{ href: "/admin", label: "Back to setup", icon: ArrowLeft }] }
+      : { heading: "Your teaching", items: [MY_TEACHING] },
     ...(waiting.length > 0
       ? [
           {
@@ -45,6 +50,7 @@ export default function ReviewLayout({ children }: { children: ReactNode }) {
   return (
     <StaffShell
       role="head_teacher"
+      alsoFor={["admin"]}
       roleLabel="Head teacher"
       area="Review"
       areaHref="/review"

@@ -28,7 +28,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.authz import scope
@@ -45,6 +45,7 @@ from app.models import (
     Pupil,
     ResultEntry,
     Subject,
+    TeachingAssignment,
     Term,
     TermHalf,
     User,
@@ -97,6 +98,15 @@ class Sheet:
     @property
     def configured(self) -> bool:
         return marks.is_configured(self.maxima, self.period.half)
+
+    @property
+    def entered_columns(self) -> tuple[str, ...]:
+        """What the teacher types here; the rest are carried over (D127)."""
+        return marks.ENTERED_BY_HALF[self.period.half]
+
+    @property
+    def locked_columns(self) -> tuple[str, ...]:
+        return tuple(column for column in self.columns if column not in self.entered_columns)
 
 
 @dataclass(frozen=True)
@@ -425,7 +435,7 @@ async def save_entries(
         raise Conflict("No pupils are enrolled in this class for this session.")
 
     known = {row.pupil.id for row in sheet.rows}
-    errors = _validate(rows, columns=sheet.columns, maxima=sheet.maxima, known_pupils=known)
+    errors = _validate(rows, columns=sheet.entered_columns, maxima=sheet.maxima, known_pupils=known)
     if errors:
         raise RowErrors(
             f"{len(errors)} of {len(rows)} rows were rejected, so nothing was saved.",
@@ -455,6 +465,8 @@ async def save_entries(
         entry.period_average = grading.period_average(
             sheet.period.half, _scores_of(entry, sheet.columns), maxima_map
         )
+        if sheet.period.half is TermHalf.FIRST_HALF:
+            await carry_forward(db, actor, entry, period=sheet.period, class_id=sheet.klass.id)
 
     await db.flush()
 
@@ -494,6 +506,67 @@ async def save_entries(
         class_subject_id=class_subject_id,
         assessment_period_id=assessment_period_id,
     )
+
+
+async def carry_forward(
+    db: AsyncSession,
+    actor: User,
+    entry: ResultEntry,
+    *,
+    period: AssessmentPeriod,
+    class_id: uuid.UUID,
+) -> ResultEntry | None:
+    """Copy a first-half row's CA tests onto the second half (D127).
+
+    The second-half sheet's CA columns are locked to the first half's, so
+    every reader (the grid, the review, the card, the parent's page) finds
+    them where it always has. The second-half average is recomputed, since
+    its CA part just changed. Returns the second-half row, if there is one.
+    """
+    second = await db.scalar(
+        scope.scoped_assessment_periods(actor).where(
+            AssessmentPeriod.term_id == period.term_id,
+            AssessmentPeriod.half == TermHalf.SECOND_HALF,
+        )
+    )
+    if second is None:
+        return None
+    target = await db.scalar(
+        select(ResultEntry).where(
+            ResultEntry.school_id == actor.school_id,
+            ResultEntry.assessment_period_id == second.id,
+            ResultEntry.pupil_id == entry.pupil_id,
+            ResultEntry.class_subject_id == entry.class_subject_id,
+        )
+    )
+    carried = {column: getattr(entry, column) for column in marks.CARRIED_COLUMNS}
+    if target is None:
+        if all(value is None for value in carried.values()):
+            return None
+        target = ResultEntry(
+            school_id=actor.school_id,
+            assessment_period_id=second.id,
+            pupil_id=entry.pupil_id,
+            class_subject_id=entry.class_subject_id,
+        )
+        db.add(target)
+    for column, value in carried.items():
+        setattr(target, column, value)
+    target.ca_test_5 = None
+
+    maxima = await marks.applicable_maxima(
+        db, actor, assessment_period_id=second.id, class_id=class_id
+    )
+    target.period_average = (
+        grading.period_average(
+            TermHalf.SECOND_HALF,
+            _scores_of(target, marks.COLUMNS_BY_HALF[TermHalf.SECOND_HALF]),
+            {column: getattr(maxima, column) for column in marks.ALL_COLUMNS},
+        )
+        if maxima is not None
+        else None
+    )
+    return target
 
 
 def _scores_of(entry: ResultEntry, columns: Sequence[str]) -> dict[str, decimal.Decimal | None]:
@@ -543,6 +616,15 @@ async def my_work(db: AsyncSession, actor: User, *, term_id: uuid.UUID | None = 
             ClassSubject.id.in_(
                 scope.scoped_class_subjects(actor, term.academic_session_id).with_only_columns(
                     ClassSubject.id
+                )
+            ),
+            # Explicitly *mine*. For a teacher the scope already means that;
+            # a head teacher or admin who teaches (D123) has a school-wide
+            # scope, and "my work" must not become every class in the school.
+            ClassSubject.id.in_(
+                select(TeachingAssignment.class_subject_id).where(
+                    TeachingAssignment.school_id == actor.school_id,
+                    TeachingAssignment.teacher_user_id == actor.id,
                 )
             ),
             ClassSubject.academic_session_id == term.academic_session_id,
@@ -630,6 +712,8 @@ async def _entry_counts(
     by_period = {period.id: half for half, period in periods.items()}
     if not by_period:
         return {}
+    first_ids = [pid for pid, half in by_period.items() if half is TermHalf.FIRST_HALF]
+    second_ids = [pid for pid, half in by_period.items() if half is TermHalf.SECOND_HALF]
 
     visible = scope.scoped_result_entries(actor).with_only_columns(ResultEntry.id)
     rows = await rows_of(
@@ -642,7 +726,22 @@ async def _entry_counts(
         .where(
             ResultEntry.id.in_(visible),
             ResultEntry.assessment_period_id.in_(by_period),
-            ResultEntry.ca_test_total.is_not(None),
+            # Counted by what was *typed* on the sheet. The second half's CA
+            # tests arrive from the first (D127), so only its Exam says a
+            # teacher has been at it.
+            or_(
+                and_(
+                    ResultEntry.assessment_period_id.in_(first_ids),
+                    or_(
+                        ResultEntry.ca_test_total.is_not(None),
+                        ResultEntry.mid_term_test.is_not(None),
+                    ),
+                ),
+                and_(
+                    ResultEntry.assessment_period_id.in_(second_ids),
+                    ResultEntry.exam.is_not(None),
+                ),
+            ),
         )
         .group_by(ResultEntry.assessment_period_id, ResultEntry.class_subject_id),
     )

@@ -36,7 +36,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import type { Approval, Card, CardSubjectRow } from "@/lib/api/head";
 import { useHeadApi } from "@/lib/api/use-head";
-import { pupilName } from "@/lib/format";
+import { joinParts, pupilName } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
 
 function plain(value: string | number | null | undefined): string {
@@ -169,7 +169,12 @@ export default function ClassReviewPage() {
         />
       ))}
 
-      {data.state === "submitted" ? (
+      {data.state === "submitted" && data.decision_blocked ? (
+        <Panel title="Approve or return">
+          {/* D123: nobody decides on a class they teach in. */}
+          <Notice tone="info">{data.decision_blocked}</Notice>
+        </Panel>
+      ) : data.state === "submitted" ? (
         <Panel title="Approve or return">
           <div className="flex flex-col gap-4">
             {confirming ? (
@@ -266,9 +271,11 @@ function PupilCard({
   return (
     <Panel
       title={pupilName(card)}
-      description={`${card.admission_number}${card.house_name ? ` · ${card.house_name} House` : ""}${
-        card.no_in_class ? ` · ${card.no_in_class} in class` : ""
-      }`}
+      description={joinParts(
+        card.admission_number,
+        card.house_name && `${card.house_name} House`,
+        card.no_in_class ? `${card.no_in_class} in class` : null,
+      )}
       actions={<Avatar name={pupilName(card)} />}
     >
       <div className="flex flex-col gap-4">

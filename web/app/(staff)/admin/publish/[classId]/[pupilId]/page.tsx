@@ -39,7 +39,7 @@ import {
 import type { AdminApi, CorrectableRow } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { useAdminApi } from "@/lib/api/use-admin";
-import { HALF_LABELS, TERM_LABELS } from "@/lib/format";
+import { HALF_LABELS, joinParts, TERM_LABELS } from "@/lib/format";
 import { useResource } from "@/lib/use-async";
 
 export default function PupilCorrectionsPage() {
@@ -117,7 +117,7 @@ export default function PupilCorrectionsPage() {
         breadcrumbs={crumbs}
         back={back}
         title={report.name}
-        description={`${report.admission_number} · ${termLabel}`}
+        description={joinParts(report.admission_number, termLabel)}
         badge={
           <Badge
             tone={

@@ -57,7 +57,7 @@ class PupilNarrativeRead(BaseModel):
     """One pupil's page, with §8.2's previous/next navigation."""
 
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str
@@ -84,7 +84,7 @@ class NarrativeProgressRead(BaseModel):
     """One line of the class list."""
 
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str
@@ -142,7 +142,7 @@ class AttendanceSave(BaseModel):
 
 class AttendanceRead(BaseModel):
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str
@@ -189,7 +189,7 @@ class GrowthSave(BaseModel):
 
 class GrowthRead(BaseModel):
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str
@@ -229,7 +229,7 @@ class ClassCommentsSave(BaseModel):
 
 class PupilCommentRead(BaseModel):
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str

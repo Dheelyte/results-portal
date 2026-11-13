@@ -163,6 +163,11 @@
             "title": "Must Change Password",
             "type": "boolean"
           },
+          "pending_approval": {
+            "default": false,
+            "title": "Pending Approval",
+            "type": "boolean"
+          },
           "phone": {
             "anyOf": [
               {
@@ -350,8 +355,15 @@
       "AttendanceRead": {
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "first_name": {
             "title": "First Name",
@@ -413,7 +425,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -824,17 +835,6 @@
             ],
             "title": "Ca Test 4"
           },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
-          },
           "ca_test_total": {
             "anyOf": [
               {
@@ -1034,8 +1034,15 @@
         "description": "One pupil's card as the parent will see it, plus the review fields.",
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "attendance": {
             "anyOf": [
@@ -1175,7 +1182,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -1293,8 +1299,15 @@
       "ChildRead": {
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "class_name": {
             "anyOf": [
@@ -1334,7 +1347,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -1767,6 +1779,17 @@
             "title": "Class Name",
             "type": "string"
           },
+          "decision_blocked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Blocked"
+          },
           "promotion_applies": {
             "title": "Promotion Applies",
             "type": "boolean"
@@ -2169,17 +2192,6 @@
             ],
             "title": "Ca Test 4"
           },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
-          },
           "ca_test_total": {
             "anyOf": [
               {
@@ -2548,21 +2560,6 @@
             ],
             "title": "Ca Test 4"
           },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
-          },
           "exam": {
             "anyOf": [
               {
@@ -2610,8 +2607,15 @@
         "description": "One line of the grid as rendered.",
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "ca_test_1": {
             "anyOf": [
@@ -2656,17 +2660,6 @@
               }
             ],
             "title": "Ca Test 4"
-          },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
           },
           "ca_test_total": {
             "anyOf": [
@@ -2772,7 +2765,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -2842,21 +2834,6 @@
               }
             ],
             "title": "Ca Test 4"
-          },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
           },
           "exam": {
             "anyOf": [
@@ -3098,8 +3075,15 @@
       "GrowthRead": {
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "first_name": {
             "title": "First Name",
@@ -3172,7 +3156,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -3461,17 +3444,6 @@
             ],
             "title": "Ca Test 4"
           },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
-          },
           "class_id": {
             "anyOf": [
               {
@@ -3520,7 +3492,6 @@
           "ca_test_2",
           "ca_test_3",
           "ca_test_4",
-          "ca_test_5",
           "mid_term_test",
           "exam"
         ],
@@ -3589,21 +3560,6 @@
               }
             ],
             "title": "Ca Test 4"
-          },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
           },
           "class_id": {
             "anyOf": [
@@ -3700,17 +3656,6 @@
               }
             ],
             "title": "Ca Test 4"
-          },
-          "ca_test_5": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 5"
           },
           "exam": {
             "anyOf": [
@@ -3854,8 +3799,15 @@
         "description": "One line of the class list.",
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "first_name": {
             "title": "First Name",
@@ -3896,7 +3848,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name",
           "written",
@@ -4161,8 +4112,15 @@
         "description": "The card as the parent sees it \u2014 the same assembly the PDF renders.\n\nOne source for both (`services/reportcard.py`), so the page a parent\nreads and the PDF they download cannot disagree.",
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "class_name": {
             "title": "Class Name",
@@ -4512,7 +4470,6 @@
           "subtitle",
           "school_name",
           "pupil_name",
-          "admission_number",
           "class_name",
           "session_name"
         ],
@@ -4862,8 +4819,15 @@
       "PupilCommentRead": {
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "comment": {
             "anyOf": [
@@ -4903,7 +4867,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -4926,10 +4889,18 @@
             "title": "Academic Session Id"
           },
           "admission_number": {
-            "maxLength": 50,
-            "minLength": 1,
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional (D124). Unique within the school when given.",
+            "title": "Admission Number"
           },
           "class_id": {
             "anyOf": [
@@ -5023,7 +4994,6 @@
           }
         },
         "required": [
-          "admission_number",
           "first_name",
           "last_name"
         ],
@@ -5071,8 +5041,15 @@
         "description": "One pupil's page, with \u00a78.2's previous/next navigation.",
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "class_id": {
             "format": "uuid",
@@ -5169,7 +5146,6 @@
         },
         "required": [
           "pupil_id",
-          "admission_number",
           "first_name",
           "last_name",
           "class_id",
@@ -5221,8 +5197,15 @@
         "description": "One pupil's four class-teacher tasks.",
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "has_attendance": {
             "title": "Has Attendance",
@@ -5268,7 +5251,6 @@
         "required": [
           "pupil_id",
           "name",
-          "admission_number",
           "sections_written",
           "sections_total",
           "has_comment",
@@ -5279,11 +5261,93 @@
         "title": "PupilProgressRead",
         "type": "object"
       },
+      "PupilProposal": {
+        "description": "What a class teacher can give for a new pupil (D125). The house and\nthe class are the admin's: the class is the teacher's own.",
+        "properties": {
+          "admission_number": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "first_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "sex": {
+            "anyOf": [
+              {
+                "enum": [
+                  "M",
+                  "F"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sex"
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name"
+        ],
+        "title": "PupilProposal",
+        "type": "object"
+      },
       "PupilRead": {
         "properties": {
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "date_of_birth": {
             "anyOf": [
@@ -5337,6 +5401,11 @@
             ],
             "title": "Middle Name"
           },
+          "pending_approval": {
+            "default": false,
+            "title": "Pending Approval",
+            "type": "boolean"
+          },
           "sex": {
             "anyOf": [
               {
@@ -5351,7 +5420,6 @@
         },
         "required": [
           "id",
-          "admission_number",
           "first_name",
           "middle_name",
           "last_name",
@@ -5484,6 +5552,17 @@
             "title": "Class Name",
             "type": "string"
           },
+          "decision_blocked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision Blocked"
+          },
           "remarks_written": {
             "title": "Remarks Written",
             "type": "integer"
@@ -5538,6 +5617,66 @@
           "remarks_written"
         ],
         "title": "QueueEntryRead",
+        "type": "object"
+      },
+      "RegisterRequest": {
+        "description": "A parent signing themselves up (D126). Nothing is granted by it: the\naccount waits for an admin, who then links it to the parent's children.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "full_name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Full Name",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "title": "Password",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          }
+        },
+        "required": [
+          "full_name",
+          "password"
+        ],
+        "title": "RegisterRequest",
+        "type": "object"
+      },
+      "RegisterResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "RegisterResponse",
         "type": "object"
       },
       "RemarkSaveRow": {
@@ -5626,8 +5765,15 @@
             "title": "Acknowledged At"
           },
           "admission_number": {
-            "title": "Admission Number",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
           },
           "name": {
             "title": "Name",
@@ -5674,7 +5820,6 @@
           "report_id",
           "pupil_id",
           "name",
-          "admission_number",
           "state"
         ],
         "title": "ReportStateRead",
@@ -5870,6 +6015,13 @@
           },
           "half": {
             "$ref": "#/components/schemas/TermHalf"
+          },
+          "locked_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Locked Columns",
+            "type": "array"
           },
           "maxima": {
             "anyOf": [
@@ -7302,6 +7454,48 @@
         ]
       }
     },
+    "/api/v1/auth/register": {
+      "post": {
+        "description": "Create a parent account that waits for an admin's approval (D126).\n\nUnauthenticated by design, and so deliberately uninformative: the answer\nis the same whether or not an account was made, so the form can't be used\nto find out which phone numbers belong to parents. Rate-limited per IP\ntogether with sign-in.",
+        "operationId": "register_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "A parent asks for an account",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/api/v1/class-subjects/{class_subject_id}/entries": {
       "get": {
         "description": "The grid: the class roll, the scores so far, and the column maxima.",
@@ -8633,6 +8827,117 @@
         "summary": "Publish Class",
         "tags": [
           "admin: publication"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/pupils": {
+      "post": {
+        "description": "The class teacher of this class only. The pupil stays off every list,\nsheet and card until an admin approves them.",
+        "operationId": "propose_pupil_api_v1_classes__class_id__pupils_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PupilProposal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Add a pupil to my class, for an admin to approve",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/classes/{class_id}/pupils/proposed": {
+      "get": {
+        "operationId": "proposed_pupils_api_v1_classes__class_id__pupils_proposed_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PupilRead"
+                  },
+                  "title": "Response Proposed Pupils Api V1 Classes  Class Id  Pupils Proposed Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Pupils I added that are still waiting",
+        "tags": [
+          "admin: people"
         ]
       }
     },
@@ -10404,6 +10709,18 @@
             }
           },
           {
+            "description": "Only pupils a class teacher added, awaiting approval.",
+            "in": "query",
+            "name": "pending",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only pupils a class teacher added, awaiting approval.",
+              "title": "Pending",
+              "type": "boolean"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -10598,6 +10915,55 @@
           }
         ],
         "summary": "Update a pupil",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/pupils/{pupil_id}/approve": {
+      "post": {
+        "description": "Rejecting is `DELETE /pupils/{id}`: nothing is ever recorded for a\npupil who was never approved, so the delete always goes through.",
+        "operationId": "approve_pupil_api_v1_pupils__pupil_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pupil_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Pupil Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PupilRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve an added pupil",
         "tags": [
           "admin: people"
         ]
@@ -11944,6 +12310,18 @@
               "title": "Include Inactive",
               "type": "boolean"
             }
+          },
+          {
+            "description": "Only parents waiting for approval.",
+            "in": "query",
+            "name": "pending",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Only parents waiting for approval.",
+              "title": "Pending",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -12122,6 +12500,103 @@
           }
         ],
         "summary": "Update an account",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/approve": {
+      "post": {
+        "operationId": "approve_user_api_v1_users__user_id__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Approve a sign-up",
+        "tags": [
+          "admin: people"
+        ]
+      }
+    },
+    "/api/v1/users/{user_id}/reject": {
+      "post": {
+        "description": "Deleted where possible, so they can sign up again; otherwise kept\ndeactivated (D121 keeps an account with sign-in attempts on record).",
+        "operationId": "reject_user_api_v1_users__user_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Turn a sign-up away",
         "tags": [
           "admin: people"
         ]

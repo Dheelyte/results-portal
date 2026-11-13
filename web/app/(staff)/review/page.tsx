@@ -177,6 +177,7 @@ export default function ReviewQueuePage() {
             <Badge tone={STATE_TONES[entry.state] ?? "neutral"}>
               {STATE_LABELS[entry.state] ?? entry.state}
             </Badge>
+            {entry.decision_blocked ? <Badge tone="neutral">An admin decides</Badge> : null}
             <Badge tone={entry.remarks_written >= entry.roll ? "good" : "neutral"}>
               {entry.remarks_written} of {entry.roll} remarks written
             </Badge>

@@ -32,7 +32,11 @@ from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
 
-CA_COLUMNS = ("ca_test_1", "ca_test_2", "ca_test_3", "ca_test_4", "ca_test_5")
+# Four CA tests (D127). CA Test 5 was retired at the school's request. Its
+# column stays in `result_entries` and `marks_obtainable`, unread, so the
+# scores already approved under it keep the CA Test Total they were approved
+# with; nothing new is ever entered in it.
+CA_COLUMNS = ("ca_test_1", "ca_test_2", "ca_test_3", "ca_test_4")
 
 # Which columns each sheet carries (§1.2). The first-half sheet ends in Mid
 # Term Test, the second-half sheet in Exam; neither has the other's column, so
@@ -41,6 +45,16 @@ COLUMNS_BY_HALF: dict[TermHalf, tuple[str, ...]] = {
     TermHalf.FIRST_HALF: (*CA_COLUMNS, "mid_term_test"),
     TermHalf.SECOND_HALF: (*CA_COLUMNS, "exam"),
 }
+
+# What a teacher types on each sheet (D127). The second half's CA tests are
+# the first half's, carried over and locked: the teacher enters only the
+# Exam. `COLUMNS_BY_HALF` stays the shape of the sheet, for display and for
+# the average; this is the shape of the input.
+ENTERED_BY_HALF: dict[TermHalf, tuple[str, ...]] = {
+    TermHalf.FIRST_HALF: (*CA_COLUMNS, "mid_term_test"),
+    TermHalf.SECOND_HALF: ("exam",),
+}
+CARRIED_COLUMNS = CA_COLUMNS
 
 ALL_COLUMNS = (*CA_COLUMNS, "mid_term_test", "exam")
 
@@ -90,9 +104,15 @@ async def save_marks_obtainable(
     if class_id is not None:
         await academic.get_class(db, actor, class_id)
 
-    allowed = COLUMNS_BY_HALF[period.half]
+    allowed = ENTERED_BY_HALF[period.half]
     supplied = {column: value for column, value in values.items() if value is not None}
 
+    if period.half is TermHalf.SECOND_HALF:
+        # Carried over from the first half (D127), so anything sent for them
+        # is not this sheet's to set; the first half's values are used below.
+        supplied = {
+            column: value for column, value in supplied.items() if column not in CARRIED_COLUMNS
+        }
     wrong_half = sorted(set(supplied) - set(allowed))
     if wrong_half:
         other = "Exam" if period.half is TermHalf.FIRST_HALF else "Mid Term Test"
@@ -136,10 +156,17 @@ async def save_marks_obtainable(
         )
         db.add(record)
 
-    # Every column is written, including the ones left out, so a cleared value
-    # clears. A half-updated maxima row is worse than none.
-    for column in ALL_COLUMNS:
+    # Every column this sheet owns is written, including the ones left out, so
+    # a cleared value clears. A half-updated maxima row is worse than none.
+    for column in allowed:
         setattr(record, column, supplied.get(column))
+    record.ca_test_5 = None  # retired (D127)
+    if period.half is TermHalf.FIRST_HALF:
+        await _carry_ca_maxima(db, actor, period, class_id=class_id, source=record)
+    else:
+        first = await _sibling_maxima(db, actor, period, TermHalf.FIRST_HALF, class_id=class_id)
+        for column in CARRIED_COLUMNS:
+            setattr(record, column, getattr(first, column) if first is not None else None)
 
     async with integrity_guard(db, "Marks obtainable are already set for that sheet."):
         await db.flush()
@@ -167,6 +194,53 @@ async def save_marks_obtainable(
     await db.commit()
     await db.refresh(record)
     return record
+
+
+async def _sibling_maxima(
+    db: AsyncSession,
+    actor: User,
+    period: AssessmentPeriod,
+    half: TermHalf,
+    *,
+    class_id: uuid.UUID | None,
+) -> MarksObtainable | None:
+    """The same row (school-wide, or this class's) on the term's other sheet."""
+    other = await db.scalar(
+        scope.scoped_assessment_periods(actor).where(
+            AssessmentPeriod.term_id == period.term_id, AssessmentPeriod.half == half
+        )
+    )
+    if other is None:
+        return None
+    return await db.scalar(
+        scope.scoped_marks_obtainable(actor).where(
+            MarksObtainable.assessment_period_id == other.id,
+            MarksObtainable.class_id.is_(None)
+            if class_id is None
+            else MarksObtainable.class_id == class_id,
+        )
+    )
+
+
+async def _carry_ca_maxima(
+    db: AsyncSession,
+    actor: User,
+    period: AssessmentPeriod,
+    *,
+    class_id: uuid.UUID | None,
+    source: MarksObtainable,
+) -> None:
+    """Copy the first half's CA maxima onto the second half's row (D127).
+
+    Only an existing second-half row is updated: a row that doesn't exist yet
+    picks the values up when the admin sets its Exam maximum.
+    """
+    target = await _sibling_maxima(db, actor, period, TermHalf.SECOND_HALF, class_id=class_id)
+    if target is None:
+        return
+    for column in CARRIED_COLUMNS:
+        setattr(target, column, getattr(source, column))
+    target.ca_test_5 = None
 
 
 async def _refuse_if_it_would_invalidate_entered_scores(

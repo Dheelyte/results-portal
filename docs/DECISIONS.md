@@ -2876,3 +2876,140 @@ has Edit and Delete in the same place (`components/manage.tsx`). Delete
 always confirms, and shows the server's refusal in the dialog in place of
 the button. The roll gained "Show deactivated", so a pupil who has left can
 be found and reactivated.
+
+### D122 — Height and weight are optional; pg_dump 17 for Supabase
+
+**Height and weight no longer block submission.** The school asked for
+them to be optional. Before this, R10's gate listed "height and weight" for
+any pupil without a growth record, so a class couldn't go to the head
+teacher until every child had been measured. Each measurement was already
+optional when saving; only the gate required them. The card still prints
+whatever was recorded, and the progress page shows a badge for a pupil who
+has measurements, with no warning for one who doesn't.
+
+**The pre-publish dump failed with "pg_dump exited 1"** once production
+moved to Supabase. Supabase runs PostgreSQL 17, and the image's 16 client
+refuses a newer server. `PG_MAJOR` is now 17. A newer pg_dump reads older
+servers, so the local `postgres:16` container is still covered.
+`REQUIRE_PREPUBLISH_BACKUP=false` remains the documented way to publish
+while the dump is broken (RUNBOOK). Supabase's own daily backups are the net
+underneath it.
+
+### D123 — A head teacher or an admin can teach; nobody approves a class they teach in
+
+Asked for by the school: in a small school the head teacher, or the
+administrator, also takes a class or a subject.
+
+- **Who can be assigned.** `policy.TEACHING_ROLES`: teacher, head teacher,
+  admin. Only a parent account is refused, for class teacher, subject
+  teacher and narrative section alike.
+- **What it grants.** Head teacher and admin hold the four teaching actions
+  (enter scores, write narrative, record attendance and growth, submit).
+  All four are **scoped**: `can_enter_scores` and the rest look for an
+  assignment row naming the person, so an unassigned admin still enters
+  nothing. `my_work` now filters by `teacher_user_id = me` explicitly,
+  because a school-wide scope would otherwise list every class as "mine".
+- **Who reviews.** Option 1a: nobody approves or returns a class they teach
+  in, as class teacher or as subject teacher. `policy.review_refusal`
+  decides. The head teacher sees such a class in their queue, marked "An
+  admin decides", with the buttons replaced by the reason. An admin holds
+  `REVIEW_CLASS` but may use it **only** on a class some head teacher
+  teaches in, and their queue lists only those.
+- **What this costs.** B2's separation of approve and publish, the two
+  signatures of §4.9, no longer holds for those handed-over classes: the
+  admin approves and then publishes them. Every other class still needs
+  both people. `test_approve_and_publish_stay_in_different_hands` records
+  the narrower rule.
+- **Screens.** The teaching area now also serves head teachers and admins,
+  and each has a "My teaching" link. Admins have a "Reviews" link. The
+  class page's dropdowns list every staff account, with the role shown for
+  non-teachers.
+
+### D124 — Admission numbers are optional
+
+The school doesn't use them. `pupils.admission_number` is nullable
+(migration 0005). The unique constraint stays, so a number that *is* given
+is still unique in the school, and Postgres lets any number of NULLs past
+it. Blank is stored as NULL, so two blanks never collide. The card's PDF
+key (§9) falls back to the pupil's id. Screens show "—", or leave the part
+out of "number · class" lines (`joinParts`). Kept rather than dropped
+(option 5a), so a school that wants them later loses nothing.
+
+### D125 — A class teacher adds pupils; an admin approves each one
+
+`POST /classes/{id}/pupils`, for that class's class teacher only
+(`Action.PROPOSE_PUPIL`, scoped by `is_class_teacher_of`), creates the pupil
+**inactive** with `pending_approval` set and enrols them in the class.
+Inactive is what already keeps a pupil off every register, score sheet and
+card, so nothing downstream needed a new filter. The flag says why, so a
+pupil who has left is never confused with one waiting. Until approval only
+that teacher sees them (option 3a), on the class's "Add pupils" tab. No
+parent can be linked to them. The admin approves from the dashboard or the
+Pupils page (`POST /pupils/{id}/approve`). Rejecting is the ordinary
+delete, which always succeeds because nothing is ever recorded for a pupil
+who was never active. Who proposed is kept in `pupils.proposed_by` (SET NULL
+on delete). The house is the admin's to set.
+
+### D126 — Parents can ask for an account; it can't sign in until approved
+
+This reverses §5.1's "never self-registered", at the school's request, and
+keeps what that rule protected:
+
+- **Nothing is granted by signing up.** The account is a parent account,
+  inactive and `pending_approval`. Every request refuses it, and children
+  are still linked only by an admin, only after approval.
+- **Sign-in says why**, but only once the password is right: "waiting for
+  the school to approve it" (403). A wrong password gets the usual 401, so
+  the message reveals nothing to someone who doesn't own the account.
+- **The form can't be used to probe for numbers.** `POST /auth/register`
+  answers 202 with the same sentence whether or not an account was made.
+  An email or phone already in use is skipped silently.
+- **It can't be used to flood the queue.** It shares login's per-IP rate
+  limit and Argon2 cost.
+- **Rejecting** deletes the account if it has never tried to sign in, so
+  the person can apply again. Otherwise D121 keeps it, deactivated, because
+  the attempts are on record in their name.
+
+The admin dashboard has a "Waiting for your approval" panel for both D125
+and D126. It is hidden when empty.
+
+### D127 — Four CA tests, carried from the first half to the second
+
+At the school's request, two changes to §1.2's sheets:
+
+**CA Test 5 is retired.** `marks.CA_COLUMNS` is four tests. The sheets,
+the card (its golden text was regenerated), the review and every request
+shape lose the fifth column. The database column stays, in both
+`result_entries` and `marks_obtainable`, so that an **approved** row keeps
+the CA Test Total it was approved with. `ca_test_total` is generated over
+all five, and nothing new is ever written to the fifth.
+
+**The second half's CA Tests 1–4 are the first half's, locked.** One CA
+score per test per term, typed once:
+
+- `marks.ENTERED_BY_HALF` is what a teacher types: CA 1–4 and Mid Term Test
+  on the first half, **Exam alone** on the second. `COLUMNS_BY_HALF` is
+  still the shape of each sheet, for display and for the average.
+- A first-half save copies CA 1–4 onto the pupil's second-half row
+  (`results.carry_forward`), creating that row if needed, and recomputes
+  its average. Every reader (grid, review, card, parent page) finds the
+  values where it always did. A second-half save that sends a CA column is
+  refused, and the grid renders those columns read-only, labelled "from 1st
+  half".
+- Marks Obtainable follows the same rule. A second-half row takes its CA
+  maximums from the **matching** first-half row (same class, or
+  school-wide), and anything sent for them is ignored. So a term configured
+  per class needs per-class rows on both halves.
+- A post-publication correction (R13) of a second-half CA test is refused:
+  correct the first half, and the correction carries over and regrades the
+  second-half row against its snapshot.
+- "Entered" counts on a teacher's list count what was typed. On the second
+  half that means only the Exam, since carried CA isn't a teacher's work.
+
+**Existing data** (migration 0007) is changed only where no grade is frozen
+(`grade_letter IS NULL`, the test `recompute_averages` uses). CA Test 5 is
+cleared, second-half CA 1–4 are copied from the first half, and
+second-half CA maximums are copied in terms with nothing approved. Approved
+and published results are untouched. The migration can't be reversed, so
+take a backup first, and run `python -m app.recompute_averages` afterwards,
+because the stored averages of the changed rows are stale.

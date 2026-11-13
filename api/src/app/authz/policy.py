@@ -43,6 +43,8 @@ class Action(enum.StrEnum):
     WRITE_NARRATIVE = "write_narrative"
     RECORD_ATTENDANCE_AND_GROWTH = "record_attendance_and_growth"
     SUBMIT_CLASS = "submit_class"
+    # Add a pupil to one's own class, pending an admin's approval (D125).
+    PROPOSE_PUPIL = "propose_pupil"
 
     # Head teacher
     REVIEW_CLASS = "review_class"
@@ -70,6 +72,23 @@ class Action(enum.StrEnum):
     VIEW_AUDIT_LOG = "view_audit_log"
 
 
+# The teaching actions, which a head teacher or an admin also holds so that
+# either can be assigned a class or a subject (docs/DECISIONS.md D123). All
+# four are scoped: the role grant lets a person act only where an assignment
+# row names them, so an admin with no class still enters no scores.
+TEACHING_ACTIONS = frozenset(
+    {
+        Action.ENTER_SCORES,
+        Action.WRITE_NARRATIVE,
+        Action.RECORD_ATTENDANCE_AND_GROWTH,
+        Action.SUBMIT_CLASS,
+        Action.PROPOSE_PUPIL,
+    }
+)
+
+# Roles that may be assigned as class teacher or subject teacher.
+TEACHING_ROLES = frozenset({UserRole.TEACHER, UserRole.HEAD_TEACHER, UserRole.ADMIN})
+
 # The matrix, as data. A role may perform an action only if it appears here —
 # and for the scoped actions, only if the matching `can_*` check also passes.
 #
@@ -84,6 +103,10 @@ ROLE_ACTIONS: dict[UserRole, frozenset[Action]] = {
             Action.EDIT_AFTER_PUBLICATION,
             Action.USE_COMMENT_BANK,
             Action.VIEW_AUDIT_LOG,
+            # Only for a class a head teacher teaches in, so the head teacher
+            # never approves their own work (D123, `review_refusal`).
+            Action.REVIEW_CLASS,
+            *TEACHING_ACTIONS,
         }
     ),
     UserRole.HEAD_TEACHER: frozenset(
@@ -94,6 +117,7 @@ ROLE_ACTIONS: dict[UserRole, frozenset[Action]] = {
             Action.USE_COMMENT_BANK,
             # Read-only; the admin's is the full surface.
             Action.VIEW_AUDIT_LOG,
+            *TEACHING_ACTIONS,
         }
     ),
     UserRole.TEACHER: frozenset(
@@ -102,6 +126,7 @@ ROLE_ACTIONS: dict[UserRole, frozenset[Action]] = {
             Action.WRITE_NARRATIVE,
             Action.RECORD_ATTENDANCE_AND_GROWTH,
             Action.SUBMIT_CLASS,
+            Action.PROPOSE_PUPIL,
             Action.USE_COMMENT_BANK,
         }
     ),
@@ -122,6 +147,7 @@ SCOPED_ACTIONS = frozenset(
         Action.WRITE_NARRATIVE,
         Action.RECORD_ATTENDANCE_AND_GROWTH,
         Action.SUBMIT_CLASS,
+        Action.PROPOSE_PUPIL,
         Action.VIEW_OWN_CHILDREN_REPORTS,
         Action.ACKNOWLEDGE_REPORT,
     }
@@ -267,6 +293,73 @@ async def can_submit_class(
     if not can(user, Action.SUBMIT_CLASS):
         return False
     return await is_class_teacher_of(db, user, class_id, academic_session_id)
+
+
+async def teaches_in_class(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    school_id: uuid.UUID,
+    class_id: uuid.UUID,
+    academic_session_id: uuid.UUID,
+) -> bool:
+    """Whether this person is the class teacher, or teaches any subject, in this class."""
+    as_class_teacher = exists().where(
+        ClassTeacher.school_id == school_id,
+        ClassTeacher.class_id == class_id,
+        ClassTeacher.academic_session_id == academic_session_id,
+        ClassTeacher.teacher_user_id == user_id,
+    )
+    as_subject_teacher = exists().where(
+        TeachingAssignment.school_id == school_id,
+        TeachingAssignment.teacher_user_id == user_id,
+        TeachingAssignment.class_subject_id.in_(
+            select(ClassSubject.id).where(
+                ClassSubject.class_id == class_id,
+                ClassSubject.academic_session_id == academic_session_id,
+            )
+        ),
+    )
+    return bool(await db.scalar(select(as_class_teacher | as_subject_teacher)))
+
+
+async def review_refusal(
+    db: AsyncSession, user: User, class_id: uuid.UUID, academic_session_id: uuid.UUID
+) -> str | None:
+    """Why this person may not approve or return this class, or None if they may.
+
+    Nobody decides on a class they teach in (D123). The head teacher reviews
+    every other class. An admin reviews **only** a class some head teacher
+    teaches in, which is exactly the class the head teacher has to hand over.
+    """
+    if not can(user, Action.REVIEW_CLASS):
+        return "Your role does not review classes."
+    if await teaches_in_class(db, user.id, user.school_id, class_id, academic_session_id):
+        return "You teach in this class, so you can't approve or return it. " + (
+            "An admin decides on it instead."
+            if user.role is UserRole.HEAD_TEACHER
+            else "Another admin or the head teacher decides on it."
+        )
+    if user.role is UserRole.ADMIN:
+        heads = select(User.id).where(
+            User.school_id == user.school_id,
+            User.role == UserRole.HEAD_TEACHER,
+            User.is_active.is_(True),
+        )
+        for (head_id,) in (await db.execute(heads)).all():
+            if await teaches_in_class(db, head_id, user.school_id, class_id, academic_session_id):
+                return None
+        return (
+            "The head teacher reviews this class. An admin decides only on a class "
+            "the head teacher teaches in."
+        )
+    return None
+
+
+async def can_propose_pupil(db: AsyncSession, user: User, class_id: uuid.UUID) -> bool:
+    """D125: the class teacher of this class, and only them, adds pupils to it."""
+    if not can(user, Action.PROPOSE_PUPIL):
+        return False
+    return await is_class_teacher_of(db, user, class_id)
 
 
 async def can_view_pupil(db: AsyncSession, user: User, pupil_id: uuid.UUID) -> bool:

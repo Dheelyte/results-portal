@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.authz import scope
+from app.authz import policy, scope
 from app.models import (
     AttendanceRecord,
     AuditAction,
@@ -30,7 +30,7 @@ from app.models import (
     User,
 )
 from app.services import academic, audit
-from app.services.errors import Invalid
+from app.services.errors import Conflict, Invalid, NotFound
 from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, integrity_guard, one_or_404
 
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 # No names and no admission number: CLAUDE.md keeps a pupil's identity out of
 # the audit log, and the id in `entity_id` resolves for anyone entitled to.
-PUPIL_AUDIT_FIELDS = ("house_id", "sex", "is_active")
+PUPIL_AUDIT_FIELDS = ("house_id", "sex", "is_active", "pending_approval")
 
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
@@ -60,6 +60,7 @@ async def list_pupils(
     academic_session_id: uuid.UUID | None = None,
     search: str | None = None,
     include_inactive: bool = False,
+    pending: bool = False,
     limit: int = DEFAULT_PAGE_SIZE,
     offset: int = 0,
 ) -> PupilPage:
@@ -73,7 +74,10 @@ async def list_pupils(
     offset = max(0, offset)
 
     stmt = scope.scoped_pupils(actor)
-    if not include_inactive:
+    if pending:
+        # Only those waiting for approval (D125), whatever else is asked.
+        stmt = stmt.where(Pupil.pending_approval.is_(True))
+    elif not include_inactive:
         stmt = stmt.where(Pupil.is_active.is_(True))
 
     if class_id is not None:
@@ -117,7 +121,7 @@ async def create_pupil(
     db: AsyncSession,
     actor: User,
     *,
-    admission_number: str,
+    admission_number: str | None = None,
     first_name: str,
     last_name: str,
     middle_name: str | None = None,
@@ -136,9 +140,8 @@ async def create_pupil(
     finalised, but a pupil with no enrolment appears in nothing — no class
     list, no score grid, no report. `setup.term_readiness` reports them.
     """
-    admission_number = admission_number.strip()
-    if not admission_number:
-        raise Invalid("Give an admission number. It identifies the pupil on every card.")
+    # Optional (D124): blank is the same as none, so two blanks never collide.
+    admission_number = (admission_number or "").strip() or None
     if not first_name.strip() or not last_name.strip():
         raise Invalid("Give the pupil's first and last name.")
     if sex is not None and sex not in ("M", "F"):
@@ -379,9 +382,10 @@ async def update_pupil(
         if isinstance(value, str):
             value = value.strip() or None
         setattr(record, field, value)
+    # Ticking Active on a pupil who was waiting is approving them (D125).
+    if record.is_active:
+        record.pending_approval = False
 
-    if not record.admission_number:
-        raise Invalid("Give an admission number. It identifies the pupil on every card.")
     if not record.first_name or not record.last_name:
         raise Invalid("Give the pupil's first and last name.")
     if record.sex is not None and record.sex not in ("M", "F"):
@@ -471,3 +475,119 @@ async def delete_pupil(
         user_agent=user_agent,
     )
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Pupils added by a class teacher, approved by an admin (D125)
+# ---------------------------------------------------------------------------
+
+
+async def propose_pupil(
+    db: AsyncSession,
+    actor: User,
+    class_id: uuid.UUID,
+    *,
+    first_name: str,
+    last_name: str,
+    middle_name: str | None = None,
+    sex: str | None = None,
+    date_of_birth: dt.date | None = None,
+    admission_number: str | None = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Pupil:
+    """A class teacher adds a pupil to their own class, pending approval.
+
+    The pupil is enrolled at once, so approval is one click, but is inactive
+    until then: no class list, score sheet or card includes them, and no
+    parent can be linked to them.
+    """
+    if not await policy.can_propose_pupil(db, actor, class_id):
+        # As elsewhere, outside the caller's scope is a 404, not a 403.
+        raise NotFound("class not found.")
+    if not first_name.strip() or not last_name.strip():
+        raise Invalid("Give the pupil's first and last name.")
+    if sex is not None and sex not in ("M", "F"):
+        raise Invalid("Sex must be M or F, as the card records it.")
+
+    record = Pupil(
+        school_id=actor.school_id,
+        admission_number=(admission_number or "").strip() or None,
+        first_name=first_name.strip(),
+        middle_name=(middle_name or "").strip() or None,
+        last_name=last_name.strip(),
+        sex=sex,
+        date_of_birth=date_of_birth,
+        is_active=False,
+        pending_approval=True,
+        proposed_by=actor.id,
+    )
+    db.add(record)
+    async with integrity_guard(db, "A pupil with that admission number already exists."):
+        await db.flush()
+
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.PUPIL_PROPOSED,
+        entity_type="pupil",
+        entity_id=record.id,
+        after=audit.snapshot(record, PUPIL_AUDIT_FIELDS) | {"class_id": str(class_id)},
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await _enrol(db, actor, record, class_id=class_id, joined_on=None, academic_session_id=None)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def proposed_for_class(db: AsyncSession, actor: User, class_id: uuid.UUID) -> Sequence[Pupil]:
+    """The pupils still waiting in this class, for its class teacher."""
+    if not await policy.can_propose_pupil(db, actor, class_id):
+        raise NotFound("class not found.")
+    session_id = await academic.resolve_session_id(db, actor, None)
+    return await all_of(
+        db,
+        select(Pupil)
+        .join(Enrollment, Enrollment.pupil_id == Pupil.id)
+        .where(
+            Pupil.school_id == actor.school_id,
+            Pupil.pending_approval.is_(True),
+            Enrollment.class_id == class_id,
+            Enrollment.academic_session_id == session_id,
+        )
+        .order_by(Pupil.created_at),
+    )
+
+
+async def approve_pupil(
+    db: AsyncSession,
+    actor: User,
+    pupil_id: uuid.UUID,
+    *,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+) -> Pupil:
+    """An admin accepts a pupil a class teacher added. Rejecting is deleting:
+    nothing has been recorded for a pupil who was never active."""
+    record = await get_pupil(db, actor, pupil_id)
+    if not record.pending_approval:
+        raise Conflict("This pupil isn't waiting for approval.")
+    record.pending_approval = False
+    record.is_active = True
+    await audit.record(
+        db,
+        school_id=actor.school_id,
+        actor_id=actor.id,
+        action=AuditAction.PUPIL_APPROVED,
+        entity_type="pupil",
+        entity_id=record.id,
+        after=audit.snapshot(record, PUPIL_AUDIT_FIELDS),
+        ip_address=ip_address,
+        user_agent=user_agent,
+    )
+    await db.commit()
+    await db.refresh(record)
+    return record

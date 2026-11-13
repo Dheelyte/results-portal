@@ -117,6 +117,7 @@ def _read(review: review_service.ClassReview) -> ClassReviewRead:
         state=review.state,
         return_note=review.return_note,
         promotion_applies=review.promotion_applies,
+        decision_blocked=review.decision_blocked,
         cards=[
             _card(card, times_school_opened=review.term.times_school_opened)
             for card in review.cards

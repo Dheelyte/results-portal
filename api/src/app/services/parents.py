@@ -62,7 +62,7 @@ class Child:
     """One of the caller's children (§10: a parent may have several)."""
 
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None
     first_name: str
     middle_name: str | None
     last_name: str

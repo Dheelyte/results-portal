@@ -175,6 +175,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A parent asks for an account
+         * @description Create a parent account that waits for an admin's approval (D126).
+         *
+         *     Unauthenticated by design, and so deliberately uninformative: the answer
+         *     is the same whether or not an account was made, so the form can't be used
+         *     to find out which phone numbers belong to parents. Rate-limited per IP
+         *     together with sign-in.
+         */
+        post: operations["register_api_v1_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/class-subjects/{class_subject_id}/entries": {
         parameters: {
             query?: never;
@@ -496,6 +521,44 @@ export interface paths {
          * @description Publish a class, optionally holding individuals back (R12).
          */
         post: operations["publish_class_api_v1_classes__class_id__publish_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/pupils": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a pupil to my class, for an admin to approve
+         * @description The class teacher of this class only. The pupil stays off every list,
+         *     sheet and card until an admin approves them.
+         */
+        post: operations["propose_pupil_api_v1_classes__class_id__pupils_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/classes/{class_id}/pupils/proposed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pupils I added that are still waiting */
+        get: operations["proposed_pupils_api_v1_classes__class_id__pupils_proposed_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1105,6 +1168,27 @@ export interface paths {
         patch: operations["update_pupil_api_v1_pupils__pupil_id__patch"];
         trace?: never;
     };
+    "/api/v1/pupils/{pupil_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve an added pupil
+         * @description Rejecting is `DELETE /pupils/{id}`: nothing is ever recorded for a
+         *     pupil who was never approved, so the delete always goes through.
+         */
+        post: operations["approve_pupil_api_v1_pupils__pupil_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pupils/{pupil_id}/card": {
         parameters: {
             query?: never;
@@ -1554,6 +1638,44 @@ export interface paths {
         patch: operations["update_user_api_v1_users__user_id__patch"];
         trace?: never;
     };
+    "/api/v1/users/{user_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a sign-up */
+        post: operations["approve_user_api_v1_users__user_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{user_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn a sign-up away
+         * @description Deleted where possible, so they can sign up again; otherwise kept
+         *     deactivated (D121 keeps an account with sign-in attempts on record).
+         */
+        post: operations["reject_user_api_v1_users__user_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{user_id}/reset-password": {
         parameters: {
             query?: never;
@@ -1733,6 +1855,11 @@ export interface components {
             last_login_at: string | null;
             /** Must Change Password */
             must_change_password: boolean;
+            /**
+             * Pending Approval
+             * @default false
+             */
+            pending_approval: boolean;
             /** Phone */
             phone: string | null;
             role: components["schemas"]["UserRole"];
@@ -1803,7 +1930,7 @@ export interface components {
         /** AttendanceRead */
         AttendanceRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** First Name */
             first_name: string;
             /** Last Name */
@@ -1951,8 +2078,6 @@ export interface components {
             ca_test_3?: string | null;
             /** Ca Test 4 */
             ca_test_4?: string | null;
-            /** Ca Test 5 */
-            ca_test_5?: string | null;
             /** Ca Test Total */
             ca_test_total?: string | null;
             /** Exam */
@@ -2023,7 +2148,7 @@ export interface components {
          */
         CardRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             attendance?: components["schemas"]["CardAttendance"] | null;
             /** Class Teacher Comment */
             class_teacher_comment?: string | null;
@@ -2111,7 +2236,7 @@ export interface components {
         /** ChildRead */
         ChildRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Class Name */
             class_name?: string | null;
             /** First Name */
@@ -2319,6 +2444,8 @@ export interface components {
             class_id: string;
             /** Class Name */
             class_name: string;
+            /** Decision Blocked */
+            decision_blocked?: string | null;
             /** Promotion Applies */
             promotion_applies: boolean;
             /** Return Note */
@@ -2505,8 +2632,6 @@ export interface components {
             ca_test_3?: string | null;
             /** Ca Test 4 */
             ca_test_4?: string | null;
-            /** Ca Test 5 */
-            ca_test_5?: string | null;
             /** Ca Test Total */
             ca_test_total?: string | null;
             /**
@@ -2648,8 +2773,6 @@ export interface components {
             ca_test_3?: number | string | null;
             /** Ca Test 4 */
             ca_test_4?: number | string | null;
-            /** Ca Test 5 */
-            ca_test_5?: number | string | null;
             /** Exam */
             exam?: number | string | null;
             /** Mid Term Test */
@@ -2663,7 +2786,7 @@ export interface components {
          */
         EntryRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Ca Test 1 */
             ca_test_1?: string | null;
             /** Ca Test 2 */
@@ -2672,8 +2795,6 @@ export interface components {
             ca_test_3?: string | null;
             /** Ca Test 4 */
             ca_test_4?: string | null;
-            /** Ca Test 5 */
-            ca_test_5?: string | null;
             /** Ca Test Total */
             ca_test_total?: string | null;
             /** Exam */
@@ -2712,8 +2833,6 @@ export interface components {
             ca_test_3?: number | string | null;
             /** Ca Test 4 */
             ca_test_4?: number | string | null;
-            /** Ca Test 5 */
-            ca_test_5?: number | string | null;
             /** Exam */
             exam?: number | string | null;
             /** Mid Term Test */
@@ -2815,7 +2934,7 @@ export interface components {
         /** GrowthRead */
         GrowthRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** First Name */
             first_name: string;
             /** Height End M */
@@ -2930,8 +3049,6 @@ export interface components {
             ca_test_3: string | null;
             /** Ca Test 4 */
             ca_test_4: string | null;
-            /** Ca Test 5 */
-            ca_test_5: string | null;
             /** Class Id */
             class_id: string | null;
             /** Exam */
@@ -2964,8 +3081,6 @@ export interface components {
             ca_test_3?: number | string | null;
             /** Ca Test 4 */
             ca_test_4?: number | string | null;
-            /** Ca Test 5 */
-            ca_test_5?: number | string | null;
             /**
              * Class Id
              * @description null for every class; a class id to override one class.
@@ -2995,8 +3110,6 @@ export interface components {
             ca_test_3?: string | null;
             /** Ca Test 4 */
             ca_test_4?: string | null;
-            /** Ca Test 5 */
-            ca_test_5?: string | null;
             /** Exam */
             exam?: string | null;
             /**
@@ -3066,7 +3179,7 @@ export interface components {
          */
         NarrativeProgressRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** First Name */
             first_name: string;
             /** Is Complete */
@@ -3180,7 +3293,7 @@ export interface components {
          */
         ParentCardRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Class Name */
             class_name: string;
             /** Class Teacher Comment */
@@ -3404,7 +3517,7 @@ export interface components {
         /** PupilCommentRead */
         PupilCommentRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Comment */
             comment?: string | null;
             /** First Name */
@@ -3426,8 +3539,11 @@ export interface components {
              * @description Defaults to the school's current session.
              */
             academic_session_id?: string | null;
-            /** Admission Number */
-            admission_number: string;
+            /**
+             * Admission Number
+             * @description Optional (D124). Unique within the school when given.
+             */
+            admission_number?: string | null;
             /**
              * Class Id
              * @description Enrol the pupil into this class at the same time. Optional, but a pupil with no enrolment appears in no class list and gets no report.
@@ -3479,7 +3595,7 @@ export interface components {
          */
         PupilNarrativeRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /**
              * Class Id
              * Format: uuid
@@ -3541,7 +3657,7 @@ export interface components {
          */
         PupilProgressRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Has Attendance */
             has_attendance: boolean;
             /** Has Comment */
@@ -3564,10 +3680,29 @@ export interface components {
             /** Sections Written */
             sections_written: number;
         };
+        /**
+         * PupilProposal
+         * @description What a class teacher can give for a new pupil (D125). The house and
+         *     the class are the admin's: the class is the teacher's own.
+         */
+        PupilProposal: {
+            /** Admission Number */
+            admission_number?: string | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /** Sex */
+            sex?: ("M" | "F") | null;
+        };
         /** PupilRead */
         PupilRead: {
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Date Of Birth */
             date_of_birth: string | null;
             /** First Name */
@@ -3585,6 +3720,11 @@ export interface components {
             last_name: string;
             /** Middle Name */
             middle_name: string | null;
+            /**
+             * Pending Approval
+             * @default false
+             */
+            pending_approval: boolean;
             /** Sex */
             sex: string | null;
         };
@@ -3626,6 +3766,8 @@ export interface components {
             class_id: string;
             /** Class Name */
             class_name: string;
+            /** Decision Blocked */
+            decision_blocked?: string | null;
             /** Remarks Written */
             remarks_written: number;
             /** Roll */
@@ -3642,6 +3784,26 @@ export interface components {
             term_id: string;
             /** Term Label */
             term_label: string;
+        };
+        /**
+         * RegisterRequest
+         * @description A parent signing themselves up (D126). Nothing is granted by it: the
+         *     account waits for an admin, who then links it to the parent's children.
+         */
+        RegisterRequest: {
+            /** Email */
+            email?: string | null;
+            /** Full Name */
+            full_name: string;
+            /** Password */
+            password: string;
+            /** Phone */
+            phone?: string | null;
+        };
+        /** RegisterResponse */
+        RegisterResponse: {
+            /** Detail */
+            detail: string;
         };
         /** RemarkSaveRow */
         RemarkSaveRow: {
@@ -3670,7 +3832,7 @@ export interface components {
             /** Acknowledged At */
             acknowledged_at?: string | null;
             /** Admission Number */
-            admission_number: string;
+            admission_number?: string | null;
             /** Name */
             name: string;
             /** Published At */
@@ -3782,6 +3944,8 @@ export interface components {
             /** Editable */
             editable: boolean;
             half: components["schemas"]["TermHalf"];
+            /** Locked Columns */
+            locked_columns?: string[];
             maxima?: components["schemas"]["MaximaRead"] | null;
             /** Maxima Configured */
             maxima_configured: boolean;
@@ -4438,6 +4602,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TokenResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_api_v1_auth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterResponse"];
                 };
             };
             /** @description Validation Error */
@@ -5196,6 +5393,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PublishOutcomeRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_pupil_api_v1_classes__class_id__pupils_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PupilProposal"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proposed_pupils_api_v1_classes__class_id__pupils_proposed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"][];
                 };
             };
             /** @description Validation Error */
@@ -6230,6 +6493,8 @@ export interface operations {
                 academic_session_id?: string | null;
                 search?: string | null;
                 include_inactive?: boolean;
+                /** @description Only pupils a class teacher added, awaiting approval. */
+                pending?: boolean;
                 limit?: number;
                 offset?: number;
             };
@@ -6335,6 +6600,37 @@ export interface operations {
                 "application/json": components["schemas"]["PupilUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PupilRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_pupil_api_v1_pupils__pupil_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pupil_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -7166,6 +7462,8 @@ export interface operations {
             query?: {
                 role?: components["schemas"]["UserRole"] | null;
                 include_inactive?: boolean;
+                /** @description Only parents waiting for approval. */
+                pending?: boolean;
             };
             header?: never;
             path?: never;
@@ -7277,6 +7575,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_user_api_v1_users__user_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_user_api_v1_users__user_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
             /** @description Validation Error */

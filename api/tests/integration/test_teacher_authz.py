@@ -79,7 +79,15 @@ SUBMISSION_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("POST", f"/classes/{ANY_ID}/submit?term_id={ANY_ID}", None),
 ]
 
-TEACHER_ONLY_ENDPOINTS = ENTRY_ENDPOINTS + CLASSWORK_ENDPOINTS + SUBMISSION_ENDPOINTS
+# D125: a class teacher adds a pupil to their class, for an admin to approve.
+PROPOSAL_ENDPOINTS: list[tuple[str, str, dict | None]] = [
+    ("POST", f"/classes/{ANY_ID}/pupils", {"first_name": "Ada", "last_name": "Obi"}),
+    ("GET", f"/classes/{ANY_ID}/pupils/proposed", None),
+]
+
+TEACHER_ONLY_ENDPOINTS = (
+    ENTRY_ENDPOINTS + CLASSWORK_ENDPOINTS + SUBMISSION_ENDPOINTS + PROPOSAL_ENDPOINTS
+)
 
 # Read by everyone who writes about a pupil; never by a parent (D55).
 STAFF_ENDPOINTS: list[tuple[str, str, dict | None]] = [
@@ -87,8 +95,10 @@ STAFF_ENDPOINTS: list[tuple[str, str, dict | None]] = [
     ("GET", "/phrases?scope=B", None),
 ]
 
-# Every column of §5.2's teaching rows that holds a dash.
-ROLES_WITHOUT_ENTRY = [UserRole.ADMIN, UserRole.HEAD_TEACHER, UserRole.PARENT]
+# Every column of §5.2's teaching rows that holds a dash. A head teacher or an
+# admin may now be assigned to teach (D123), so only a parent is refused by
+# role; the others are refused by scope, which `test_teaching_roles.py` covers.
+ROLES_WITHOUT_ENTRY = [UserRole.PARENT]
 
 
 @pytest.mark.parametrize("case", TEACHER_ONLY_ENDPOINTS, ids=ids_for)

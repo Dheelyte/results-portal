@@ -80,7 +80,7 @@ export default function TeacherHomePage() {
         <Panel
           title={myClasses.length === 1 ? "My class" : "My classes"}
           icon={UsersRound}
-          description="The written assessment, attendance, height and weight, and your comment"
+          description="The written assessment, attendance and your comment — height and weight if you have them"
         >
           <ul className="grid gap-3 sm:grid-cols-2">
             {myClasses.map((klass) => (

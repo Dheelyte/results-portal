@@ -9,8 +9,8 @@
  * paged rather than returning the whole roll.
  */
 
-import { ChevronLeft, ChevronRight, GraduationCap, Plus, UserPlus } from "lucide-react";
-import { useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, GraduationCap, Plus, UserPlus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { ConfirmDelete, RowActions, type DeleteTarget } from "@/components/manage";
 import { Modal } from "@/components/modal";
@@ -47,6 +47,14 @@ export default function PupilsPage() {
   // Off by default: a pupil who has left is deactivated, and drops out of the
   // roll until this asks for them, so they can be found and reactivated.
   const [showInactive, setShowInactive] = useState(false);
+  // Pupils a class teacher added, waiting for an admin (D125). Opened with
+  // ?pending=1 from the dashboard's approvals panel.
+  const [pendingOnly, setPendingOnly] = useState(false);
+  // After mount, not during render: the server has no URL to read, and the
+  // two renders must agree.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("pending")) setPendingOnly(true);
+  }, []);
 
   const pupils = useResource(
     () =>
@@ -54,10 +62,11 @@ export default function PupilsPage() {
         class_id: filterClass || undefined,
         search: search || undefined,
         include_inactive: showInactive,
+        pending: pendingOnly,
         limit: PAGE_SIZE,
         offset,
       }),
-    [api, filterClass, search, showInactive, offset],
+    [api, filterClass, search, showInactive, pendingOnly, offset],
     { enabled: Boolean(api) },
   );
 
@@ -91,7 +100,7 @@ export default function PupilsPage() {
     update.clear();
     setEditing({
       id: pupil.id,
-      admission_number: pupil.admission_number,
+      admission_number: pupil.admission_number ?? "",
       first_name: pupil.first_name,
       middle_name: pupil.middle_name ?? "",
       last_name: pupil.last_name,
@@ -102,6 +111,8 @@ export default function PupilsPage() {
     });
   };
   const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
+  const approve = useAction(pupils.reload);
+  const [approving, setApproving] = useState<string | null>(null);
 
   const total = pupils.data?.total ?? 0;
   const classNameOf = (id: string) =>
@@ -125,6 +136,9 @@ export default function PupilsPage() {
           </Button>
         }
       />
+
+      <Notice>{approve.error}</Notice>
+      <Notice tone="success">{approve.success}</Notice>
 
       <Panel
         title="The roll"
@@ -169,6 +183,17 @@ export default function PupilsPage() {
               />
               Show deactivated
             </label>
+            <label className="flex items-center gap-2 pb-2 text-sm">
+              <input
+                type="checkbox"
+                checked={pendingOnly}
+                onChange={(event) => {
+                  setPendingOnly(event.target.checked);
+                  setOffset(0);
+                }}
+              />
+              Awaiting approval only
+            </label>
           </div>
         }
       >
@@ -185,14 +210,18 @@ export default function PupilsPage() {
               {(pupils.data?.items ?? []).map((pupil) => (
                 <Row key={pupil.id}>
                   <Cell className="tabular-nums text-[var(--muted)]">
-                    {pupil.admission_number}
+                    {pupil.admission_number ?? "—"}
                   </Cell>
                   <Cell>
                     <span className="flex items-center gap-2.5">
                       <Avatar name={pupilName(pupil)} size="sm" />
                       <span className="min-w-0">
                         <span className="block font-medium">{pupilName(pupil)}</span>
-                        {pupil.is_active ? null : <Badge tone="bad">Inactive</Badge>}
+                        {pupil.pending_approval ? (
+                          <Badge tone="warn">Awaiting approval</Badge>
+                        ) : pupil.is_active ? null : (
+                          <Badge tone="bad">Inactive</Badge>
+                        )}
                       </span>
                     </span>
                   </Cell>
@@ -219,12 +248,32 @@ export default function PupilsPage() {
                       onDelete={() =>
                         setDeleting({
                           name: pupilName(pupil),
-                          consequence:
+                          consequence: pupil.pending_approval
+                            ? "This rejects the pupil a class teacher added. Nothing has been recorded for them yet."
+                            :
                             "Only a pupil with no scores, passages, attendance or report cards can be deleted — a duplicate, for example. Their class enrolment and parent links go with them. A pupil who has left should be deactivated instead.",
                           run: () => api!.deletePupil(pupil.id),
                         })
                       }
-                    />
+                    >
+                      {pupil.pending_approval ? (
+                        <Button
+                          size="sm"
+                          icon={Check}
+                          loading={approving === pupil.id}
+                          onClick={async () => {
+                            setApproving(pupil.id);
+                            await approve.run(
+                              () => api!.approvePupil(pupil.id),
+                              `${pupilName(pupil)} approved and added to the class.`,
+                            );
+                            setApproving(null);
+                          }}
+                        >
+                          Approve
+                        </Button>
+                      ) : null}
+                    </RowActions>
                   </Cell>
                 </Row>
               ))}
@@ -273,7 +322,7 @@ export default function PupilsPage() {
             const created = await action.run(
               () =>
                 api!.createPupil({
-                  admission_number: form.admission_number,
+                  admission_number: form.admission_number || null,
                   first_name: form.first_name,
                   middle_name: form.middle_name || null,
                   last_name: form.last_name,
@@ -299,10 +348,9 @@ export default function PupilsPage() {
             }
           }}
         >
-          <Field label="Admission number" required>
+          <Field label="Admission number" hint="Optional.">
             <Input
               ref={admissionInput}
-              required
               value={form.admission_number}
               onChange={(event) =>
                 setForm({ ...form, admission_number: event.target.value })
@@ -406,7 +454,7 @@ export default function PupilsPage() {
               event.preventDefault();
               const saved = await update.run(() =>
                 api!.updatePupil(editing.id, {
-                  admission_number: editing.admission_number,
+                  admission_number: editing.admission_number || null,
                   first_name: editing.first_name,
                   middle_name: editing.middle_name || null,
                   last_name: editing.last_name,
@@ -419,9 +467,8 @@ export default function PupilsPage() {
               if (saved) setEditing(null);
             }}
           >
-            <Field label="Admission number" required>
+            <Field label="Admission number" hint="Optional.">
               <Input
-                required
                 value={editing.admission_number}
                 onChange={(event) =>
                   setEditing({ ...editing, admission_number: event.target.value })

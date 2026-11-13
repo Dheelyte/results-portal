@@ -18,10 +18,11 @@ import { notFound, redirect } from "next/navigation";
 
 import { Avatar, Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { apiGet, sessionState } from "@/lib/server/session";
+import { joinParts } from "@/lib/format";
 
 interface Child {
   pupil_id: string;
-  admission_number: string;
+  admission_number: string | null;
   first_name: string;
   middle_name?: string | null;
   last_name: string;
@@ -77,9 +78,7 @@ export default async function ChildPage({
             {name}
           </span>
         }
-        description={`${child.admission_number}${
-          child.class_name ? ` · ${child.class_name}` : ""
-        }`}
+        description={joinParts(child.admission_number, child.class_name)}
       />
 
       {terms.length === 0 ? (

@@ -156,7 +156,9 @@ function OpenedPanel({ term, onChanged }: { term: Term; onChanged: () => void })
   );
 }
 
-const CA_COLUMNS = ["ca_test_1", "ca_test_2", "ca_test_3", "ca_test_4", "ca_test_5"] as const;
+// Four since D127. On the second half they are the first half's, carried
+// over, so the second-half form shows them locked.
+const CA_COLUMNS = ["ca_test_1", "ca_test_2", "ca_test_3", "ca_test_4"] as const;
 
 function PeriodPanel({
   term,
@@ -283,7 +285,8 @@ function PeriodPanel({
                   onSubmit={async (event) => {
                     event.preventDefault();
                     const body: Record<string, unknown> = { class_id: classId || null };
-                    for (const column of [...CA_COLUMNS, terminal]) {
+                    const owned = period.half === "first_half" ? [...CA_COLUMNS, terminal] : [terminal];
+                    for (const column of owned) {
                       const raw = value(column);
                       body[column] = raw === "" ? null : raw;
                     }
@@ -293,12 +296,19 @@ function PeriodPanel({
                     );
                   }}
                 >
+                  {period.half === "second_half" ? (
+                    <p className="text-sm text-[var(--muted)] sm:col-span-3">
+                      The CA tests are carried over from the first half, maximum marks included.
+                      Change them on the first-half sheet.
+                    </p>
+                  ) : null}
                   {CA_COLUMNS.map((column, index) => (
                     <Field key={column} label={`CA Test ${index + 1}`}>
                       <Input
                         type="number"
                         min="0.01"
                         step="0.01"
+                        disabled={period.half === "second_half"}
                         value={value(column)}
                         onChange={(event) =>
                           setValues({ ...values, [column]: event.target.value })

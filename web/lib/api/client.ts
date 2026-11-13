@@ -238,6 +238,10 @@ export const refresh = () => request<TokenResponse>("/auth/refresh", { method: "
 
 export const logout = () => request<{ detail: string }>("/auth/logout", { method: "POST" });
 
+/** A parent asks for an account; it waits for an admin (D126). */
+export const register = (body: Schemas["RegisterRequest"]) =>
+  request<Schemas["RegisterResponse"]>("/auth/register", { method: "POST", body });
+
 export const changePassword = (
   token: string,
   currentPassword: string,

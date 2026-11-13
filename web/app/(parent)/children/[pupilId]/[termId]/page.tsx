@@ -43,7 +43,7 @@ interface Card {
   school_name: string;
   date?: string | null;
   pupil_name: string;
-  admission_number: string;
+  admission_number: string | null;
   overall_percentage?: string | null;
   position_text?: string | null;
   class_name: string;

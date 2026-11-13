@@ -92,6 +92,13 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
+    # A parent who signed themselves up and is waiting for an admin (D126).
+    # Also inactive, so every request and every sign-in refuses them; the flag
+    # is what lets sign-in say "waiting for approval" rather than "wrong
+    # password", and lets the admin's dashboard find them.
+    pending_approval: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     last_login_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     failed_attempts: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"

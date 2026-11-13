@@ -178,7 +178,7 @@ export function ClassProgress({
 
       <Panel
         title="Pupils"
-        description="Narrative, comment, attendance, height and weight"
+        description="Narrative, comment and attendance. Height and weight are optional."
         bare
       >
         <ul className="flex flex-col divide-y divide-[var(--border)]">
@@ -202,7 +202,8 @@ export function ClassProgress({
                   </Badge>
                   <Badge tone={pupil.has_comment ? "good" : "warn"}>comment</Badge>
                   <Badge tone={pupil.has_attendance ? "good" : "warn"}>attendance</Badge>
-                  <Badge tone={pupil.has_growth ? "good" : "warn"}>height &amp; weight</Badge>
+                  {/* Optional (D122): shown when recorded, never asked for. */}
+                  {pupil.has_growth ? <Badge tone="good">height &amp; weight</Badge> : null}
                   <ChevronRight aria-hidden className="size-4 shrink-0 text-[var(--muted)]" />
                 </span>
               </Link>

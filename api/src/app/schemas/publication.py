@@ -38,7 +38,7 @@ class ReportStateRead(BaseModel):
     report_id: uuid.UUID
     pupil_id: uuid.UUID
     name: str
-    admission_number: str
+    admission_number: str | None = None
     state: PublicationState
     published_at: dt.datetime | None = None
     # Never shown to a parent (R12). This is the admin's own screen.
@@ -73,7 +73,6 @@ class EntryEditRequest(BaseModel):
     ca_test_2: ScoreValue | None = None
     ca_test_3: ScoreValue | None = None
     ca_test_4: ScoreValue | None = None
-    ca_test_5: ScoreValue | None = None
     mid_term_test: ScoreValue | None = None
     exam: ScoreValue | None = None
 
@@ -85,7 +84,6 @@ class EntryEditRequest(BaseModel):
                 "ca_test_2",
                 "ca_test_3",
                 "ca_test_4",
-                "ca_test_5",
                 "mid_term_test",
                 "exam",
             },
@@ -121,7 +119,6 @@ class CorrectableRowRead(BaseModel):
     ca_test_2: decimal.Decimal | None = None
     ca_test_3: decimal.Decimal | None = None
     ca_test_4: decimal.Decimal | None = None
-    ca_test_5: decimal.Decimal | None = None
     ca_test_total: decimal.Decimal | None = None
     mid_term_test: decimal.Decimal | None = None
     exam: decimal.Decimal | None = None
@@ -169,7 +166,7 @@ class AuditPageRead(BaseModel):
 
 class ChildRead(BaseModel):
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str
@@ -215,7 +212,7 @@ class ParentCardRead(BaseModel):
 
     date: dt.date | None = None
     pupil_name: str
-    admission_number: str
+    admission_number: str | None = None
     overall_percentage: decimal.Decimal | None = None
     position_text: str | None = None
     class_name: str

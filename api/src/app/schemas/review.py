@@ -30,6 +30,8 @@ class QueueEntryRead(BaseModel):
     # How many of the roll already have a remark, so the head teacher can see
     # where they left off in a class of thirty.
     remarks_written: int
+    # Set when this reviewer may not approve or return the class (D123).
+    decision_blocked: str | None = None
 
 
 class CardHalf(BaseModel):
@@ -39,7 +41,6 @@ class CardHalf(BaseModel):
     ca_test_2: decimal.Decimal | None = None
     ca_test_3: decimal.Decimal | None = None
     ca_test_4: decimal.Decimal | None = None
-    ca_test_5: decimal.Decimal | None = None
     ca_test_total: decimal.Decimal | None = None
     mid_term_test: decimal.Decimal | None = None
     exam: decimal.Decimal | None = None
@@ -99,7 +100,7 @@ class CardRead(BaseModel):
     """One pupil's card as the parent will see it, plus the review fields."""
 
     pupil_id: uuid.UUID
-    admission_number: str
+    admission_number: str | None = None
     first_name: str
     middle_name: str | None = None
     last_name: str
@@ -133,6 +134,8 @@ class ClassReviewRead(BaseModel):
     # §8.4 puts the promotion decision in third term only.
     promotion_applies: bool
     cards: list[CardRead] = Field(default_factory=list)
+    # Set when this reviewer may not approve or return the class (D123).
+    decision_blocked: str | None = None
 
 
 class RemarkSaveRow(BaseModel):

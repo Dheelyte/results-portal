@@ -10,6 +10,7 @@
  */
 
 import { LogIn } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -88,9 +89,16 @@ export default function LoginPage() {
         Sign in
       </Button>
 
+      <p className="text-sm">
+        A parent without an account?{" "}
+        <Link href="/register" className="font-medium text-[var(--brand)] hover:underline">
+          Ask for one
+        </Link>
+      </p>
+
       <p className="text-xs text-[var(--muted)]">
-        Accounts are created by the school. If you cannot sign in, or you have forgotten your
-        password, contact the school office.
+        Staff accounts are created by the school. If you cannot sign in, or you have forgotten
+        your password, contact the school office.
       </p>
     </form>
   );

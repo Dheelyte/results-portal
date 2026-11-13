@@ -34,6 +34,7 @@ import {
   Table,
 } from "@/components/ui";
 import { useAdminApi } from "@/lib/api/use-admin";
+import { ROLE_LABELS } from "@/lib/format";
 import { useAction, useResource } from "@/lib/use-async";
 
 export default function ClassDetailPage() {
@@ -53,7 +54,19 @@ export default function ClassDetailPage() {
   const sections = useResource(() => api!.narrativeSections(), [api], {
     enabled: Boolean(api),
   });
-  const teachers = useResource(() => api!.users("teacher"), [api], { enabled: Boolean(api) });
+  // Every staff account, not only teachers: a head teacher or an admin can
+  // be assigned a class or a subject too (D123).
+  const staff = useResource(() => api!.users(), [api], { enabled: Boolean(api) });
+  const teachers = {
+    ...staff,
+    data: (staff.data ?? [])
+      .filter((account) => account.role !== "parent")
+      .sort(
+        (a, b) =>
+          Number(a.role !== "teacher") - Number(b.role !== "teacher") ||
+          a.full_name.localeCompare(b.full_name),
+      ),
+  };
   const classTeacher = useResource(() => api!.classTeacher(classId), [api, classId], {
     enabled: Boolean(api),
   });
@@ -82,6 +95,7 @@ export default function ClassDetailPage() {
     return listed.map((teacher) => (
       <option key={teacher.id} value={teacher.id}>
         {teacher.full_name}
+        {teacher.role === "teacher" ? "" : ` (${ROLE_LABELS[teacher.role]})`}
         {teacher.is_active ? "" : " (deactivated)"}
       </option>
     ));
@@ -331,6 +345,7 @@ export default function ClassDetailPage() {
                         {activeTeachers.map((teacher) => (
                           <option key={teacher.id} value={teacher.id}>
                             {teacher.full_name}
+                            {teacher.role === "teacher" ? "" : ` (${ROLE_LABELS[teacher.role]})`}
                           </option>
                         ))}
                       </Select>

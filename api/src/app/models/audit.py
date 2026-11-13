@@ -68,6 +68,10 @@ class AuditAction(str):
     USER_DELETED = "user.deleted"
     PUPIL_UPDATED = "pupil.updated"
     PUPIL_DELETED = "pupil.deleted"
+    PUPIL_PROPOSED = "pupil.proposed"  # by a class teacher (D125)
+    PUPIL_APPROVED = "pupil.approved"
+    USER_REGISTERED = "user.registered"  # a parent signing themselves up (D126)
+    USER_APPROVED = "user.approved"
     CLASS_UPDATED = "class.updated"
     CLASS_DELETED = "class.deleted"
     HOUSE_UPDATED = "house.updated"
