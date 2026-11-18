@@ -31,3 +31,10 @@ test("a sentence from the URL never reaches the page", () => {
     assert.equal(signInMessage(hostile), GENERIC_SIGN_IN_FAILURE, JSON.stringify(hostile));
   }
 });
+
+test("an account awaiting approval is told so, not given the generic failure", () => {
+  const pending = signInMessage("pending");
+  assert.ok(pending);
+  assert.notEqual(pending, GENERIC_SIGN_IN_FAILURE);
+  assert.match(pending, /approve/);
+});

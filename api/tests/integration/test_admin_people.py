@@ -256,10 +256,49 @@ async def test_a_duplicate_email_is_a_conflict(client: AsyncClient, admin_header
     response = await client.post(
         USERS,
         headers=admin_headers,
-        json={"role": "teacher", "full_name": "Someone Else", "email": "teacher@sshms.test"},
+        json={"role": "teacher", "full_name": "Someone Else", "email": "TEACHER@sshms.test"},
     )
 
     assert response.status_code == 409
+    # Says which identifier and whose account, so the admin can find it.
+    assert response.json()["detail"] == "A Teacher's account already uses that email address."
+
+
+async def test_a_clash_with_a_deactivated_account_says_so(
+    client: AsyncClient, admin_headers
+) -> None:
+    """The case an admin can't see from the list: identifiers stay unique
+    across deactivated accounts too."""
+    created = await an_account(client, admin_headers)
+    await client.patch(
+        f"{USERS}/{created['user']['id']}",
+        headers=admin_headers,
+        json={"is_active": False},
+    )
+
+    response = await client.post(
+        USERS,
+        headers=admin_headers,
+        json={"role": "parent", "full_name": "Someone Else", "email": "teacher@sshms.test"},
+    )
+
+    assert response.status_code == 409
+    assert "deactivated" in response.json()["detail"]
+
+
+async def test_an_edit_onto_anothers_phone_number_is_refused(
+    client: AsyncClient, admin_headers
+) -> None:
+    await an_account(client, admin_headers, phone="08030000009")
+    other = await an_account(client, admin_headers, full_name="B Teacher", email="b@sshms.test")
+    other_id = other["user"]["id"]
+
+    response = await client.patch(
+        f"{USERS}/{other_id}", headers=admin_headers, json={"phone": "08030000009"}
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "A Teacher's account already uses that phone number."
 
 
 async def test_a_reset_issues_a_new_password_and_kills_live_sessions(

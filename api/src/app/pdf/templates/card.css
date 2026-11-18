@@ -111,8 +111,18 @@ table.boxed td {
   vertical-align: middle;
 }
 
-.attendance {
-  width: 62mm;
+/*
+  Each table sits in its own box, and the boxes are the flex items. WeasyPrint
+  sizes a table placed directly in a flex row from its own width rule, so the
+  growth table's 100% spanned the whole row and ran over the attendance table.
+*/
+.attendance-box {
+  flex: 0 0 62mm;
+}
+
+.growth-box {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .attendance th[scope="row"] {

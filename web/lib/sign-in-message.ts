@@ -17,6 +17,11 @@ const MESSAGES = new Map<string, string>([
     "This account is temporarily locked after too many failed attempts. " +
       "Please try again shortly, or contact the school.",
   ],
+  [
+    "pending",
+    "Your account is waiting for the school to approve it. " +
+      "You can sign in once it has been approved.",
+  ],
   ["unavailable", GENERIC_SIGN_IN_FAILURE],
 ]);
 

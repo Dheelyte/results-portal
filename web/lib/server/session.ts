@@ -119,7 +119,7 @@ function refreshTokenFrom(response: Response): string | null {
  * So the page maps a small closed set of codes to its own wording, and an
  * unrecognised code reads as the generic failure.
  */
-export type SignInFailure = "credentials" | "locked" | "unavailable";
+export type SignInFailure = "credentials" | "locked" | "pending" | "unavailable";
 
 export async function signIn(
   identifier: string,
@@ -137,6 +137,9 @@ export async function signIn(
     // password, and the API does not say which.
     if (response.status === 423) return { ok: false, reason: "locked" };
     if (response.status === 401) return { ok: false, reason: "credentials" };
+    // 403 is a self-registered parent the school hasn't approved yet (D126).
+    // The API answers it only after the password is right.
+    if (response.status === 403) return { ok: false, reason: "pending" };
     return { ok: false, reason: "unavailable" };
   }
 

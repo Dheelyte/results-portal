@@ -134,6 +134,8 @@ async def create_user(
     if not full_name.strip():
         raise Invalid("Give the person's full name. It is printed on the report card.")
 
+    await ensure_no_conflict(db, actor, email=email, phone=phone)
+
     temporary_password = generate_temporary_password()
 
     record = User(
@@ -350,19 +352,42 @@ async def parents_without_children(db: AsyncSession, actor: User) -> Sequence[Us
 
 
 async def ensure_no_conflict(
-    db: AsyncSession, actor: User, *, email: str | None, phone: str | None
+    db: AsyncSession,
+    actor: User,
+    *,
+    email: str | None,
+    phone: str | None,
+    exclude_id: uuid.UUID | None = None,
 ) -> None:
-    """Whether an identifier is already taken, for a friendlier pre-check."""
+    """Refuse an identifier another account in the school already uses.
+
+    Checked before writing so the admin learns *which* identifier clashes and
+    with *whose* account. The clash is often invisible otherwise: identifiers
+    stay unique across deactivated accounts and sign-ups waiting for approval
+    too, and neither is where an admin looks first. Admin-only callers; the
+    public sign-up must never say this (D126).
+    """
     email, phone = _normalise(email, phone)
-    taken: list[str] = []
-    if email is not None:
-        if await db.scalar(scope.scoped_users(actor).where(User.email == email)):
-            taken.append("email address")
-    if phone is not None:
-        if await db.scalar(scope.scoped_users(actor).where(User.phone == phone)):
-            taken.append("phone number")
-    if taken:
-        raise Conflict(f"An account with that {' and '.join(taken)} already exists.")
+    for label, column, value in (
+        ("email address", User.email, email),
+        ("phone number", User.phone, phone),
+    ):
+        if value is None:
+            continue
+        stmt = scope.scoped_users(actor).where(column == value)
+        if exclude_id is not None:
+            stmt = stmt.where(User.id != exclude_id)
+        existing = await db.scalar(stmt)
+        if existing is None:
+            continue
+        state = (
+            " It is waiting for your approval on the dashboard."
+            if existing.pending_approval
+            else " That account is deactivated; edit it to reactivate it instead."
+            if not existing.is_active
+            else ""
+        )
+        raise Conflict(f"{existing.full_name}'s account already uses that {label}.{state}")
 
 
 # ---------------------------------------------------------------------------
@@ -434,6 +459,7 @@ async def update_user(
             raise Invalid(
                 "Give an email address or a phone number — the account signs in with one."
             )
+        await ensure_no_conflict(db, actor, email=email, phone=phone, exclude_id=record.id)
         record.email, record.phone = email, phone
     if "is_active" in changes and changes["is_active"] is not None:
         record.is_active = bool(changes["is_active"])

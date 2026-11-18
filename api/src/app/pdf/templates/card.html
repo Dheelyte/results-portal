@@ -50,6 +50,7 @@
     </section>
 
     <section class="side-by-side">
+      <div class="attendance-box">
       <table class="boxed attendance">
         <caption>1. ATTENDANCE RECORD</caption>
         <tbody>
@@ -59,7 +60,9 @@
           <tr><th scope="row">Times Collected Late:</th><td>{{ card.times_late | blank }}</td></tr>
         </tbody>
       </table>
+      </div>
 
+      <div class="growth-box">
       <table class="boxed growth">
         <caption>2. HEALTH AND PHYSICAL GROWTH</caption>
         <thead>
@@ -80,6 +83,7 @@
           </tr>
         </tbody>
       </table>
+      </div>
     </section>
 
     <section class="cognitive">

@@ -779,3 +779,45 @@ async def test_the_object_key_is_the_one_section_nine_specifies(session, card_wo
     assert stored.key.startswith("reports/2026-2027/")
     assert stored.key.endswith("SSHMS-2026-001-1.pdf")
     assert "first-half" in stored.key
+
+
+def _table_boxes(html: str) -> dict[str, tuple[float, float]]:
+    """The left and right edges of each boxed table's layout, by its class."""
+    from weasyprint import HTML
+
+    page = HTML(string=html).render().pages[0]
+    found: dict[str, tuple[float, float]] = {}
+
+    def walk(box) -> None:
+        element = getattr(box, "element", None)
+        classes = (element.get("class") or "").split() if element is not None else []
+        if (
+            box.element_tag == "table"
+            and "boxed" in classes
+            and box.__class__.__name__ == "TableBox"
+        ):
+            for name in ("attendance", "growth"):
+                if name in classes:
+                    found[name] = (box.position_x, box.position_x + box.margin_width())
+        for child in getattr(box, "children", []):
+            walk(child)
+
+    walk(page._page_box)
+    return found
+
+
+async def test_attendance_and_growth_sit_side_by_side_without_overlapping(
+    session, card_world
+) -> None:
+    """Placed straight in the flex row, the growth table took the whole row's
+    width and ran over the attendance record."""
+    card = await reportcard.build(
+        session,
+        card_world.admin,
+        pupil_id=card_world.pupil.id,
+        term_id=card_world.term.id,
+        half=TermHalf.FIRST_HALF,
+    )
+    boxes = _table_boxes(render.render_html(card))
+
+    assert boxes["attendance"][1] <= boxes["growth"][0]
