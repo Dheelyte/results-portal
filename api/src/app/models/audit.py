@@ -101,6 +101,8 @@ class AuditAction(str):
     ATTENDANCE_SAVED = "attendance_records.saved"
     GROWTH_SAVED = "growth_records.saved"
     CLASS_TEACHER_COMMENTS_SAVED = "term_reports.class_teacher_comments_saved"
+    # The early-years form's header lines (D128). A count, like the comments.
+    EARLY_YEARS_DETAILS_SAVED = "term_reports.early_years_details_saved"
 
     # R14's transitions (milestone 8 submits; 9 returns and approves).
     CLASS_SUBMITTED = "class_term.submitted"

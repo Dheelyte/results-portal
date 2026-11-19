@@ -62,7 +62,7 @@ class ClassComments:
     editable: bool
 
 
-async def _ensure_report(
+async def ensure_report(
     db: AsyncSession, actor: User, *, term: Term, pupil_id: uuid.UUID, class_id: uuid.UUID
 ) -> TermReport:
     """The pupil's report for this term, created if it does not exist yet.
@@ -85,7 +85,7 @@ async def _ensure_report(
     return report
 
 
-async def _refuse_unless_class_teacher(
+async def refuse_unless_class_teacher(
     db: AsyncSession, actor: User, *, class_id: uuid.UUID, academic_session_id: uuid.UUID
 ) -> None:
     """§5.2: these three belong to the class teacher and nobody else.
@@ -151,7 +151,7 @@ async def save_class_comments(
 ) -> ClassComments:
     """Upsert the class teacher's comment for a set of pupils, all or none."""
     comments = await class_comments(db, actor, class_id=class_id, term_id=term_id)
-    await _refuse_unless_class_teacher(
+    await refuse_unless_class_teacher(
         db, actor, class_id=class_id, academic_session_id=comments.term.academic_session_id
     )
     workflow.refuse_if_locked(comments.state)
@@ -179,7 +179,7 @@ async def save_class_comments(
 
     written = 0
     for row in rows:
-        report = comments.reports.get(row.pupil_id) or await _ensure_report(
+        report = comments.reports.get(row.pupil_id) or await ensure_report(
             db, actor, term=comments.term, pupil_id=row.pupil_id, class_id=class_id
         )
         report.class_teacher_comment = None if row.comment is None else row.comment.rstrip()

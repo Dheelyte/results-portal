@@ -51,6 +51,7 @@ from app.models import (
     NarrativeEntry,
     NarrativeSection,
     Pupil,
+    ReportType,
     ResultEntry,
     Subject,
     Term,
@@ -341,7 +342,7 @@ async def class_review(
     scale = await grading.active_scale(db, actor)
     live_bands = await grading.bands_of(db, actor, scale.id) if scale is not None else []
 
-    sections = list(await narrative_sections(db, actor))
+    sections = list(await narrative_sections(db, actor, klass.report_type))
     narrative_rows: Sequence[NarrativeEntry] = []
     if pupil_ids:
         narrative_rows = await all_of(
@@ -428,8 +429,10 @@ async def class_review(
     )
 
 
-async def narrative_sections(db: AsyncSession, actor: User) -> Sequence[NarrativeSection]:
-    """The active sections in card order.
+async def narrative_sections(
+    db: AsyncSession, actor: User, report_type: ReportType = ReportType.PRIMARY
+) -> Sequence[NarrativeSection]:
+    """One report's active sections in card order (D128).
 
     A thin wrapper so this module does not import `services/narrative.py` for
     one call — review reads the narrative, it does not write it.
@@ -437,7 +440,10 @@ async def narrative_sections(db: AsyncSession, actor: User) -> Sequence[Narrativ
     return await all_of(
         db,
         scope.scoped_narrative_sections(actor)
-        .where(NarrativeSection.is_active.is_(True))
+        .where(
+            NarrativeSection.is_active.is_(True),
+            NarrativeSection.report_type == report_type,
+        )
         .order_by(NarrativeSection.display_order),
     )
 
@@ -617,8 +623,9 @@ async def save_remarks(
 class Snapshot:
     """What approval wrote, for the audit row and the caller's report."""
 
-    scale_id: uuid.UUID
-    scale_name: str
+    # None for an early-years class, which has no grades to freeze (D128).
+    scale_id: uuid.UUID | None
+    scale_name: str | None
     rows: int
     graded: int
     ungraded: int
@@ -653,7 +660,15 @@ async def approve(
             f"This one is {review.state.value.replace('_', ' ')}."
         )
 
-    snapshot = await _snapshot_grades(db, actor, review=review)
+    early = review.klass.report_type is ReportType.EARLY_YEARS
+    if early:
+        # No scores, so no grades and no scale (D128). Approval still needs
+        # somebody to approve.
+        if not review.cards:
+            raise Conflict("This class has nothing to approve.")
+        snapshot = Snapshot(scale_id=None, scale_name=None, rows=0, graded=0, ungraded=0, reports=0)
+    else:
+        snapshot = await _snapshot_grades(db, actor, review=review)
 
     await workflow.transition(
         db,
@@ -665,6 +680,13 @@ async def approve(
         ip_address=ip_address,
         user_agent=user_agent,
     )
+
+    if early:
+        await db.commit()
+        return (
+            await class_review(db, actor, class_id=class_id, term_id=term_id),
+            snapshot,
+        )
 
     await audit.record(
         db,

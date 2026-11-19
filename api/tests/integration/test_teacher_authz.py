@@ -71,6 +71,13 @@ CLASSWORK_ENDPOINTS: list[tuple[str, str, dict | None]] = [
         f"/classes/{ANY_ID}/comments?term_id={ANY_ID}",
         {"rows": [{"pupil_id": ANY_ID, "comment": "A good term."}]},
     ),
+    # The early-years form's header (D128): the comment's twin.
+    ("GET", f"/classes/{ANY_ID}/early-years-details?term_id={ANY_ID}", None),
+    (
+        "PUT",
+        f"/classes/{ANY_ID}/early-years-details?term_id={ANY_ID}",
+        {"rows": [{"pupil_id": ANY_ID, "dominance": "right", "years_in_school": "2"}]},
+    ),
 ]
 
 # §8.3's progress page and R10's gate.

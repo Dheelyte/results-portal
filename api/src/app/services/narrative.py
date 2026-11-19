@@ -37,10 +37,11 @@ from app.models import (
     NarrativeSection,
     NarrativeSectionAssignment,
     Pupil,
+    ReportType,
     Term,
     User,
 )
-from app.services import academic, audit, results, workflow
+from app.services import academic, audit, early_years, results, workflow
 from app.services.errors import Invalid, NotFound, RowErrors
 from app.services.removal import Dependent, refuse_if_in_use
 from app.services.support import all_of, has_text, integrity_guard, one_or_404, rows_of
@@ -71,9 +72,14 @@ class SectionInput:
 
 
 async def list_sections(
-    db: AsyncSession, actor: User, *, include_inactive: bool = True
+    db: AsyncSession,
+    actor: User,
+    *,
+    include_inactive: bool = True,
+    report_type: ReportType = ReportType.PRIMARY,
 ) -> Sequence[NarrativeSection]:
-    stmt = scope.scoped_narrative_sections(actor)
+    """One report's sections in card order (D128: each report has its own)."""
+    stmt = scope.scoped_narrative_sections(actor).where(NarrativeSection.report_type == report_type)
     if not include_inactive:
         stmt = stmt.where(NarrativeSection.is_active.is_(True))
     return await all_of(db, stmt.order_by(NarrativeSection.display_order))
@@ -84,10 +90,11 @@ async def save_sections(
     actor: User,
     *,
     sections: Sequence[SectionInput],
+    report_type: ReportType = ReportType.PRIMARY,
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> Sequence[NarrativeSection]:
-    """Upsert the card's narrative sections, keyed on `code`.
+    """Upsert one report's narrative sections, keyed on `code`.
 
     A bulk PUT, because reordering is the common edit and one section's order
     only means anything relative to the others.
@@ -111,7 +118,9 @@ async def save_sections(
         if not section.label.strip():
             raise Invalid(f"Section {section.code} needs a label — it prints on the card.")
 
-    existing = {record.code: record for record in await list_sections(db, actor)}
+    existing = {
+        record.code: record for record in await list_sections(db, actor, report_type=report_type)
+    }
     before = {code: audit.snapshot(record, SECTION_FIELDS) for code, record in existing.items()}
 
     for section in sections:
@@ -119,7 +128,11 @@ async def save_sections(
         record = existing.get(code)
         if record is None:
             record = NarrativeSection(
-                school_id=actor.school_id, code=code, label="", display_order=0
+                school_id=actor.school_id,
+                code=code,
+                label="",
+                display_order=0,
+                report_type=report_type,
             )
             db.add(record)
         record.label = section.label.strip()
@@ -151,7 +164,7 @@ async def save_sections(
         user_agent=user_agent,
     )
     await db.commit()
-    return await list_sections(db, actor)
+    return await list_sections(db, actor, report_type=report_type)
 
 
 def _letter_of(code: str) -> str:
@@ -170,6 +183,7 @@ async def add_section(
     *,
     label: str,
     group_label: str | None = None,
+    report_type: ReportType = ReportType.PRIMARY,
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> NarrativeSection:
@@ -185,21 +199,36 @@ async def add_section(
 
     Letters already used by a retired section are skipped: last term's card
     still prints that letter with its old meaning.
+
+    An early-years section (D128) prints no letter, so it takes an `EY.` code
+    and goes at the end of its heading, or at the end of the form.
     """
     label = label.strip()
     group = (group_label or "").strip() or None
     if not label:
         raise Invalid("A section needs a label — it prints on the card.")
 
-    sections = list(await list_sections(db, actor))
-    codes = {section.code for section in sections}
+    sections = list(await list_sections(db, actor, report_type=report_type))
+    # Codes are unique across the school, not per report.
+    codes = set(
+        await all_of(
+            db, scope.scoped_narrative_sections(actor).with_only_columns(NarrativeSection.code)
+        )
+    )
 
     members = [
         section
         for section in sections
         if group and section.group_label and section.group_label.casefold() == group.casefold()
     ]
-    if members:
+    if report_type is ReportType.EARLY_YEARS:
+        letter = ""
+        if members:
+            group = members[-1].group_label
+            position = sections.index(members[-1]) + 1
+        else:
+            position = len(sections)
+    elif members:
         letter = _letter_of(members[-1].code)
         group = members[-1].group_label  # the spelling the card already prints
         position = sections.index(members[-1]) + 1
@@ -211,7 +240,9 @@ async def add_section(
         letter = free[0]
         position = len(sections)
 
-    if group:
+    if report_type is ReportType.EARLY_YEARS:
+        code = early_years.section_code(label, group, codes)
+    elif group:
         base = f"{letter}.{_slug(label)}"
         code, suffix = base, 2
         while code in codes:
@@ -226,7 +257,12 @@ async def add_section(
         raise Invalid(f"There is already a section called {label!r} there.")
 
     record = NarrativeSection(
-        school_id=actor.school_id, code=code, label=label, group_label=group, display_order=0
+        school_id=actor.school_id,
+        code=code,
+        label=label,
+        group_label=group,
+        display_order=0,
+        report_type=report_type,
     )
     db.add(record)
     sections.insert(position, record)
@@ -245,7 +281,12 @@ async def add_section(
         action=AuditAction.NARRATIVE_SECTION_CREATED,
         entity_type="narrative_section",
         entity_id=record.id,
-        after={"code": code, "label": label, "group_label": group},
+        after={
+            "code": code,
+            "label": label,
+            "group_label": group,
+            "report_type": report_type.value,
+        },
         ip_address=ip_address,
         user_agent=user_agent,
     )
@@ -254,12 +295,17 @@ async def add_section(
     return record
 
 
-async def count_active_sections(db: AsyncSession, actor: User) -> int:
+async def count_active_sections(
+    db: AsyncSession, actor: User, report_type: ReportType = ReportType.PRIMARY
+) -> int:
     return (
         await db.scalar(
             scope.scoped_narrative_sections(actor)
             .with_only_columns(func.count(NarrativeSection.id))
-            .where(NarrativeSection.is_active.is_(True))
+            .where(
+                NarrativeSection.is_active.is_(True),
+                NarrativeSection.report_type == report_type,
+            )
         )
         or 0
     )
@@ -685,12 +731,21 @@ async def _class_and_term(
     return klass, term
 
 
-async def active_sections(db: AsyncSession, actor: User) -> Sequence[NarrativeSection]:
-    """The sections in card order. Inactive ones are not part of R8."""
+async def active_sections(
+    db: AsyncSession, actor: User, report_type: ReportType = ReportType.PRIMARY
+) -> Sequence[NarrativeSection]:
+    """One report's sections in card order. Inactive ones are not part of R8.
+
+    Callers writing for a class pass the class's report type (D128): a
+    nursery class writes the early-years form and never the primary card.
+    """
     return await all_of(
         db,
         scope.scoped_narrative_sections(actor)
-        .where(NarrativeSection.is_active.is_(True))
+        .where(
+            NarrativeSection.is_active.is_(True),
+            NarrativeSection.report_type == report_type,
+        )
         .order_by(NarrativeSection.display_order),
     )
 
@@ -700,7 +755,7 @@ async def class_narrative(
 ) -> ClassNarrative:
     """The class roll with each pupil's progress through the sixteen sections."""
     klass, term = await _class_and_term(db, actor, class_id, term_id)
-    sections = list(await active_sections(db, actor))
+    sections = list(await active_sections(db, actor, klass.report_type))
     section_ids = [section.id for section in sections]
 
     writable = await policy.writable_narrative_sections(
@@ -788,7 +843,7 @@ async def pupil_narrative(
         db, actor, pupil_id=pupil_id, academic_session_id=term.academic_session_id
     )
 
-    sections = list(await active_sections(db, actor))
+    sections = list(await active_sections(db, actor, klass.report_type))
     writable = await policy.writable_narrative_sections(
         db, actor, klass.id, term.academic_session_id
     )
@@ -874,7 +929,9 @@ async def save_pupil_narrative(
     state = await workflow.state_of(db, actor, class_id=klass.id, term_id=term.id)
     workflow.refuse_if_locked(state)
 
-    sections = {section.id: section for section in await active_sections(db, actor)}
+    sections = {
+        section.id: section for section in await active_sections(db, actor, klass.report_type)
+    }
     writable = await policy.writable_narrative_sections(
         db, actor, klass.id, term.academic_session_id
     )

@@ -5,7 +5,7 @@ import uuid
 
 from pydantic import BaseModel, Field
 
-from app.models import TermHalf, TermNumber
+from app.models import ReportType, TermHalf, TermNumber
 from app.schemas.common import Name, OrmModel
 
 
@@ -100,6 +100,10 @@ class ClassCreate(BaseModel):
         le=100,
         description="Display order only. Never a rank of pupils (R11).",
     )
+    report_type: ReportType = Field(
+        default=ReportType.PRIMARY,
+        description="The scored primary card, or the early-years progress report (D128).",
+    )
 
 
 class ClassUpdate(BaseModel):
@@ -111,6 +115,7 @@ class ClassUpdate(BaseModel):
         default=None,
         description="Deactivate a class rather than deleting it once it has history.",
     )
+    report_type: ReportType | None = None
 
 
 class ClassRead(OrmModel):
@@ -118,6 +123,7 @@ class ClassRead(OrmModel):
     name: str
     level_order: int
     is_active: bool
+    report_type: ReportType
 
 
 class HouseCreate(BaseModel):

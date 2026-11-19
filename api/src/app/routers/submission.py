@@ -36,6 +36,7 @@ def _read(progress: submission.Progress) -> ProgressRead:
         class_name=progress.klass.name,
         term_id=progress.term.id,
         state=progress.state,
+        report_type=progress.klass.report_type,
         times_school_opened=progress.times_school_opened,
         sheets=[
             SheetProgressRead(
@@ -66,6 +67,8 @@ def _read(progress: submission.Progress) -> ProgressRead:
                 has_comment=pupil.has_comment,
                 has_attendance=pupil.has_attendance,
                 has_growth=pupil.has_growth,
+                early_years=pupil.early_years,
+                has_details=pupil.has_details,
                 is_complete=pupil.is_complete,
             )
             for pupil in progress.pupils

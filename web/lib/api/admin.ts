@@ -22,6 +22,8 @@ export type Account = Schemas["AccountRead"];
 export type CreatedAccount = Schemas["CreatedAccountRead"];
 export type GradingScale = Schemas["GradingScaleRead"];
 export type NarrativeSection = Schemas["NarrativeSectionRead"];
+/** The primary card or the early-years progress report (D128). */
+export type ReportType = Schemas["ReportType"];
 export type NarrativeAssignment = Schemas["NarrativeAssignmentRead"];
 export type Comment = Schemas["CommentRead"];
 export type Checklist = Schemas["ChecklistRead"];
@@ -205,7 +207,8 @@ export function adminApi(token: string) {
     activateGradingScale: (id: string) =>
       send<GradingScale>("POST", `/grading-scales/${id}/activate`),
 
-    narrativeSections: () => get<NarrativeSection[]>("/narrative-sections"),
+    narrativeSections: (reportType: ReportType = "primary") =>
+      get<NarrativeSection[]>("/narrative-sections", { report_type: reportType }),
     saveNarrativeSections: (body: Schemas["NarrativeSectionsSave"]) =>
       send<NarrativeSection[]>("PUT", "/narrative-sections", body),
     createNarrativeSection: (body: Schemas["NarrativeSectionCreate"]) =>

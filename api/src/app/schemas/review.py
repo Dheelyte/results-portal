@@ -6,7 +6,7 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import ClassTermState
+from app.models import ClassTermState, Dominance, ReportType
 from app.services.review import (
     MAX_POSITION_LENGTH,
     MAX_PROMOTION_LENGTH,
@@ -113,6 +113,9 @@ class CardRead(BaseModel):
     growth: CardGrowth | None = None
 
     class_teacher_comment: str | None = None
+    # The early-years form's header (D128).
+    dominance: Dominance | None = None
+    years_in_school: str | None = None
     # R6's aggregate, frozen at approval (§14 A25).
     overall_percentage: decimal.Decimal | None = None
 
@@ -130,6 +133,7 @@ class ClassReviewRead(BaseModel):
     term_number: str
     term_label: str
     state: ClassTermState
+    report_type: ReportType = ReportType.PRIMARY
     return_note: str | None = None
     # §8.4 puts the promotion decision in third term only.
     promotion_applies: bool
@@ -164,8 +168,9 @@ class ReturnRequest(BaseModel):
 class SnapshotRead(BaseModel):
     """What approval froze, reported back so it is visible rather than implied."""
 
-    grading_scale_id: uuid.UUID
-    grading_scale_name: str
+    # None for an early-years class: nothing is graded (D128).
+    grading_scale_id: uuid.UUID | None = None
+    grading_scale_name: str | None = None
     rows: int
     graded: int
     ungraded: int

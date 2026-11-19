@@ -160,6 +160,7 @@ export default function ClassReviewPage() {
         <PupilCard
           key={card.pupil_id}
           card={card}
+          early={data.report_type === "early_years"}
           promotionApplies={data.promotion_applies}
           editable={data.state === "submitted" || data.state === "approved"}
           onSave={async (row) => {
@@ -244,13 +245,23 @@ export default function ClassReviewPage() {
   );
 }
 
+const DOMINANCE_LABELS: Record<string, string> = {
+  right: "Right",
+  left: "Left",
+  not_established: "Not established",
+};
+
 function PupilCard({
   card,
+  early,
   promotionApplies,
   editable,
   onSave,
 }: {
   card: Card;
+  // The early-years progress report (D128): written answers and two header
+  // lines, no scores and no head teacher's remark on the form.
+  early: boolean;
   promotionApplies: boolean;
   editable: boolean;
   onSave: (row: {
@@ -280,10 +291,19 @@ function PupilCard({
     >
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap gap-2 text-xs">
-          <Badge tone="neutral">
-            Overall {plain(card.overall_percentage)}
-            {card.overall_percentage ? "%" : ""}
-          </Badge>
+          {early ? (
+            <>
+              <Badge tone="neutral">
+                Dominance: {card.dominance ? DOMINANCE_LABELS[card.dominance] : "—"}
+              </Badge>
+              <Badge tone="neutral">Years in school: {card.years_in_school ?? "—"}</Badge>
+            </>
+          ) : (
+            <Badge tone="neutral">
+              Overall {plain(card.overall_percentage)}
+              {card.overall_percentage ? "%" : ""}
+            </Badge>
+          )}
           {card.attendance ? (
             <Badge tone="neutral">
               Present {card.attendance.times_present}/{card.attendance.times_school_opened}
@@ -296,6 +316,7 @@ function PupilCard({
           ) : null}
         </div>
 
+        {early ? null : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[34rem] border-collapse text-sm">
             <thead>
@@ -315,16 +336,20 @@ function PupilCard({
             </tbody>
           </table>
         </div>
+        )}
 
         {(card.narrative ?? []).length > 0 ? (
-          <details className="rounded-md border border-[var(--border)] px-3 py-2">
+          <details className="rounded-md border border-[var(--border)] px-3 py-2" open={early}>
             <summary className="cursor-pointer text-sm font-medium">
-              Written assessment
+              {early ? "Progress report" : "Written assessment"}
             </summary>
             <dl className="mt-2 flex flex-col gap-2">
               {(card.narrative ?? []).map((passage) => (
                 <div key={passage.section_id}>
-                  <dt className="text-xs font-medium text-[var(--muted)]">{passage.label}</dt>
+                  <dt className="text-xs font-medium text-[var(--muted)]">
+                    {early && passage.group_label ? `${passage.group_label} · ` : ""}
+                    {passage.label}
+                  </dt>
                   <dd className="text-sm">{passage.body ?? "—"}</dd>
                 </div>
               ))}
@@ -342,6 +367,7 @@ function PupilCard({
           </p>
         ) : null}
 
+        {early ? null : (
         <div className="flex flex-col gap-2 border-t border-[var(--border)] pt-3">
           <label htmlFor={`remark-${card.pupil_id}`} className="text-sm font-medium">
             Head teacher&rsquo;s remark
@@ -414,6 +440,7 @@ function PupilCard({
             {saved ? <span className="text-xs text-[var(--success)]">Saved</span> : null}
           </div>
         </div>
+        )}
       </div>
     </Panel>
   );

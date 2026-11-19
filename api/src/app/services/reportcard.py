@@ -38,13 +38,16 @@ from app.models import (
     AttendanceRecord,
     Class,
     ClassSubject,
+    ClassTeacher,
     GradeBand,
     GradingScale,
     GrowthRecord,
     House,
     NarrativeEntry,
     NarrativeSection,
+    NarrativeSectionAssignment,
     Pupil,
+    ReportType,
     ResultEntry,
     School,
     Subject,
@@ -54,7 +57,7 @@ from app.models import (
     TermReport,
     User,
 )
-from app.services import cumulative, marks
+from app.services import cumulative, early_years, marks
 from app.services.errors import Conflict, NotFound
 from app.services.support import all_of, one_or_404, rows_of
 
@@ -161,6 +164,9 @@ class Card:
 
     # For the object key (§9) and the filename.
     version: int
+
+    # Which template prints it (`app/pdf/templates/<template>.html`).
+    template: str = "card"
 
 
 async def build(
@@ -471,7 +477,10 @@ async def _narrative(
     sections = await all_of(
         db,
         scope.scoped_narrative_sections(actor)
-        .where(NarrativeSection.is_active.is_(True))
+        .where(
+            NarrativeSection.is_active.is_(True),
+            NarrativeSection.report_type == ReportType.PRIMARY,
+        )
         .order_by(NarrativeSection.display_order),
     )
     bodies = {
@@ -516,3 +525,235 @@ def _next_version(object_key: str) -> int:
         return int(suffix) + 1
     except ValueError:  # pragma: no cover - a key we did not write
         return 1
+
+
+# ---------------------------------------------------------------------------
+# The early-years progress report (docs/DECISIONS.md D128)
+# ---------------------------------------------------------------------------
+
+EARLY_YEARS_TITLE = "NURSERY PROGRESS REPORT FORM"
+
+
+@dataclass(frozen=True)
+class FormItem:
+    """One question on the form and the teacher's answer."""
+
+    marker: str  # "1.", "a." or "" when a heading has a single question
+    label: str
+    body: str | None
+
+
+@dataclass(frozen=True)
+class FormBlock:
+    """A run of questions under one inner heading (or none)."""
+
+    heading: str | None
+    items: list[FormItem]
+
+
+@dataclass(frozen=True)
+class FormSection:
+    """One top-level heading of the form: "I. Learning Style"."""
+
+    heading: str | None
+    blocks: list[FormBlock]
+
+
+@dataclass(frozen=True)
+class EarlyYearsCard:
+    """Everything the Nursery Progress Report Form prints."""
+
+    school_name: str
+    title: str
+    subtitle: str
+    pupil_name: str
+    admission_number: str | None
+    class_name: str
+    session_name: str
+    birth_date: dt.date | None
+    years_in_school: str | None
+    teachers: str
+    date: dt.date | None
+    dominance: str | None
+    sections: list[FormSection]
+    version: int
+    term_slug: str
+    template: str = "progress"
+
+
+async def build_for(
+    db: AsyncSession,
+    actor: User,
+    *,
+    pupil_id: uuid.UUID,
+    term_id: uuid.UUID,
+    half: TermHalf,
+) -> "Card | EarlyYearsCard":
+    """The pupil's card for this term, whichever report their class gets.
+
+    `half` only means anything to a primary card: the early-years report is
+    one per term (D128).
+    """
+    report = await db.scalar(
+        scope.scoped_term_reports(actor).where(
+            TermReport.term_id == term_id, TermReport.pupil_id == pupil_id
+        )
+    )
+    if report is not None:
+        report_type = await db.scalar(
+            scope.scoped_classes(actor)
+            .where(Class.id == report.class_id)
+            .with_only_columns(Class.report_type)
+        )
+        if report_type is ReportType.EARLY_YEARS:
+            return await build_early_years(db, actor, pupil_id=pupil_id, term_id=term_id)
+    return await build(db, actor, pupil_id=pupil_id, term_id=term_id, half=half)
+
+
+async def build_early_years(
+    db: AsyncSession, actor: User, *, pupil_id: uuid.UUID, term_id: uuid.UUID
+) -> EarlyYearsCard:
+    """Gather one pupil's progress report for one term.
+
+    Scoped exactly as `build` is: the report row is the gate (R12), so a
+    parent reaches only their own child's, and only once it is published.
+    """
+    pupil = await one_or_404(db, scope.scoped_pupils(actor).where(Pupil.id == pupil_id), "pupil")
+    term = await one_or_404(db, scope.scoped_terms(actor).where(Term.id == term_id), "term")
+    session_name = await db.scalar(
+        scope.scoped_academic_sessions(actor)
+        .where(AcademicSession.id == term.academic_session_id)
+        .with_only_columns(AcademicSession.name)
+    )
+    report = await db.scalar(
+        scope.scoped_term_reports(actor).where(
+            TermReport.term_id == term.id, TermReport.pupil_id == pupil_id
+        )
+    )
+    if report is None:
+        raise NotFound("No report for this pupil and term.")
+    klass = await one_or_404(
+        db, scope.scoped_classes(actor).where(Class.id == report.class_id), "class"
+    )
+
+    term_name = TERM_NAMES.get(term.number, "")
+    return EarlyYearsCard(
+        school_name=await _school_name(db, actor),
+        title=EARLY_YEARS_TITLE,
+        subtitle=f"{term_name} TERM, {session_name or ''}".strip(", "),
+        pupil_name=_full_name(pupil),
+        admission_number=pupil.admission_number,
+        class_name=klass.name,
+        session_name=session_name or "",
+        birth_date=pupil.date_of_birth,
+        years_in_school=report.years_in_school,
+        teachers=await _teachers(
+            db, actor, class_id=klass.id, academic_session_id=term.academic_session_id
+        ),
+        date=report.published_at.date() if report.published_at else None,
+        dominance=early_years.DOMINANCE_LABELS.get(report.dominance) if report.dominance else None,
+        sections=await _form(db, actor, pupil_id=pupil_id, term_id=term.id),
+        version=1 if report.pdf_object_key is None else _next_version(report.pdf_object_key),
+        term_slug=f"progress-{term.number.value}-term",
+    )
+
+
+async def _teachers(
+    db: AsyncSession, actor: User, *, class_id: uuid.UUID, academic_session_id: uuid.UUID
+) -> str:
+    """ "Teacher(s)": the class teacher, then anyone who writes a section.
+
+    Read by school rather than through `scoped_users`, which shows a parent
+    only themselves. Reaching here means the report may be read, and the
+    names of a child's teachers are part of it — the same gate as D88.
+    """
+    class_teacher = select(ClassTeacher.teacher_user_id).where(
+        ClassTeacher.school_id == actor.school_id,
+        ClassTeacher.class_id == class_id,
+        ClassTeacher.academic_session_id == academic_session_id,
+    )
+    writers = (
+        select(NarrativeSectionAssignment.teacher_user_id)
+        .join(NarrativeSection, NarrativeSection.id == NarrativeSectionAssignment.section_id)
+        .where(
+            NarrativeSectionAssignment.school_id == actor.school_id,
+            NarrativeSectionAssignment.class_id == class_id,
+            NarrativeSectionAssignment.academic_session_id == academic_session_id,
+            NarrativeSection.report_type == ReportType.EARLY_YEARS,
+            NarrativeSection.is_active.is_(True),
+        )
+    )
+    first = list(await all_of(db, select(User.full_name).where(User.id.in_(class_teacher))))
+    others = await all_of(
+        db,
+        select(User.full_name)
+        .where(User.id.in_(writers), User.id.notin_(class_teacher))
+        .order_by(User.full_name),
+    )
+    return ", ".join([*first, *others])
+
+
+async def _form(
+    db: AsyncSession, actor: User, *, pupil_id: uuid.UUID, term_id: uuid.UUID
+) -> list[FormSection]:
+    """The form's questions and answers, nested as the paper form nests them.
+
+    A heading with an inner heading ("III. Curriculum Areas — 3. Sensorial")
+    prints the outer once and lettered questions under the inner; a heading
+    on its own numbers its questions; a heading with a single question
+    prints it unnumbered.
+    """
+    sections = await all_of(
+        db,
+        scope.scoped_narrative_sections(actor)
+        .where(
+            NarrativeSection.is_active.is_(True),
+            NarrativeSection.report_type == ReportType.EARLY_YEARS,
+        )
+        .order_by(NarrativeSection.display_order),
+    )
+    bodies = {
+        entry.section_id: entry.body
+        for entry in await all_of(
+            db,
+            select(NarrativeEntry).where(
+                NarrativeEntry.school_id == actor.school_id,
+                NarrativeEntry.term_id == term_id,
+                NarrativeEntry.pupil_id == pupil_id,
+            ),
+        )
+    }
+
+    # Group consecutive sections by (outer, inner) heading first, so the
+    # markers can be numbered once the size of each run is known.
+    runs: list[tuple[str | None, str | None, list[NarrativeSection]]] = []
+    for section in sections:
+        outer, _, inner = (section.group_label or "").partition(early_years.HEADING_SEPARATOR)
+        key = (outer.strip() or None, inner.strip() or None)
+        if runs and (runs[-1][0], runs[-1][1]) == key:
+            runs[-1][2].append(section)
+        else:
+            runs.append((key[0], key[1], [section]))
+
+    form: list[FormSection] = []
+    for outer, inner, members in runs:
+        items = [
+            FormItem(
+                marker=(
+                    ""
+                    if len(members) == 1
+                    else f"{chr(ord('a') + index)}."
+                    if inner
+                    else f"{index + 1}."
+                ),
+                label=section.label,
+                body=bodies.get(section.id),
+            )
+            for index, section in enumerate(members)
+        ]
+        block = FormBlock(heading=inner, items=items)
+        if form and form[-1].heading == outer:
+            form[-1].blocks.append(block)
+        else:
+            form.append(FormSection(heading=outer, blocks=[block]))
+    return form

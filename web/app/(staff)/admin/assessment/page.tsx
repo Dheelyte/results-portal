@@ -43,7 +43,7 @@ import {
   Table,
   TextArea,
 } from "@/components/ui";
-import type { Comment, NarrativeSection } from "@/lib/api/admin";
+import type { Comment, NarrativeSection, ReportType } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { formatDate } from "@/lib/format";
 import { useAction, useResource } from "@/lib/use-async";
@@ -392,7 +392,10 @@ function NarrativeSections({
   onAdded: () => void;
 }) {
   const api = useAdminApi()!;
-  const sections = useResource(() => api.narrativeSections(), [api]);
+  // Each report has its own sections (D128); the admin edits one at a time.
+  const [report, setReport] = useState<ReportType>("primary");
+  const early = report === "early_years";
+  const sections = useResource(() => api.narrativeSections(report), [api, report]);
   const action = useAction(sections.reload);
   const create = useAction(sections.reload);
   useClearOnOpen(dialog.open, create);
@@ -405,7 +408,8 @@ function NarrativeSections({
   const edited = (section: NarrativeSection) => ({ ...section, ...draft[section.id] });
   const dirty = Object.keys(draft).length > 0;
 
-  // Each group once, with the letter the card prints before it.
+  // Each group once, with the letter the card prints before it. The
+  // early-years form prints no letters.
   const groups = new Map<string, string>();
   for (const section of sections.data ?? []) {
     if (section.group_label && !groups.has(section.group_label)) {
@@ -417,8 +421,41 @@ function NarrativeSections({
     <Panel
       title="Narrative sections"
       icon={ClipboardList}
-      description="The written passages on the card's assessment pages, in card order. Retire a section rather than deleting it — past cards still cite it."
+      description={
+        early
+          ? "The questions on the early-years progress report, in form order. A heading with “ — ” prints its second part as a sub-heading. Retire a question rather than deleting it — past reports still cite it."
+          : "The written passages on the card's assessment pages, in card order. Retire a section rather than deleting it — past cards still cite it."
+      }
       actions={
+        <>
+        <div role="group" aria-label="Which report" className="flex rounded-lg border border-[var(--border)] p-0.5 text-sm">
+          {(
+            [
+              ["primary", "Primary card"],
+              ["early_years", "Early-years report"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={report === value}
+              disabled={dirty}
+              title={dirty ? "Save or undo your edits first." : undefined}
+              onClick={() => {
+                setReport(value);
+                setPlacement(OWN_HEADING);
+                action.clear();
+              }}
+              className={`rounded-md px-2.5 py-1 ${
+                report === value
+                  ? "bg-[var(--brand-soft)] font-semibold text-[var(--brand)]"
+                  : "text-[var(--muted)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <Button
           loading={action.busy}
           disabled={!dirty}
@@ -434,7 +471,7 @@ function NarrativeSections({
               };
             });
             const saved = await action.run(
-              () => api.saveNarrativeSections({ sections: payload }),
+              () => api.saveNarrativeSections({ sections: payload, report_type: report }),
               "Sections saved.",
             );
             if (saved) setDraft({});
@@ -442,6 +479,7 @@ function NarrativeSections({
         >
           Save changes
         </Button>
+        </>
       }
     >
       {sections.loading ? (
@@ -451,7 +489,11 @@ function NarrativeSections({
 
       <Table
         head={["Order", "Group", "Label", "Code", "Active", ""]}
-        empty="No sections yet. Add one with “Add section” at the top of the page."
+        empty={
+          early
+            ? "No early-years questions yet. They are created the first time a class is set to the early-years report on the Classes page."
+            : "No sections yet. Add one with “Add section” at the top of the page."
+        }
       >
         {(sections.data ?? []).map((section) => {
           const value = edited(section);
@@ -525,8 +567,12 @@ function NarrativeSections({
       <Modal
         open={dialog.open}
         onClose={dialog.onClose}
-        title="Add a narrative section"
-        description="A passage teachers write for every pupil, every term. Its letter and place on the card are chosen for you."
+        title={early ? "Add a question to the early-years report" : "Add a narrative section"}
+        description={
+          early
+            ? "A question teachers answer for every early-years pupil, every term. To add to the primary card instead, switch the table to “Primary card” first."
+            : "A passage teachers write for every pupil, every term. Its letter and place on the card are chosen for you. To add to the early-years report instead, switch the table to “Early-years report” first."
+        }
       >
         <form
           className="flex flex-col gap-3"
@@ -535,7 +581,12 @@ function NarrativeSections({
             const group =
               placement === NEW_GROUP ? newGroup : placement === OWN_HEADING ? null : placement;
             const added = await create.run(
-              () => api.createNarrativeSection({ label: newLabel, group_label: group }),
+              () =>
+                api.createNarrativeSection({
+                  label: newLabel,
+                  group_label: group,
+                  report_type: report,
+                }),
               `“${newLabel.trim()}” added.`,
             );
             if (added) {
@@ -558,7 +609,9 @@ function NarrativeSections({
             label="Where it goes"
             hint={
               placement === OWN_HEADING || placement === NEW_GROUP
-                ? "At the end of the card, with the next unused letter."
+                ? early
+                  ? "At the end of the form."
+                  : "At the end of the card, with the next unused letter."
                 : "Inside that block, after its last section."
             }
           >
@@ -566,7 +619,7 @@ function NarrativeSections({
               <option value={OWN_HEADING}>A heading of its own</option>
               {[...groups].map(([group, letter]) => (
                 <option key={group} value={group}>
-                  Inside {letter}) {group}
+                  {early ? `Under ${group}` : `Inside ${letter}) ${group}`}
                 </option>
               ))}
               <option value={NEW_GROUP}>A new group…</option>

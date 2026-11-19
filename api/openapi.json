@@ -1065,6 +1065,16 @@
             ],
             "title": "Class Teacher Comment"
           },
+          "dominance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Dominance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "first_name": {
             "title": "First Name",
             "type": "string"
@@ -1178,6 +1188,17 @@
             },
             "title": "Subjects",
             "type": "array"
+          },
+          "years_in_school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Years In School"
           }
         },
         "required": [
@@ -1354,7 +1375,7 @@
         "type": "object"
       },
       "ChildReportRead": {
-        "description": "One term for one child: the card, or R12's sentence.",
+        "description": "One term for one child: the card, or R12's sentence.\n\nAn early-years child's term carries `progress_report` instead of `card`\n(D128); exactly one of the two is set once the result is available.",
         "properties": {
           "acknowledged_at": {
             "anyOf": [
@@ -1392,6 +1413,16 @@
               }
             ],
             "title": "Message"
+          },
+          "progress_report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParentProgressReportRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "published_at": {
             "anyOf": [
@@ -1587,6 +1618,11 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType",
+            "default": "primary",
+            "description": "The scored primary card, or the early-years progress report (D128)."
           }
         },
         "required": [
@@ -1594,6 +1630,47 @@
           "level_order"
         ],
         "title": "ClassCreate",
+        "type": "object"
+      },
+      "ClassEarlyYearsDetailsRead": {
+        "properties": {
+          "class_id": {
+            "format": "uuid",
+            "title": "Class Id",
+            "type": "string"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PupilEarlyYearsDetailsRead"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ClassTermState"
+          },
+          "term_id": {
+            "format": "uuid",
+            "title": "Term Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "class_id",
+          "class_name",
+          "term_id",
+          "state",
+          "editable"
+        ],
+        "title": "ClassEarlyYearsDetailsRead",
         "type": "object"
       },
       "ClassGrowthRead": {
@@ -1663,6 +1740,10 @@
             },
             "title": "Pupils",
             "type": "array"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType",
+            "default": "primary"
           },
           "roll_size": {
             "title": "Roll Size",
@@ -1750,13 +1831,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType"
           }
         },
         "required": [
           "id",
           "name",
           "level_order",
-          "is_active"
+          "is_active",
+          "report_type"
         ],
         "title": "ClassRead",
         "type": "object"
@@ -1793,6 +1878,10 @@
           "promotion_applies": {
             "title": "Promotion Applies",
             "type": "boolean"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType",
+            "default": "primary"
           },
           "return_note": {
             "anyOf": [
@@ -2046,6 +2135,16 @@
               }
             ],
             "title": "Name"
+          },
+          "report_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "ClassUpdate",
@@ -2303,6 +2402,72 @@
           "temporary_password"
         ],
         "title": "CreatedAccountRead",
+        "type": "object"
+      },
+      "Dominance": {
+        "description": "The early-years report's \"Dominance\" line (D128).",
+        "enum": [
+          "right",
+          "left",
+          "not_established"
+        ],
+        "title": "Dominance",
+        "type": "string"
+      },
+      "EarlyYearsDetailsRow": {
+        "additionalProperties": false,
+        "properties": {
+          "dominance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Dominance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "years_in_school": {
+            "anyOf": [
+              {
+                "maxLength": 30,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Years In School"
+          }
+        },
+        "required": [
+          "pupil_id"
+        ],
+        "title": "EarlyYearsDetailsRow",
+        "type": "object"
+      },
+      "EarlyYearsDetailsSave": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/EarlyYearsDetailsRow"
+            },
+            "maxItems": 400,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "EarlyYearsDetailsSave",
         "type": "object"
       },
       "EnrollmentRead": {
@@ -2875,6 +3040,83 @@
           "pupil_id"
         ],
         "title": "EntryRow",
+        "type": "object"
+      },
+      "FormBlockRead": {
+        "properties": {
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FormItemRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "title": "FormBlockRead",
+        "type": "object"
+      },
+      "FormItemRead": {
+        "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "marker": {
+            "title": "Marker",
+            "type": "string"
+          }
+        },
+        "required": [
+          "marker",
+          "label"
+        ],
+        "title": "FormItemRead",
+        "type": "object"
+      },
+      "FormSectionRead": {
+        "properties": {
+          "blocks": {
+            "items": {
+              "$ref": "#/components/schemas/FormBlockRead"
+            },
+            "title": "Blocks",
+            "type": "array"
+          },
+          "heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heading"
+          }
+        },
+        "title": "FormSectionRead",
         "type": "object"
       },
       "GradeBandRead": {
@@ -3904,6 +4146,11 @@
             "minLength": 1,
             "title": "Label",
             "type": "string"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType",
+            "default": "primary",
+            "description": "The primary card or the early-years progress report (D128)."
           }
         },
         "required": [
@@ -3945,6 +4192,9 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType"
           }
         },
         "required": [
@@ -3953,7 +4203,8 @@
           "label",
           "group_label",
           "display_order",
-          "is_active"
+          "is_active",
+          "report_type"
         ],
         "title": "NarrativeSectionRead",
         "type": "object"
@@ -4016,6 +4267,11 @@
       },
       "NarrativeSectionsSave": {
         "properties": {
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType",
+            "default": "primary",
+            "description": "Which report's sections these are (D128). Each report is saved on its own."
+          },
           "sections": {
             "items": {
               "$ref": "#/components/schemas/NarrativeSectionSave"
@@ -4476,6 +4732,103 @@
         "title": "ParentCardRead",
         "type": "object"
       },
+      "ParentProgressReportRead": {
+        "description": "The early-years progress report (D128), as the PDF prints it.",
+        "properties": {
+          "birth_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "class_name": {
+            "title": "Class Name",
+            "type": "string"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "dominance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dominance"
+          },
+          "pupil_name": {
+            "title": "Pupil Name",
+            "type": "string"
+          },
+          "school_name": {
+            "title": "School Name",
+            "type": "string"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/FormSectionRead"
+            },
+            "title": "Sections",
+            "type": "array"
+          },
+          "session_name": {
+            "title": "Session Name",
+            "type": "string"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "teachers": {
+            "title": "Teachers",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "years_in_school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Years In School"
+          }
+        },
+        "required": [
+          "title",
+          "subtitle",
+          "school_name",
+          "pupil_name",
+          "class_name",
+          "session_name",
+          "teachers"
+        ],
+        "title": "ParentProgressReportRead",
+        "type": "object"
+      },
       "PassageRead": {
         "description": "One section of one pupil's narrative.",
         "properties": {
@@ -4679,6 +5032,10 @@
           "ready": {
             "title": "Ready",
             "type": "boolean"
+          },
+          "report_type": {
+            "$ref": "#/components/schemas/ReportType",
+            "default": "primary"
           },
           "return_note": {
             "anyOf": [
@@ -5000,6 +5357,85 @@
         "title": "PupilCreate",
         "type": "object"
       },
+      "PupilEarlyYearsDetailsRead": {
+        "properties": {
+          "admission_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Admission Number"
+          },
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "dominance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Dominance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "middle_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Middle Name"
+          },
+          "pupil_id": {
+            "format": "uuid",
+            "title": "Pupil Id",
+            "type": "string"
+          },
+          "years_in_school": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Years In School"
+          }
+        },
+        "required": [
+          "pupil_id",
+          "first_name",
+          "last_name"
+        ],
+        "title": "PupilEarlyYearsDetailsRead",
+        "type": "object"
+      },
       "PupilEntriesRead": {
         "properties": {
           "first_name": {
@@ -5207,12 +5643,22 @@
             ],
             "title": "Admission Number"
           },
+          "early_years": {
+            "default": false,
+            "title": "Early Years",
+            "type": "boolean"
+          },
           "has_attendance": {
             "title": "Has Attendance",
             "type": "boolean"
           },
           "has_comment": {
             "title": "Has Comment",
+            "type": "boolean"
+          },
+          "has_details": {
+            "default": false,
+            "title": "Has Details",
             "type": "boolean"
           },
           "has_growth": {
@@ -5825,6 +6271,15 @@
         "title": "ReportStateRead",
         "type": "object"
       },
+      "ReportType": {
+        "description": "Which report a class's pupils get (docs/DECISIONS.md D128).\n\nPrimary classes get the scored continuous-assessment card, one per half\nterm. Early-years classes (Preparatory, Nursery, Kindergarten) get the\nwritten Nursery Progress Report instead: no subjects, no scores, one per\nterm.",
+        "enum": [
+          "primary",
+          "early_years"
+        ],
+        "title": "ReportType",
+        "type": "string"
+      },
       "ReturnRequest": {
         "additionalProperties": false,
         "description": "\u00a77: `POST /classes/{id}/return` takes `{ note }`, and it is required.",
@@ -6087,13 +6542,27 @@
             "type": "integer"
           },
           "grading_scale_id": {
-            "format": "uuid",
-            "title": "Grading Scale Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading Scale Id"
           },
           "grading_scale_name": {
-            "title": "Grading Scale Name",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grading Scale Name"
           },
           "reports": {
             "title": "Reports",
@@ -6109,8 +6578,6 @@
           }
         },
         "required": [
-          "grading_scale_id",
-          "grading_scale_name",
           "rows",
           "graded",
           "ungraded",
@@ -8317,6 +8784,136 @@
         ]
       }
     },
+    "/api/v1/classes/{class_id}/early-years-details": {
+      "get": {
+        "description": "Each pupil's dominance and years in school, for an early-years class.",
+        "operationId": "read_early_years_details_api_v1_classes__class_id__early_years_details_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassEarlyYearsDetailsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read Early Years Details",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      },
+      "put": {
+        "description": "The class teacher's, like the comment, and locked once submitted (R14).",
+        "operationId": "save_early_years_details_api_v1_classes__class_id__early_years_details_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "class_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Class Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Which term's records.",
+            "in": "query",
+            "name": "term_id",
+            "required": true,
+            "schema": {
+              "description": "Which term's records.",
+              "format": "uuid",
+              "title": "Term Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EarlyYearsDetailsSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClassEarlyYearsDetailsRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Save Early Years Details",
+        "tags": [
+          "teacher: narrative and class records"
+        ]
+      }
+    },
     "/api/v1/classes/{class_id}/growth": {
       "get": {
         "operationId": "read_growth_api_v1_classes__class_id__growth_get",
@@ -10394,7 +10991,7 @@
     },
     "/api/v1/narrative-sections": {
       "get": {
-        "description": "The sixteen sections of \u00a71.4, in card order.\n\nSeven curriculum areas under \"Area of Curriculum\", then B through J.",
+        "description": "One report's sections, in card order.\n\nThe primary card's are the curriculum areas and B through J; the\nearly-years progress report has its own (D128).",
         "operationId": "list_narrative_sections_api_v1_narrative_sections_get",
         "parameters": [
           {
@@ -10405,6 +11002,15 @@
               "default": true,
               "title": "Include Inactive",
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "report_type",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ReportType",
+              "default": "primary"
             }
           }
         ],

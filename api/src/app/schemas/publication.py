@@ -249,8 +249,53 @@ class ParentCardRead(BaseModel):
     return_date: dt.date | None = None
 
 
+class FormItemRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    marker: str
+    label: str
+    body: str | None = None
+
+
+class FormBlockRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    heading: str | None = None
+    items: list[FormItemRead] = Field(default_factory=list)
+
+
+class FormSectionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    heading: str | None = None
+    blocks: list[FormBlockRead] = Field(default_factory=list)
+
+
+class ParentProgressReportRead(BaseModel):
+    """The early-years progress report (D128), as the PDF prints it."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    title: str
+    subtitle: str
+    school_name: str
+    pupil_name: str
+    class_name: str
+    session_name: str
+    birth_date: dt.date | None = None
+    years_in_school: str | None = None
+    teachers: str
+    date: dt.date | None = None
+    dominance: str | None = None
+    sections: list[FormSectionRead] = Field(default_factory=list)
+
+
 class ChildReportRead(BaseModel):
-    """One term for one child: the card, or R12's sentence."""
+    """One term for one child: the card, or R12's sentence.
+
+    An early-years child's term carries `progress_report` instead of `card`
+    (D128); exactly one of the two is set once the result is available.
+    """
 
     pupil_id: uuid.UUID
     term_id: uuid.UUID
@@ -260,6 +305,7 @@ class ChildReportRead(BaseModel):
     acknowledged_at: dt.datetime | None = None
     message: str | None = None
     card: ParentCardRead | None = None
+    progress_report: ParentProgressReportRead | None = None
 
 
 class ChildReportsRead(BaseModel):

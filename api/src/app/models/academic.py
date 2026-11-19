@@ -37,6 +37,26 @@ class TermHalf(enum.StrEnum):
     SECOND_HALF = "second_half"
 
 
+class ReportType(enum.StrEnum):
+    """Which report a class's pupils get (docs/DECISIONS.md D128).
+
+    Primary classes get the scored continuous-assessment card, one per half
+    term. Early-years classes (Preparatory, Nursery, Kindergarten) get the
+    written Nursery Progress Report instead: no subjects, no scores, one per
+    term.
+    """
+
+    PRIMARY = "primary"
+    EARLY_YEARS = "early_years"
+
+
+report_type_enum = Enum(
+    ReportType,
+    name="report_type",
+    values_callable=lambda cls: [m.value for m in cls],
+)
+
+
 term_number_enum = Enum(
     TermNumber,
     name="term_number",
@@ -129,6 +149,13 @@ class Class(Base):
 
     # Sort order for display. Not a rank of any kind — see R11.
     level_order: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    report_type: Mapped[ReportType] = mapped_column(
+        report_type_enum,
+        nullable=False,
+        default=ReportType.PRIMARY,
+        server_default=ReportType.PRIMARY.value,
+    )
 
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"

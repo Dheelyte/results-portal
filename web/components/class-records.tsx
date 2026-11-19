@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button, Notice, Panel, Skeleton, SkeletonPanel } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
-import type { TeacherApi } from "@/lib/api/teacher";
+import type { Dominance, TeacherApi } from "@/lib/api/teacher";
 import { attendanceErrors } from "@/lib/attendance";
 import { countCells, merge, plain, type Cells } from "@/lib/scores";
 import { autosaveLabel, useAutosave } from "@/lib/use-autosave";
@@ -563,5 +563,144 @@ function CommentPhrases({
         </li>
       ))}
     </ul>
+  );
+}
+
+/* ------------------------------------------------------------------------- */
+
+const DOMINANCE_OPTIONS: { value: Dominance; label: string }[] = [
+  { value: "right", label: "Right" },
+  { value: "left", label: "Left" },
+  { value: "not_established", label: "Not established" },
+];
+
+/**
+ * The early-years form's header lines (docs/DECISIONS.md D128): each child's
+ * dominance and years in school, typed by the class teacher every term.
+ */
+export function EarlyYearsDetailsGrid({
+  api,
+  classId,
+  termId,
+}: {
+  api: TeacherApi;
+  classId: string;
+  termId: string;
+}) {
+  const records = useRecords({
+    load: (signal) => api.earlyYearsDetails(classId, termId, signal),
+    save: (dirty) =>
+      api.saveEarlyYearsDetails(
+        classId,
+        termId,
+        Object.entries(dirty).map(([pupilId, row]) => ({
+          pupil_id: pupilId,
+          dominance: (row.dominance || null) as Dominance | null,
+          years_in_school: row.years_in_school?.trim() ? row.years_in_school : null,
+        })),
+      ),
+    rowsOf: (data) => data.rows ?? [],
+    keyOf: (row) => row.pupil_id,
+    editable: (data) => data.editable,
+    read: (row) => ({
+      dominance: row.dominance ?? "",
+      years_in_school: row.years_in_school ?? "",
+    }),
+    deps: [api, classId, termId],
+  });
+
+  if (records.loading) {
+    return <SkeletonPanel rows={10} label="Loading the class…" />;
+  }
+  if (!records.data) return <Notice>{records.error ?? "Could not load the class."}</Notice>;
+
+  const data = records.data;
+  // The server replaces both lines of a row together, so a change to one
+  // sends the other's current value with it.
+  const change = (pupilId: string, field: "dominance" | "years_in_school", text: string) => {
+    const other = field === "dominance" ? "years_in_school" : "dominance";
+    records.change(pupilId, other, records.valueOf(pupilId, other));
+    records.change(pupilId, field, text);
+  };
+
+  return (
+    <Panel
+      title="Dominance and years in school"
+      description="The two lines at the top of each child's progress report. Both are needed before the class can be sent to the head teacher."
+    >
+      {records.error ? <Notice tone="error">{records.error}</Notice> : null}
+
+      <SaveBar
+        autosave={records.autosave}
+        pending={records.pending}
+        blocked={records.blocked}
+        editable={data.editable}
+      />
+
+      <ul className="flex flex-col divide-y divide-[var(--border)]">
+        {(data.rows ?? []).map((row) => {
+          const dominance = records.valueOf(row.pupil_id, "dominance");
+          const years = records.valueOf(row.pupil_id, "years_in_school");
+          const yearsError = records.errorOf(row.pupil_id, "years_in_school");
+          return (
+            <li
+              key={row.pupil_id}
+              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <span className="text-sm font-medium">{pupilName(row)}</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <fieldset className="flex flex-wrap gap-2 text-sm" disabled={!data.editable}>
+                  <legend className="sr-only">Dominance for {pupilName(row)}</legend>
+                  {DOMINANCE_OPTIONS.map((option) => (
+                    <label
+                      key={option.value}
+                      className={`flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 ${
+                        dominance === option.value
+                          ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand)]"
+                          : "border-[var(--border)]"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name={`dominance-${row.pupil_id}`}
+                        value={option.value}
+                        checked={dominance === option.value}
+                        onChange={() => {
+                          change(row.pupil_id, "dominance", option.value);
+                        }}
+                        onBlur={records.autosave.saveNow}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </fieldset>
+                <label className="flex items-center gap-2 text-sm">
+                  <span className="text-[var(--muted)]">Years in school</span>
+                  <input
+                    value={years}
+                    onChange={(event) =>
+                      change(row.pupil_id, "years_in_school", event.target.value)
+                    }
+                    onBlur={records.autosave.saveNow}
+                    disabled={!data.editable}
+                    maxLength={30}
+                    placeholder="e.g. 2"
+                    aria-invalid={yearsError ? true : undefined}
+                    className={`w-24 rounded-lg border bg-[var(--surface)] px-2 py-1 text-sm ${
+                      yearsError ? "border-[var(--danger)]" : "border-[var(--border)]"
+                    } disabled:text-[var(--muted)]`}
+                  />
+                </label>
+              </div>
+              {yearsError ? (
+                <span role="alert" className="text-xs text-[var(--danger)]">
+                  {yearsError}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
   );
 }

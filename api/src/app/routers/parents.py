@@ -24,6 +24,7 @@ from app.schemas.publication import (
     ChildReportRead,
     ChildReportsRead,
     ParentCardRead,
+    ParentProgressReportRead,
 )
 from app.services import parents, reportcard
 
@@ -79,10 +80,15 @@ async def my_childs_report(
     )
 
     card = None
+    progress_report = None
     if report is not None:
-        card = _card_read(
-            await reportcard.build(db, parent, pupil_id=pupil_id, term_id=term_id, half=half)
+        built = await reportcard.build_for(
+            db, parent, pupil_id=pupil_id, term_id=term_id, half=half
         )
+        if isinstance(built, reportcard.EarlyYearsCard):
+            progress_report = ParentProgressReportRead.model_validate(built)
+        else:
+            card = _card_read(built)
 
     return ChildReportRead(
         pupil_id=pupil.id,
@@ -93,6 +99,7 @@ async def my_childs_report(
         acknowledged_at=report.parent_acknowledged_at if report else None,
         message=message,
         card=card,
+        progress_report=progress_report,
     )
 
 

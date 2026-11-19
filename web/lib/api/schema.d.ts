@@ -388,6 +388,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/classes/{class_id}/early-years-details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Early Years Details
+         * @description Each pupil's dominance and years in school, for an early-years class.
+         */
+        get: operations["read_early_years_details_api_v1_classes__class_id__early_years_details_get"];
+        /**
+         * Save Early Years Details
+         * @description The class teacher's, like the comment, and locked once submitted (R14).
+         */
+        put: operations["save_early_years_details_api_v1_classes__class_id__early_years_details_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/classes/{class_id}/growth": {
         parameters: {
             query?: never;
@@ -1048,9 +1072,10 @@ export interface paths {
         };
         /**
          * The card's narrative sections
-         * @description The sixteen sections of §1.4, in card order.
+         * @description One report's sections, in card order.
          *
-         *     Seven curriculum areas under "Area of Curriculum", then B through J.
+         *     The primary card's are the curriculum areas and B through J; the
+         *     early-years progress report has its own (D128).
          */
         get: operations["list_narrative_sections_api_v1_narrative_sections_get"];
         /**
@@ -2152,6 +2177,7 @@ export interface components {
             attendance?: components["schemas"]["CardAttendance"] | null;
             /** Class Teacher Comment */
             class_teacher_comment?: string | null;
+            dominance?: components["schemas"]["Dominance"] | null;
             /** First Name */
             first_name: string;
             growth?: components["schemas"]["CardGrowth"] | null;
@@ -2180,6 +2206,8 @@ export interface components {
             pupil_id: string;
             /** Subjects */
             subjects?: components["schemas"]["SubjectRowRead"][];
+            /** Years In School */
+            years_in_school?: string | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -2254,6 +2282,9 @@ export interface components {
         /**
          * ChildReportRead
          * @description One term for one child: the card, or R12's sentence.
+         *
+         *     An early-years child's term carries `progress_report` instead of `card`
+         *     (D128); exactly one of the two is set once the result is available.
          */
         ChildReportRead: {
             /** Acknowledged At */
@@ -2263,6 +2294,7 @@ export interface components {
             card?: components["schemas"]["ParentCardRead"] | null;
             /** Message */
             message?: string | null;
+            progress_report?: components["schemas"]["ParentProgressReportRead"] | null;
             /** Published At */
             published_at?: string | null;
             /**
@@ -2351,6 +2383,31 @@ export interface components {
              * @description As the school names it, e.g. Primary 4.
              */
             name: string;
+            /**
+             * @description The scored primary card, or the early-years progress report (D128).
+             * @default primary
+             */
+            report_type: components["schemas"]["ReportType"];
+        };
+        /** ClassEarlyYearsDetailsRead */
+        ClassEarlyYearsDetailsRead: {
+            /**
+             * Class Id
+             * Format: uuid
+             */
+            class_id: string;
+            /** Class Name */
+            class_name: string;
+            /** Editable */
+            editable: boolean;
+            /** Rows */
+            rows?: components["schemas"]["PupilEarlyYearsDetailsRead"][];
+            state: components["schemas"]["ClassTermState"];
+            /**
+             * Term Id
+             * Format: uuid
+             */
+            term_id: string;
         };
         /** ClassGrowthRead */
         ClassGrowthRead: {
@@ -2390,6 +2447,8 @@ export interface components {
             editable: boolean;
             /** Pupils */
             pupils?: components["schemas"]["NarrativeProgressRead"][];
+            /** @default primary */
+            report_type: components["schemas"]["ReportType"];
             /** Roll Size */
             roll_size: number;
             /** Sections */
@@ -2432,6 +2491,7 @@ export interface components {
             level_order: number;
             /** Name */
             name: string;
+            report_type: components["schemas"]["ReportType"];
         };
         /** ClassReviewRead */
         ClassReviewRead: {
@@ -2448,6 +2508,8 @@ export interface components {
             decision_blocked?: string | null;
             /** Promotion Applies */
             promotion_applies: boolean;
+            /** @default primary */
+            report_type: components["schemas"]["ReportType"];
             /** Return Note */
             return_note?: string | null;
             state: components["schemas"]["ClassTermState"];
@@ -2579,6 +2641,7 @@ export interface components {
             level_order?: number | null;
             /** Name */
             name?: string | null;
+            report_type?: components["schemas"]["ReportType"] | null;
         };
         /** CommentCreate */
         CommentCreate: {
@@ -2674,6 +2737,28 @@ export interface components {
             /** Temporary Password */
             temporary_password: string;
             user: components["schemas"]["AccountRead"];
+        };
+        /**
+         * Dominance
+         * @description The early-years report's "Dominance" line (D128).
+         * @enum {string}
+         */
+        Dominance: "right" | "left" | "not_established";
+        /** EarlyYearsDetailsRow */
+        EarlyYearsDetailsRow: {
+            dominance?: components["schemas"]["Dominance"] | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Years In School */
+            years_in_school?: string | null;
+        };
+        /** EarlyYearsDetailsSave */
+        EarlyYearsDetailsSave: {
+            /** Rows */
+            rows: components["schemas"]["EarlyYearsDetailsRow"][];
         };
         /** EnrollmentRead */
         EnrollmentRead: {
@@ -2842,6 +2927,29 @@ export interface components {
              * Format: uuid
              */
             pupil_id: string;
+        };
+        /** FormBlockRead */
+        FormBlockRead: {
+            /** Heading */
+            heading?: string | null;
+            /** Items */
+            items?: components["schemas"]["FormItemRead"][];
+        };
+        /** FormItemRead */
+        FormItemRead: {
+            /** Body */
+            body?: string | null;
+            /** Label */
+            label: string;
+            /** Marker */
+            marker: string;
+        };
+        /** FormSectionRead */
+        FormSectionRead: {
+            /** Blocks */
+            blocks?: components["schemas"]["FormBlockRead"][];
+            /** Heading */
+            heading?: string | null;
         };
         /** GradeBandRead */
         GradeBandRead: {
@@ -3218,6 +3326,11 @@ export interface components {
             group_label?: string | null;
             /** Label */
             label: string;
+            /**
+             * @description The primary card or the early-years progress report (D128).
+             * @default primary
+             */
+            report_type: components["schemas"]["ReportType"];
         };
         /** NarrativeSectionRead */
         NarrativeSectionRead: {
@@ -3236,6 +3349,7 @@ export interface components {
             is_active: boolean;
             /** Label */
             label: string;
+            report_type: components["schemas"]["ReportType"];
         };
         /** NarrativeSectionSave */
         NarrativeSectionSave: {
@@ -3256,6 +3370,11 @@ export interface components {
         };
         /** NarrativeSectionsSave */
         NarrativeSectionsSave: {
+            /**
+             * @description Which report's sections these are (D128). Each report is saved on its own.
+             * @default primary
+             */
+            report_type: components["schemas"]["ReportType"];
             /** Sections */
             sections: components["schemas"]["NarrativeSectionSave"][];
         };
@@ -3375,6 +3494,36 @@ export interface components {
             weight_start_kg?: string | null;
         };
         /**
+         * ParentProgressReportRead
+         * @description The early-years progress report (D128), as the PDF prints it.
+         */
+        ParentProgressReportRead: {
+            /** Birth Date */
+            birth_date?: string | null;
+            /** Class Name */
+            class_name: string;
+            /** Date */
+            date?: string | null;
+            /** Dominance */
+            dominance?: string | null;
+            /** Pupil Name */
+            pupil_name: string;
+            /** School Name */
+            school_name: string;
+            /** Sections */
+            sections?: components["schemas"]["FormSectionRead"][];
+            /** Session Name */
+            session_name: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Teachers */
+            teachers: string;
+            /** Title */
+            title: string;
+            /** Years In School */
+            years_in_school?: string | null;
+        };
+        /**
          * PassageRead
          * @description One section of one pupil's narrative.
          */
@@ -3465,6 +3614,8 @@ export interface components {
             pupils?: components["schemas"]["PupilProgressRead"][];
             /** Ready */
             ready: boolean;
+            /** @default primary */
+            report_type: components["schemas"]["ReportType"];
             /** Return Note */
             return_note?: string | null;
             /** Sheets */
@@ -3570,6 +3721,27 @@ export interface components {
              */
             sex?: ("M" | "F") | null;
         };
+        /** PupilEarlyYearsDetailsRead */
+        PupilEarlyYearsDetailsRead: {
+            /** Admission Number */
+            admission_number?: string | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            dominance?: components["schemas"]["Dominance"] | null;
+            /** First Name */
+            first_name: string;
+            /** Last Name */
+            last_name: string;
+            /** Middle Name */
+            middle_name?: string | null;
+            /**
+             * Pupil Id
+             * Format: uuid
+             */
+            pupil_id: string;
+            /** Years In School */
+            years_in_school?: string | null;
+        };
         /** PupilEntriesRead */
         PupilEntriesRead: {
             /** First Name */
@@ -3658,10 +3830,20 @@ export interface components {
         PupilProgressRead: {
             /** Admission Number */
             admission_number?: string | null;
+            /**
+             * Early Years
+             * @default false
+             */
+            early_years: boolean;
             /** Has Attendance */
             has_attendance: boolean;
             /** Has Comment */
             has_comment: boolean;
+            /**
+             * Has Details
+             * @default false
+             */
+            has_details: boolean;
             /** Has Growth */
             has_growth: boolean;
             /** Is Complete */
@@ -3852,6 +4034,17 @@ export interface components {
             withheld_reason?: string | null;
         };
         /**
+         * ReportType
+         * @description Which report a class's pupils get (docs/DECISIONS.md D128).
+         *
+         *     Primary classes get the scored continuous-assessment card, one per half
+         *     term. Early-years classes (Preparatory, Nursery, Kindergarten) get the
+         *     written Nursery Progress Report instead: no subjects, no scores, one per
+         *     term.
+         * @enum {string}
+         */
+        ReportType: "primary" | "early_years";
+        /**
          * ReturnRequest
          * @description §7: `POST /classes/{id}/return` takes `{ note }`, and it is required.
          */
@@ -3972,13 +4165,10 @@ export interface components {
         SnapshotRead: {
             /** Graded */
             graded: number;
-            /**
-             * Grading Scale Id
-             * Format: uuid
-             */
-            grading_scale_id: string;
+            /** Grading Scale Id */
+            grading_scale_id?: string | null;
             /** Grading Scale Name */
-            grading_scale_name: string;
+            grading_scale_name?: string | null;
             /** Reports */
             reports: number;
             /** Rows */
@@ -5113,6 +5303,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClassCommentsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_early_years_details_api_v1_classes__class_id__early_years_details_get: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassEarlyYearsDetailsRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_early_years_details_api_v1_classes__class_id__early_years_details_put: {
+        parameters: {
+            query: {
+                /** @description Which term's records. */
+                term_id: string;
+            };
+            header?: never;
+            path: {
+                class_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EarlyYearsDetailsSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassEarlyYearsDetailsRead"];
                 };
             };
             /** @description Validation Error */
@@ -6332,6 +6594,7 @@ export interface operations {
         parameters: {
             query?: {
                 include_inactive?: boolean;
+                report_type?: components["schemas"]["ReportType"];
             };
             header?: never;
             path?: never;

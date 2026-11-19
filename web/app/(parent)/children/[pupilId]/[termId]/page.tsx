@@ -71,12 +71,34 @@ interface Card {
   return_date?: string | null;
 }
 
+/** The early-years progress report (D128), as the PDF prints it. */
+interface ProgressReport {
+  title: string;
+  subtitle: string;
+  school_name: string;
+  pupil_name: string;
+  class_name: string;
+  birth_date?: string | null;
+  years_in_school?: string | null;
+  teachers: string;
+  date?: string | null;
+  dominance?: string | null;
+  sections: {
+    heading?: string | null;
+    blocks: {
+      heading?: string | null;
+      items: { marker: string; label: string; body?: string | null }[];
+    }[];
+  }[];
+}
+
 interface Report {
   term_label: string;
   available: boolean;
   acknowledged_at?: string | null;
   message?: string | null;
   card?: Card | null;
+  progress_report?: ProgressReport | null;
 }
 
 /** A figure as the card prints it: 40, not 40.00; nothing for nothing. */
@@ -117,7 +139,7 @@ export default async function ReportPage({
     );
   }
 
-  if (!report.available || !report.card) {
+  if (!report.available || !(report.card || report.progress_report)) {
     return <Unavailable pupilId={pupilId} message={report.message ?? ""} />;
   }
 
@@ -132,7 +154,20 @@ export default async function ReportPage({
     revalidatePath(`/children/${pupilId}/${termId}`);
   }
 
-  const card = report.card;
+  if (report.progress_report) {
+    return (
+      <ProgressReportView
+        pupilId={pupilId}
+        termId={termId}
+        termLabel={report.term_label}
+        acknowledgedAt={report.acknowledged_at ?? null}
+        acknowledge={acknowledge}
+        report={report.progress_report}
+      />
+    );
+  }
+
+  const card = report.card!;
 
   return (
     <>
@@ -387,6 +422,119 @@ export default async function ReportPage({
           begins)
         </p>
       ) : null}
+    </>
+  );
+}
+
+/**
+ * An early-years child's term (D128): the Nursery Progress Report Form, in
+ * the PDF's order. One per term, so there is no half-term switch.
+ */
+function ProgressReportView({
+  pupilId,
+  termId,
+  termLabel,
+  acknowledgedAt,
+  acknowledge,
+  report,
+}: {
+  pupilId: string;
+  termId: string;
+  termLabel: string;
+  acknowledgedAt: string | null;
+  acknowledge: () => Promise<void>;
+  report: ProgressReport;
+}) {
+  return (
+    <>
+      <PageHeader
+        breadcrumbs={[
+          { label: "Your children", href: "/children" },
+          { label: report.pupil_name, href: `/children/${pupilId}` },
+          { label: termLabel },
+        ]}
+        back={{ href: `/children/${pupilId}`, label: report.pupil_name }}
+        title={termLabel}
+        description={`${report.pupil_name} · ${report.class_name}`}
+        badge={
+          acknowledgedAt ? (
+            <Badge tone="good" icon={Eye}>
+              Seen
+            </Badge>
+          ) : null
+        }
+      />
+
+      <header className="text-center">
+        <p className="text-sm">{report.school_name}</p>
+        <h1 className="text-base font-bold">{report.title}</h1>
+        <p className="text-sm font-semibold">{report.subtitle}</p>
+      </header>
+
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+        <Entry label="Child's Name" value={report.pupil_name} />
+        <Entry label="Class" value={report.class_name} />
+        <Entry label="Birth Date" value={report.birth_date} />
+        <Entry label="Years in School" value={report.years_in_school} />
+        <Entry label="Teacher(s)" value={report.teachers} />
+        <Entry label="Date of This Report" value={report.date} />
+        <Entry label="Dominance" value={report.dominance} />
+      </dl>
+
+      {report.sections.map((section, index) => (
+        <section key={`${section.heading ?? ""}-${index}`}>
+          {section.heading ? (
+            <h2 className="border-b border-[var(--border)] pb-1 text-sm font-bold uppercase">
+              {section.heading}
+            </h2>
+          ) : null}
+          {section.blocks.map((block, blockIndex) => (
+            <div key={`${block.heading ?? ""}-${blockIndex}`} className="mt-2">
+              {block.heading ? <p className="text-sm font-semibold">{block.heading}</p> : null}
+              <dl className={block.heading ? "ml-4" : ""}>
+                {block.items.map((item, itemIndex) => (
+                  <div key={`${item.label}-${itemIndex}`} className="mt-1.5">
+                    <dt className="text-sm font-medium">
+                      {item.marker ? `${item.marker} ` : ""}
+                      {item.label}
+                    </dt>
+                    <dd className="whitespace-pre-line text-sm text-[var(--muted)]">
+                      {item.body ?? "—"}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </section>
+      ))}
+
+      <Card className="flex flex-wrap items-center gap-3 px-4 py-4">
+        {/* A plain link for the reason the primary card's is (§9). */}
+        <a
+          href={`/api/reports/${pupilId}/${termId}`}
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[var(--brand)] px-3.5 py-2 text-sm font-medium text-[var(--brand-contrast)] shadow-sm transition hover:bg-[var(--brand-strong)]"
+        >
+          <Download aria-hidden className="size-4" />
+          Download PDF
+        </a>
+
+        {acknowledgedAt ? (
+          <span className="flex items-center gap-1.5 text-sm text-[var(--success)]">
+            <Eye aria-hidden className="size-4" />
+            You confirmed you have seen this result.
+          </span>
+        ) : (
+          <form action={acknowledge}>
+            <SubmitButton
+              variant="secondary"
+              icon={<Eye aria-hidden className="size-4 shrink-0" />}
+            >
+              I have seen this result
+            </SubmitButton>
+          </form>
+        )}
+      </Card>
     </>
   );
 }

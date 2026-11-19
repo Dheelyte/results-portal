@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import Context, DbSession
 from app.authz.dependencies import AssessmentConfigAdmin, UserAdmin
-from app.models import GradingScale, User
+from app.models import GradingScale, ReportType, User
 from app.schemas.grading import (
     GradeBandRead,
     GradingScaleCreate,
@@ -140,13 +140,19 @@ async def activate_grading_scale(
     summary="The card's narrative sections",
 )
 async def list_narrative_sections(
-    db: DbSession, admin: AssessmentConfigAdmin, include_inactive: bool = True
+    db: DbSession,
+    admin: AssessmentConfigAdmin,
+    include_inactive: bool = True,
+    report_type: ReportType = ReportType.PRIMARY,
 ) -> list[NarrativeSectionRead]:
-    """The sixteen sections of §1.4, in card order.
+    """One report's sections, in card order.
 
-    Seven curriculum areas under "Area of Curriculum", then B through J.
+    The primary card's are the curriculum areas and B through J; the
+    early-years progress report has its own (D128).
     """
-    records = await narrative_service.list_sections(db, admin, include_inactive=include_inactive)
+    records = await narrative_service.list_sections(
+        db, admin, include_inactive=include_inactive, report_type=report_type
+    )
     return [NarrativeSectionRead.model_validate(record) for record in records]
 
 
@@ -180,6 +186,7 @@ async def save_narrative_sections(
             )
             for section in payload.sections
         ],
+        report_type=payload.report_type,
         ip_address=context.ip_address,
         user_agent=context.user_agent,
     )
@@ -208,6 +215,7 @@ async def create_narrative_section(
         admin,
         label=payload.label,
         group_label=payload.group_label,
+        report_type=payload.report_type,
         ip_address=context.ip_address,
         user_agent=context.user_agent,
     )

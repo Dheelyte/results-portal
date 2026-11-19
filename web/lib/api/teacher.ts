@@ -29,6 +29,9 @@ export type ClassGrowth = Schemas["ClassGrowthRead"];
 export type GrowthRow = Schemas["GrowthRead"];
 export type ClassComments = Schemas["ClassCommentsRead"];
 export type CommentRow = Schemas["PupilCommentRead"];
+/** The early-years form's header lines (D128). */
+export type EarlyYearsDetails = Schemas["ClassEarlyYearsDetailsRead"];
+export type Dominance = Schemas["Dominance"];
 export type Phrase = Schemas["PhraseRead"];
 export type ClassSummary = Schemas["ClassSummary"];
 export type Progress = Schemas["ProgressRead"];
@@ -148,6 +151,26 @@ export function teacherApi(token: string) {
 
     saveComments: (classId: string, termId: string, rows: Schemas["CommentSaveRow"][]) =>
       request<ClassComments>(`/classes/${classId}/comments`, {
+        method: "PUT",
+        token,
+        query: { term_id: termId },
+        body: { rows },
+      }),
+
+    /* --- The early-years form's header (D128) ------------------------- */
+    earlyYearsDetails: (classId: string, termId: string, signal?: AbortSignal) =>
+      request<EarlyYearsDetails>(`/classes/${classId}/early-years-details`, {
+        token,
+        signal,
+        query: { term_id: termId },
+      }),
+
+    saveEarlyYearsDetails: (
+      classId: string,
+      termId: string,
+      rows: Schemas["EarlyYearsDetailsRow"][],
+    ) =>
+      request<EarlyYearsDetails>(`/classes/${classId}/early-years-details`, {
         method: "PUT",
         token,
         query: { term_id: termId },

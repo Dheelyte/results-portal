@@ -4,7 +4,7 @@ import uuid
 
 from pydantic import BaseModel, Field
 
-from app.models import ClassTermState, TermHalf
+from app.models import ClassTermState, ReportType, TermHalf
 
 
 class OutstandingItem(BaseModel):
@@ -58,6 +58,10 @@ class PupilProgressRead(BaseModel):
     has_comment: bool
     has_attendance: bool
     has_growth: bool
+    # The early-years form (D128): dominance and years in school, in place of
+    # the comment and attendance that report doesn't carry.
+    early_years: bool = False
+    has_details: bool = False
     is_complete: bool
 
 
@@ -68,6 +72,7 @@ class ProgressRead(BaseModel):
     class_name: str
     term_id: uuid.UUID
     state: ClassTermState
+    report_type: ReportType = ReportType.PRIMARY
     times_school_opened: int | None = None
 
     sheets: list[SheetProgressRead] = Field(default_factory=list)

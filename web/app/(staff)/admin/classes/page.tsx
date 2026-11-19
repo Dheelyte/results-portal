@@ -29,7 +29,9 @@ import {
   Row,
   SkeletonTable,
   Table,
+  Select,
 } from "@/components/ui";
+import type { ReportType } from "@/lib/api/admin";
 import { useAdminApi } from "@/lib/api/use-admin";
 import { useAction, useResource } from "@/lib/use-async";
 
@@ -51,6 +53,7 @@ export default function ClassesPage() {
   };
   const [className, setClassName] = useState("");
   const [levelOrder, setLevelOrder] = useState("");
+  const [reportType, setReportType] = useState<ReportType>("primary");
   const [houseName, setHouseName] = useState("");
 
   // Editing one class or one house (D121).
@@ -63,6 +66,7 @@ export default function ClassesPage() {
     name: string;
     level_order: string;
     is_active: boolean;
+    report_type: ReportType;
   } | null>(null);
   const [editingHouse, setEditingHouse] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
@@ -114,6 +118,9 @@ export default function ClassesPage() {
                   <Cell>
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium">{item.name}</span>
+                      {item.report_type === "early_years" ? (
+                        <Badge tone="gold">Early years</Badge>
+                      ) : null}
                       {item.is_active ? null : <Badge tone="bad">Inactive</Badge>}
                     </span>
                   </Cell>
@@ -128,6 +135,7 @@ export default function ClassesPage() {
                           name: item.name,
                           level_order: String(item.level_order),
                           is_active: item.is_active,
+                          report_type: item.report_type,
                         });
                       }}
                       onDelete={() =>
@@ -200,12 +208,18 @@ export default function ClassesPage() {
           onSubmit={async (event) => {
             event.preventDefault();
             const created = await action.run(
-              () => api!.createClass({ name: className, level_order: Number(levelOrder || 0) }),
+              () =>
+                api!.createClass({
+                  name: className,
+                  level_order: Number(levelOrder || 0),
+                  report_type: reportType,
+                }),
               `${className} added.`,
             );
             if (created) {
               setClassName("");
               setLevelOrder("");
+              setReportType("primary");
               setDialog(null);
             }
           }}
@@ -227,6 +241,7 @@ export default function ClassesPage() {
               onChange={(event) => setLevelOrder(event.target.value)}
             />
           </Field>
+          <ReportTypeField value={reportType} onChange={setReportType} />
           {action.error ? (
             <div className="sm:col-span-2">
               <Notice>{action.error}</Notice>
@@ -293,6 +308,7 @@ export default function ClassesPage() {
                   name: editingClass.name,
                   level_order: Number(editingClass.level_order || 0),
                   is_active: editingClass.is_active,
+                  report_type: editingClass.report_type,
                 }),
               );
               if (saved) setEditingClass(null);
@@ -316,6 +332,10 @@ export default function ClassesPage() {
                 }
               />
             </Field>
+            <ReportTypeField
+              value={editingClass.report_type}
+              onChange={(report_type) => setEditingClass({ ...editingClass, report_type })}
+            />
             <label className="flex items-start gap-2 text-sm sm:col-span-2">
               <input
                 type="checkbox"
@@ -384,5 +404,32 @@ export default function ClassesPage() {
 
       <ConfirmDelete target={deleting} onClose={() => setDeleting(null)} onDeleted={reloadAll} />
     </>
+  );
+}
+
+/** Which report a class gets (docs/DECISIONS.md D128). */
+function ReportTypeField({
+  value,
+  onChange,
+}: {
+  value: ReportType;
+  onChange: (value: ReportType) => void;
+}) {
+  return (
+    <div className="sm:col-span-2">
+      <Field
+        label="Report"
+        hint={
+          value === "early_years"
+            ? "Preparatory, Nursery and Kindergarten: the written progress report, once a term. No subjects or scores. Its questions are on Grading & narrative."
+            : "The scored continuous-assessment card, each half term."
+        }
+      >
+        <Select value={value} onChange={(event) => onChange(event.target.value as ReportType)}>
+          <option value="primary">Primary card</option>
+          <option value="early_years">Early-years progress report</option>
+        </Select>
+      </Field>
+    </div>
   );
 }

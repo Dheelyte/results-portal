@@ -110,8 +110,10 @@ def render_html(card: Any) -> str:
     exactly the kind of failure that gets noticed by a school rather than by
     a test (docs/DECISIONS.md D84).
     """
-    stylesheet = markupsafe.Markup((TEMPLATES / "card.css").read_text(encoding="utf-8"))
-    return environment().get_template("card.html").render(card=card, stylesheet=stylesheet)
+    # The primary card and the early-years report (D128) each name their own.
+    name = getattr(card, "template", "card")
+    stylesheet = markupsafe.Markup((TEMPLATES / f"{name}.css").read_text(encoding="utf-8"))
+    return environment().get_template(f"{name}.html").render(card=card, stylesheet=stylesheet)
 
 
 def render_pdf(card: Any) -> bytes:

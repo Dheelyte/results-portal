@@ -47,6 +47,21 @@ class PublicationState(enum.StrEnum):
     WITHHELD = "withheld"
 
 
+class Dominance(enum.StrEnum):
+    """The early-years report's "Dominance" line (D128)."""
+
+    RIGHT = "right"
+    LEFT = "left"
+    NOT_ESTABLISHED = "not_established"
+
+
+dominance_enum = Enum(
+    Dominance,
+    name="dominance",
+    values_callable=lambda cls: [m.value for m in cls],
+)
+
+
 class_term_state_enum = Enum(
     ClassTermState,
     name="class_term_state",
@@ -111,6 +126,12 @@ class TermReport(Base):
     class_teacher_comment: Mapped[str | None] = mapped_column(Text)
     head_teacher_remark: Mapped[str | None] = mapped_column(Text)
     promotion_decision: Mapped[str | None] = mapped_column(Text)  # third term only
+
+    # The early-years report's header (D128), typed by the class teacher each
+    # term. Years in school is free text ("2", "1½") because that is how the
+    # paper form is filled in.
+    dominance: Mapped[Dominance | None] = mapped_column(dominance_enum)
+    years_in_school: Mapped[str | None] = mapped_column(Text)
 
     state: Mapped[PublicationState] = mapped_column(
         publication_state_enum,

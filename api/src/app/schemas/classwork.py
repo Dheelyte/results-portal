@@ -12,7 +12,8 @@ import uuid
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.models import ClassTermState
+from app.models import ClassTermState, Dominance, ReportType
+from app.services.early_years import MAX_YEARS_LENGTH
 from app.services.narrative import MAX_PASSAGE_LENGTH
 from app.services.reports import MAX_COMMENT_LENGTH
 
@@ -115,6 +116,8 @@ class ClassNarrativeRead(BaseModel):
     pupils: list[NarrativeProgressRead] = Field(default_factory=list)
     complete_pupils: int
     roll_size: int
+    # Which report this class writes (D128). The teacher's tabs follow it.
+    report_type: ReportType = ReportType.PRIMARY
 
     state: ClassTermState
     editable: bool
@@ -255,3 +258,42 @@ class PhraseRead(BaseModel):
     # Plain `str`, not `ShortText`: this is a read model, and a length bound
     # on a response would turn an odd stored row into a 500.
     text: str
+
+
+# ---------------------------------------------------------------------------
+# The early-years form's header (D128)
+# ---------------------------------------------------------------------------
+
+
+class EarlyYearsDetailsRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pupil_id: uuid.UUID
+    dominance: Dominance | None = None
+    years_in_school: str | None = Field(default=None, max_length=MAX_YEARS_LENGTH)
+
+
+class EarlyYearsDetailsSave(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rows: list[EarlyYearsDetailsRow] = Field(min_length=1, max_length=400)
+
+
+class PupilEarlyYearsDetailsRead(BaseModel):
+    pupil_id: uuid.UUID
+    admission_number: str | None = None
+    first_name: str
+    middle_name: str | None = None
+    last_name: str
+    date_of_birth: dt.date | None = None
+    dominance: Dominance | None = None
+    years_in_school: str | None = None
+
+
+class ClassEarlyYearsDetailsRead(BaseModel):
+    class_id: uuid.UUID
+    class_name: str
+    term_id: uuid.UUID
+    rows: list[PupilEarlyYearsDetailsRead] = Field(default_factory=list)
+    state: ClassTermState
+    editable: bool

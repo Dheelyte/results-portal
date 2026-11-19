@@ -41,6 +41,7 @@ from app.models import (
     MarksObtainable,
     NarrativeEntry,
     Pupil,
+    ReportType,
     ResultEntry,
     Subject,
     TeachingAssignment,
@@ -49,7 +50,7 @@ from app.models import (
     TermReport,
     User,
 )
-from app.services import marks, narrative, results, workflow
+from app.services import early_years, marks, narrative, results, workflow
 from app.services.errors import Blocked, NotPermitted
 from app.services.support import all_of, has_text, one_or_404, rows_of
 
@@ -125,9 +126,19 @@ class PupilProgress:
     has_comment: bool = False
     has_attendance: bool = False
     has_growth: bool = False
+    # The early-years form (D128): its header lines replace the comment and
+    # attendance, which that report doesn't carry.
+    early_years: bool = False
+    has_details: bool = False
 
     @property
     def is_complete(self) -> bool:
+        if self.early_years:
+            return (
+                self.sections_total > 0
+                and self.sections_written >= self.sections_total
+                and self.has_details
+            )
         return (
             self.sections_total > 0
             and self.sections_written >= self.sections_total
@@ -147,6 +158,10 @@ def _pupil_gaps(pupil: "PupilProgress") -> list[str]:
         shown = ", ".join(pupil.missing_sections[:4])
         more = len(pupil.missing_sections) - 4
         gaps.append(f"narrative ({shown}{f' and {more} more' if more > 0 else ''})")
+    if pupil.early_years:
+        if not pupil.has_details:
+            gaps.append("dominance and years in school")
+        return gaps
     if not pupil.has_comment:
         gaps.append("class teacher's comment")
     if not pupil.has_attendance:
@@ -173,7 +188,7 @@ class Progress:
         """What is left, in the shape R10 asks for and the screen renders."""
         items: list[dict[str, object]] = []
 
-        if self.times_school_opened is None:
+        if self.times_school_opened is None and self.klass.report_type is ReportType.PRIMARY:
             items.append(
                 _item(
                     "term",
@@ -382,8 +397,15 @@ async def class_progress(
     )
     pupil_ids = [pupil.id for pupil in pupils]
 
-    offerings = await _offerings(
-        db, actor, class_id=class_id, academic_session_id=term.academic_session_id
+    early = klass.report_type is ReportType.EARLY_YEARS
+    # An early-years class has no score sheets (D128), whatever subjects an
+    # admin may have attached to it.
+    offerings = (
+        []
+        if early
+        else await _offerings(
+            db, actor, class_id=class_id, academic_session_id=term.academic_session_id
+        )
     )
     periods = await _periods(db, actor, term)
     maxima = await _maxima(
@@ -401,7 +423,7 @@ async def class_progress(
     )
 
     sheets: list[SheetProgress] = []
-    for half in TermHalf:
+    for half in () if early else TermHalf:
         period = periods.get(half)
         for offering, subject, teacher_name in offerings:
             if subject.is_group:
@@ -443,7 +465,9 @@ async def class_progress(
                 )
             )
 
-    pupil_progress = await _pupil_progress(db, actor, term=term, pupils=pupils, pupil_ids=pupil_ids)
+    pupil_progress = await _pupil_progress(
+        db, actor, term=term, pupils=pupils, pupil_ids=pupil_ids, report_type=klass.report_type
+    )
 
     status = await db.scalar(
         scope.scoped_class_term_status(actor).where(
@@ -470,9 +494,10 @@ async def _pupil_progress(
     term: Term,
     pupils: Sequence[Pupil],
     pupil_ids: Sequence[uuid.UUID],
+    report_type: ReportType = ReportType.PRIMARY,
 ) -> list[PupilProgress]:
     """The four per-pupil tasks, in four queries rather than four per pupil."""
-    sections = list(await narrative.active_sections(db, actor))
+    sections = list(await narrative.active_sections(db, actor, report_type))
     labels = {section.id: section.label for section in sections}
 
     written: dict[uuid.UUID, set[uuid.UUID]] = {}
@@ -504,6 +529,12 @@ async def _pupil_progress(
     with_attendance = await ids_present(AttendanceRecord)
     with_growth = await ids_present(GrowthRecord)
     with_comment = await ids_present(TermReport, has_text(TermReport.class_teacher_comment))
+    early = report_type is ReportType.EARLY_YEARS
+    with_details = (
+        await early_years.pupils_with_details(db, actor, term_id=term.id, pupil_ids=pupil_ids)
+        if early
+        else set()
+    )
 
     ordered = [section.id for section in sections]
     return [
@@ -521,6 +552,8 @@ async def _pupil_progress(
             has_comment=pupil.id in with_comment,
             has_attendance=pupil.id in with_attendance,
             has_growth=pupil.id in with_growth,
+            early_years=early,
+            has_details=pupil.id in with_details,
         )
         for pupil in pupils
     ]

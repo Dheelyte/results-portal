@@ -80,6 +80,8 @@ export function ClassProgress({
 
   const data: Progress = progress.data;
   const sheets = data.sheets ?? [];
+  // An early-years class has no score sheets (D128).
+  const early = data.report_type === "early_years";
   const pupils = data.pupils ?? [];
   // The server's list, except just after a refusal, when it is the server's
   // list from the refusal — same shape, and fresher by a moment.
@@ -137,6 +139,7 @@ export function ClassProgress({
         </Notice>
       ) : null}
 
+      {early ? null : (
       <Panel
         title="Subjects"
         description="Every subject offered to this class, on both of the term's sheets"
@@ -175,10 +178,15 @@ export function ClassProgress({
           ))}
         </ul>
       </Panel>
+      )}
 
       <Panel
         title="Pupils"
-        description="Narrative, comment and attendance. Height and weight are optional."
+        description={
+          early
+            ? "Each child's progress report: every question answered, plus dominance and years in school."
+            : "Narrative, comment and attendance. Height and weight are optional."
+        }
         bare
       >
         <ul className="flex flex-col divide-y divide-[var(--border)]">
@@ -198,12 +206,21 @@ export function ClassProgress({
                   <Badge
                     tone={pupil.sections_written >= pupil.sections_total ? "good" : "neutral"}
                   >
-                    narrative {pupil.sections_written}/{pupil.sections_total}
+                    {early ? "report" : "narrative"} {pupil.sections_written}/
+                    {pupil.sections_total}
                   </Badge>
-                  <Badge tone={pupil.has_comment ? "good" : "warn"}>comment</Badge>
-                  <Badge tone={pupil.has_attendance ? "good" : "warn"}>attendance</Badge>
-                  {/* Optional (D122): shown when recorded, never asked for. */}
-                  {pupil.has_growth ? <Badge tone="good">height &amp; weight</Badge> : null}
+                  {early ? (
+                    <Badge tone={pupil.has_details ? "good" : "warn"}>dominance &amp; years</Badge>
+                  ) : (
+                    <>
+                      <Badge tone={pupil.has_comment ? "good" : "warn"}>comment</Badge>
+                      <Badge tone={pupil.has_attendance ? "good" : "warn"}>attendance</Badge>
+                      {/* Optional (D122): shown when recorded, never asked for. */}
+                      {pupil.has_growth ? (
+                        <Badge tone="good">height &amp; weight</Badge>
+                      ) : null}
+                    </>
+                  )}
                   <ChevronRight aria-hidden className="size-4 shrink-0 text-[var(--muted)]" />
                 </span>
               </Link>

@@ -24,6 +24,7 @@ from app.models import (
     Class,
     ClassSubject,
     ClassTeacher,
+    ClassTermState,
     ClassTermStatus,
     Enrollment,
     GrowthRecord,
@@ -32,6 +33,7 @@ from app.models import (
     NarrativeEntry,
     NarrativeSectionAssignment,
     Pupil,
+    ReportType,
     ResultEntry,
     Term,
     TermHalf,
@@ -59,7 +61,7 @@ TERM_FIELDS = (
     "is_current",
 )
 PERIOD_FIELDS = ("term_id", "half", "opens_on", "closes_on")
-CLASS_FIELDS = ("name", "level_order", "is_active")
+CLASS_FIELDS = ("name", "level_order", "is_active", "report_type")
 
 # Chronological, which the enum's own alphabetical order is not.
 TERM_ORDER = case(
@@ -528,11 +530,19 @@ async def create_class(
     *,
     name: str,
     level_order: int,
+    report_type: ReportType = ReportType.PRIMARY,
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> Class:
-    record = Class(school_id=actor.school_id, name=name.strip(), level_order=level_order)
+    record = Class(
+        school_id=actor.school_id,
+        name=name.strip(),
+        level_order=level_order,
+        report_type=report_type,
+    )
     db.add(record)
+    if report_type is ReportType.EARLY_YEARS:
+        await _ensure_early_years_sections(db, actor)
 
     async with integrity_guard(db, "A class with that name already exists."):
         await db.flush()
@@ -544,7 +554,7 @@ async def create_class(
         action=AuditAction.CLASS_CREATED,
         entity_type="class",
         entity_id=record.id,
-        after=audit.snapshot(record, ("name", "level_order", "is_active")),
+        after=audit.snapshot(record, CLASS_FIELDS),
         ip_address=ip_address,
         user_agent=user_agent,
     )
@@ -827,9 +837,35 @@ async def update_class(
     ip_address: str | None = None,
     user_agent: str | None = None,
 ) -> Class:
-    """Rename, reorder, deactivate or reactivate a class."""
+    """Rename, reorder, deactivate or reactivate a class, or change its report.
+
+    The report type (D128) changes only while no term of the class has been
+    submitted: a submitted, approved or published report was written for one
+    form, and reprinting it on the other would show a parent a different
+    document from the one the school approved.
+    """
     record = await get_class(db, actor, class_id)
     before = audit.snapshot(record, CLASS_FIELDS)
+
+    if changes.get("report_type", "") is None:
+        changes = {key: value for key, value in changes.items() if key != "report_type"}
+    new_type = changes.get("report_type")
+    if new_type is not None and new_type != record.report_type:
+        decided = await db.scalar(
+            scope.scoped_class_term_status(actor)
+            .where(
+                ClassTermStatus.class_id == record.id,
+                ClassTermStatus.state.in_([ClassTermState.SUBMITTED, ClassTermState.APPROVED]),
+            )
+            .limit(1)
+        )
+        if decided is not None:
+            raise Conflict(
+                f"{record.name} already has results submitted or approved on its current "
+                "report, so its report type can't change. Create a new class instead."
+            )
+        if new_type == ReportType.EARLY_YEARS:
+            await _ensure_early_years_sections(db, actor)
 
     for field, value in changes.items():
         setattr(record, field, value.strip() if isinstance(value, str) else value)
@@ -995,3 +1031,14 @@ async def delete_house(
         user_agent=user_agent,
     )
     await db.commit()
+
+
+async def _ensure_early_years_sections(db: AsyncSession, actor: User) -> None:
+    """The form's sections, the first time any class is early years (D128).
+
+    Imported here rather than at the top: `early_years` reaches `results`,
+    which imports this module.
+    """
+    from app.services import early_years
+
+    await early_years.ensure_standard_sections(db, actor)

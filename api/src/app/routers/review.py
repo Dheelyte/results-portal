@@ -100,6 +100,8 @@ def _card(card: review_service.PupilCard, *, times_school_opened: int | None) ->
             else None
         ),
         class_teacher_comment=report.class_teacher_comment if report else None,
+        dominance=report.dominance if report else None,
+        years_in_school=report.years_in_school if report else None,
         overall_percentage=report.overall_percentage if report else None,
         head_teacher_remark=report.head_teacher_remark if report else None,
         position_text=report.position_text if report else None,
@@ -115,6 +117,7 @@ def _read(review: review_service.ClassReview) -> ClassReviewRead:
         term_number=review.term.number.value,
         term_label=review.term_label,
         state=review.state,
+        report_type=review.klass.report_type,
         return_note=review.return_note,
         promotion_applies=review.promotion_applies,
         decision_blocked=review.decision_blocked,

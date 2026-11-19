@@ -68,6 +68,7 @@ async def create_class(
         admin,
         name=payload.name,
         level_order=payload.level_order,
+        report_type=payload.report_type,
         ip_address=context.ip_address,
         user_agent=context.user_agent,
     )

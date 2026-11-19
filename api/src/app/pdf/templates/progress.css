@@ -1,0 +1,151 @@
+/*
+  The early-years progress report's stylesheet (docs/DECISIONS.md D128).
+
+  A4 portrait, written answers under ruled headings, after the school's
+  paper form. DejaVu only, for the reason card.css gives (D80).
+*/
+
+@page {
+  size: A4 portrait;
+  margin: 14mm 14mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 9pt;
+  line-height: 1.35;
+  color: #000;
+  margin: 0;
+}
+
+.masthead {
+  text-align: center;
+  margin-bottom: 5mm;
+}
+
+.masthead h1,
+.masthead h2,
+.masthead h3 {
+  font-family: "DejaVu Serif", serif;
+  margin: 0;
+}
+
+.masthead h1 {
+  font-size: 12pt;
+  margin-bottom: 1mm;
+}
+
+.masthead h2 {
+  font-size: 11pt;
+  text-decoration: underline;
+}
+
+.masthead h3 {
+  font-size: 9.5pt;
+  margin-top: 1mm;
+}
+
+.identity {
+  display: flex;
+  gap: 8mm;
+  margin-bottom: 2mm;
+}
+
+.identity .column {
+  flex: 1;
+}
+
+.identity p {
+  margin: 0 0 2mm;
+  border-bottom: 0.4pt solid #000;
+  padding-bottom: 0.4mm;
+}
+
+.label {
+  font-weight: bold;
+}
+
+.identity .value {
+  padding-left: 1mm;
+}
+
+.dominance {
+  margin: 1mm 0 5mm;
+}
+
+.choice {
+  margin-left: 6mm;
+}
+
+.box {
+  display: inline-block;
+  width: 3.4mm;
+  height: 3.4mm;
+  border: 0.6pt solid #000;
+  text-align: center;
+  line-height: 3.2mm;
+  font-size: 8pt;
+  vertical-align: middle;
+}
+
+.form-section {
+  margin-bottom: 4mm;
+}
+
+.form-section h4 {
+  font-size: 10pt;
+  margin: 0 0 2mm;
+  padding-bottom: 0.6mm;
+  border-bottom: 0.8pt solid #000;
+}
+
+.form-section h5 {
+  font-size: 9pt;
+  margin: 2.5mm 0 1.2mm;
+}
+
+.item {
+  margin: 0 0 2.5mm;
+  break-inside: avoid;
+}
+
+.question {
+  margin: 0;
+  font-weight: bold;
+}
+
+.marker {
+  display: inline-block;
+  min-width: 5mm;
+}
+
+.answer {
+  margin: 0.8mm 0 0 5mm;
+  white-space: pre-line;
+  border-bottom: 0.4pt dotted #555;
+  padding-bottom: 0.8mm;
+  min-height: 4.5mm;
+}
+
+.signatures {
+  display: flex;
+  justify-content: space-between;
+  gap: 20mm;
+  margin-top: 14mm;
+  break-inside: avoid;
+}
+
+.signatures div {
+  flex: 1;
+  text-align: center;
+}
+
+.signatures .line {
+  display: block;
+  border-top: 0.6pt solid #000;
+  margin-bottom: 1mm;
+}

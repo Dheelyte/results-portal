@@ -1,0 +1,64 @@
+{#
+  The early-years progress report (docs/DECISIONS.md D128).
+
+  Follows the school's Nursery Progress Report Form: the header lines, the
+  dominance choice with the child's box ticked, then each heading with its
+  questions and the teacher's answers beneath, and the two signature lines.
+
+  The numbering ("1.", "a.") is decided in services/reportcard.py, not here.
+#}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ card.pupil_name }} — {{ card.title | title }}</title>
+    <style>{{ stylesheet }}</style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>{{ card.school_name }}</h1>
+      <h2>{{ card.title }}</h2>
+      <h3>{{ card.subtitle }}</h3>
+    </header>
+
+    <section class="identity">
+      <div class="column">
+        <p><span class="label">Child&rsquo;s Name:</span> <span class="value">{{ card.pupil_name }}</span></p>
+        <p><span class="label">Birth Date:</span> <span class="value">{{ card.birth_date | date }}</span></p>
+        <p><span class="label">Teacher(s):</span> <span class="value">{{ card.teachers }}</span></p>
+      </div>
+      <div class="column">
+        <p><span class="label">Class:</span> <span class="value">{{ card.class_name }}</span></p>
+        <p><span class="label">Years in School:</span> <span class="value">{{ card.years_in_school | blank }}</span></p>
+        <p><span class="label">Date of This Report:</span> <span class="value">{{ card.date | date }}</span></p>
+      </div>
+    </section>
+
+    <p class="dominance">
+      <span class="label">Dominance:</span>
+      {% for option in ("Right", "Left", "Not Established") %}
+        <span class="choice"><span class="box">{% if card.dominance == option %}&#10003;{% endif %}</span> {{ option }}</span>
+      {% endfor %}
+    </p>
+
+    {% for section in card.sections %}
+      <section class="form-section">
+        {% if section.heading %}<h4>{{ section.heading | upper }}</h4>{% endif %}
+        {% for block in section.blocks %}
+          {% if block.heading %}<h5>{{ block.heading }}</h5>{% endif %}
+          {% for item in block.items %}
+            <div class="item">
+              <p class="question">{% if item.marker %}<span class="marker">{{ item.marker }}</span> {% endif %}{{ item.label }}</p>
+              <p class="answer">{{ item.body | blank }}</p>
+            </div>
+          {% endfor %}
+        {% endfor %}
+      </section>
+    {% endfor %}
+
+    <footer class="signatures">
+      <div><span class="line"></span>Teacher&rsquo;s Signature</div>
+      <div><span class="line"></span>Head Teacher&rsquo;s Signature</div>
+    </footer>
+  </body>
+</html>

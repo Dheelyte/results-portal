@@ -4,6 +4,7 @@ import uuid
 
 from pydantic import BaseModel, Field
 
+from app.models import ReportType
 from app.schemas.common import OrmModel, ShortText
 
 
@@ -20,6 +21,10 @@ class NarrativeSectionSave(BaseModel):
 
 class NarrativeSectionsSave(BaseModel):
     sections: list[NarrativeSectionSave] = Field(min_length=1)
+    report_type: ReportType = Field(
+        default=ReportType.PRIMARY,
+        description="Which report's sections these are (D128). Each report is saved on its own.",
+    )
 
 
 class NarrativeSectionCreate(BaseModel):
@@ -35,6 +40,10 @@ class NarrativeSectionCreate(BaseModel):
             "starts a block of its own; null makes it a heading by itself."
         ),
     )
+    report_type: ReportType = Field(
+        default=ReportType.PRIMARY,
+        description="The primary card or the early-years progress report (D128).",
+    )
 
 
 class NarrativeSectionRead(OrmModel):
@@ -44,6 +53,7 @@ class NarrativeSectionRead(OrmModel):
     group_label: str | None
     display_order: int
     is_active: bool
+    report_type: ReportType
 
 
 class NarrativeAssignment(BaseModel):

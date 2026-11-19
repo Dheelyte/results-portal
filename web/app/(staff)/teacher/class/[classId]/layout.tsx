@@ -39,6 +39,16 @@ const TABS = [
   { segment: "pupils", label: "Add pupils" },
 ] as const;
 
+// An early-years class fills in the progress report form instead (D128):
+// the written answers, and the form's header lines. No attendance, growth or
+// comment — the form carries none of them.
+const EARLY_YEARS_TABS = [
+  { segment: "", label: "Progress" },
+  { segment: "narrative", label: "Progress report" },
+  { segment: "details", label: "Dominance & years" },
+  { segment: "pupils", label: "Add pupils" },
+] as const;
+
 export default function ClassLayout({ children }: { children: ReactNode }) {
   const api = useTeacherApi();
   const { classId } = useParams<{ classId: string }>();
@@ -77,6 +87,7 @@ export default function ClassLayout({ children }: { children: ReactNode }) {
 
   const term = workload.data?.term;
   const data = narrative.data;
+  const tabs = data.report_type === "early_years" ? EARLY_YEARS_TABS : TABS;
 
   return (
     <>
@@ -92,7 +103,7 @@ export default function ClassLayout({ children }: { children: ReactNode }) {
       />
 
       <nav aria-label="Class records" className="-mb-2 flex flex-wrap gap-1 text-sm">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const href = tab.segment ? `${base}/${tab.segment}` : base;
           const active = pathname === href;
           return (

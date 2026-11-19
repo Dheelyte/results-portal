@@ -17,6 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.models.academic import ReportType, report_type_enum
 from app.models.base import Base, utc_now_column, uuid_pk
 
 
@@ -40,6 +41,14 @@ class NarrativeSection(Base):
     display_order: Mapped[int] = mapped_column(Integer, nullable=False)
     is_active: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
+    )
+    # Which report the section belongs to (D128). A class writes only the
+    # sections of its own report type.
+    report_type: Mapped[ReportType] = mapped_column(
+        report_type_enum,
+        nullable=False,
+        default=ReportType.PRIMARY,
+        server_default=ReportType.PRIMARY.value,
     )
 
     def __repr__(self) -> str:

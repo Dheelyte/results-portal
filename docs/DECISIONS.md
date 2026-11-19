@@ -3013,3 +3013,37 @@ second-half CA maximums are copied in terms with nothing approved. Approved
 and published results are untouched. The migration can't be reversed, so
 take a backup first, and run `python -m app.recompute_averages` afterwards,
 because the stored averages of the changed rows are stale.
+
+## D128 — The early-years progress report
+
+**Decision.** Preparatory, Nursery and Kindergarten get the school's Nursery
+Progress Report Form instead of the scored card. A class has a `report_type`
+(`primary` or `early_years`), set by an admin on the Classes page.
+
+- **The form's questions are narrative sections** tagged
+  `report_type = early_years`: the same table, editor, completeness rule
+  (R8), authorship (D15) and admin page as the primary sections, with a
+  switch between the two sets. A class reads only its own type's sections.
+- **They are created the first time any class is set to early years**, from
+  the school's form (`services/early_years.STANDARD_SECTIONS`), and never
+  again — after that they are the admin's to edit. Item I.1 was blank on the
+  form and was left out, as the school asked. A heading inside a heading is
+  written `Outer — Inner`; the report prints the outer once and numbers the
+  questions (1. 2. under a heading, a. b. under a sub-heading).
+- **The header** is the form's: Dominance (Right / Left / Not established)
+  and Years in School, both typed by the class teacher every term, stored on
+  `term_reports`. Birth date, class, teacher(s) and the report date come from
+  the record.
+- **Once per term**, through the same submit → approve → publish path. No
+  subjects, scores, attendance, growth or comments are asked for; approval
+  freezes no grades and needs no grading scale. Submission needs every
+  question answered plus both header lines.
+- **The report type is fixed once a term is submitted or approved**: a report
+  written for one form must not be reprinted on the other. Create a new class
+  instead.
+- The PDF is `pdf/templates/progress.html`, titled **NURSERY PROGRESS REPORT
+  FORM** for all three classes, as the school's form is; the parent page shows
+  the same content.
+
+Migration 0008 adds the two enum types and four columns; every existing class
+and section is `primary`.

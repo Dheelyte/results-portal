@@ -67,11 +67,16 @@ async def card_pdf(
     wrong, and the new one is written under the next version so the one the
     parent already has is retained (§9, R13).
     """
-    card = await reportcard.build(db, actor, pupil_id=pupil_id, term_id=term_id, half=half)
+    card = await reportcard.build_for(db, actor, pupil_id=pupil_id, term_id=term_id, half=half)
 
     key = storage.object_key(
         session_name=card.session_name,
-        term=f"{card.subtitle.split()[0].lower()}-half-{_term_slug(card.title)}",
+        # The early-years report is one per term, whatever half is asked (D128).
+        term=(
+            card.term_slug
+            if isinstance(card, reportcard.EarlyYearsCard)
+            else f"{card.subtitle.split()[0].lower()}-half-{_term_slug(card.title)}"
+        ),
         # Without an admission number (D124), the pupil's id names the file.
         admission_number=card.admission_number or str(pupil_id),
         version=card.version,

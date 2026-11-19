@@ -9,6 +9,8 @@
     PUT  /classes/{id}/growth?term_id=
     GET  /classes/{id}/comments?term_id=
     PUT  /classes/{id}/comments?term_id=
+    GET  /classes/{id}/early-years-details?term_id=
+    PUT  /classes/{id}/early-years-details?term_id=
     GET  /phrases?scope=
 
 §7 lists only the PUT for attendance, growth and comments, and no GET for one
@@ -34,8 +36,10 @@ from app.schemas.classwork import (
     ClassAttendanceRead,
     ClassCommentsRead,
     ClassCommentsSave,
+    ClassEarlyYearsDetailsRead,
     ClassGrowthRead,
     ClassNarrativeRead,
+    EarlyYearsDetailsSave,
     GrowthRead,
     GrowthSave,
     NarrativeProgressRead,
@@ -43,12 +47,15 @@ from app.schemas.classwork import (
     PassageRead,
     PhraseRead,
     PupilCommentRead,
+    PupilEarlyYearsDetailsRead,
     PupilNarrativeRead,
     SectionHeadingRead,
 )
+from app.services import early_years as early_years_service
 from app.services import narrative as narrative_service
 from app.services import reports as reports_service
 from app.services import wellbeing as wellbeing_service
+from app.services.early_years import DetailsInput
 from app.services.narrative import PassageInput
 from app.services.reports import CommentInput
 from app.services.wellbeing import AttendanceInput, GrowthInput
@@ -115,6 +122,7 @@ async def read_class_narrative(
         ],
         complete_pupils=found.complete_pupils,
         roll_size=len(found.pupils),
+        report_type=found.klass.report_type,
         state=found.state,
         editable=found.editable,
     )
@@ -383,6 +391,74 @@ async def save_comments(
             class_id=class_id,
             term_id=term_id,
             rows=[CommentInput(pupil_id=row.pupil_id, comment=row.comment) for row in payload.rows],
+            ip_address=context.ip_address,
+            user_agent=context.user_agent,
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# The early-years form's header (D128)
+# ---------------------------------------------------------------------------
+
+
+def _details_read(found: early_years_service.ClassDetails) -> ClassEarlyYearsDetailsRead:
+    def row(pupil: Pupil) -> PupilEarlyYearsDetailsRead:
+        report = found.reports.get(pupil.id)
+        return PupilEarlyYearsDetailsRead(
+            **_identity(pupil),
+            date_of_birth=pupil.date_of_birth,
+            dominance=report.dominance if report is not None else None,
+            years_in_school=report.years_in_school if report is not None else None,
+        )
+
+    return ClassEarlyYearsDetailsRead(
+        class_id=found.klass.id,
+        class_name=found.klass.name,
+        term_id=found.term.id,
+        rows=[row(pupil) for pupil in found.pupils],
+        state=found.state,
+        editable=found.editable,
+    )
+
+
+@router.get("/classes/{class_id}/early-years-details", response_model=ClassEarlyYearsDetailsRead)
+async def read_early_years_details(
+    db: DbSession,
+    teacher: WellbeingRecorder,
+    class_id: uuid.UUID,
+    term_id: TermQuery,
+) -> ClassEarlyYearsDetailsRead:
+    """Each pupil's dominance and years in school, for an early-years class."""
+    return _details_read(
+        await early_years_service.class_details(db, teacher, class_id=class_id, term_id=term_id)
+    )
+
+
+@router.put("/classes/{class_id}/early-years-details", response_model=ClassEarlyYearsDetailsRead)
+async def save_early_years_details(
+    db: DbSession,
+    teacher: WellbeingRecorder,
+    context: Context,
+    class_id: uuid.UUID,
+    term_id: TermQuery,
+    payload: EarlyYearsDetailsSave,
+) -> ClassEarlyYearsDetailsRead:
+    """The class teacher's, like the comment, and locked once submitted (R14)."""
+    return _details_read(
+        await early_years_service.save_class_details(
+            db,
+            teacher,
+            class_id=class_id,
+            term_id=term_id,
+            rows=[
+                DetailsInput(
+                    pupil_id=row.pupil_id,
+                    dominance=row.dominance,
+                    years_in_school=row.years_in_school,
+                )
+                for row in payload.rows
+            ],
             ip_address=context.ip_address,
             user_agent=context.user_agent,
         )
