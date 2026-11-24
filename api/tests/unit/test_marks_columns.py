@@ -20,14 +20,18 @@ def test_the_first_half_sheet_ends_in_mid_term_test() -> None:
     assert COLUMNS_BY_HALF[TermHalf.FIRST_HALF] == (*CA_COLUMNS, "mid_term_test")
 
 
-def test_the_second_half_sheet_ends_in_exam() -> None:
-    assert COLUMNS_BY_HALF[TermHalf.SECOND_HALF] == (*CA_COLUMNS, "exam")
+def test_the_second_half_sheet_carries_the_mid_term_and_ends_in_exam() -> None:
+    """D129: the first half's Mid Term Test is carried over and counted."""
+    assert COLUMNS_BY_HALF[TermHalf.SECOND_HALF] == (*CA_COLUMNS, "mid_term_test", "exam")
 
 
-def test_neither_sheet_carries_the_others_terminal_column() -> None:
-    """§1.2: the two sheets are the structural key of the system."""
+def test_the_first_half_never_carries_the_exam() -> None:
     assert "exam" not in COLUMNS_BY_HALF[TermHalf.FIRST_HALF]
-    assert "mid_term_test" not in COLUMNS_BY_HALF[TermHalf.SECOND_HALF]
+
+
+def test_three_ca_tests() -> None:
+    """D129: CA Test 4 retired, as CA Test 5 was (D127)."""
+    assert CA_COLUMNS == ("ca_test_1", "ca_test_2", "ca_test_3")
 
 
 def test_every_column_is_covered_by_one_sheet_or_the_other() -> None:

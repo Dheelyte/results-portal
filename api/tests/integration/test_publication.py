@@ -741,8 +741,9 @@ async def test_a_correction_still_obeys_r1(client, admin, approved_class) -> Non
         json={"reason": "Wrong sheet.", "mid_term_test": "30"},
         headers=admin,
     )
+    # The second half's Mid Term Test is the first half's (D129): corrected there.
     assert wrong_column.status_code == 422
-    assert "no mid_term_test column" in wrong_column.json()["detail"]
+    assert "carried over from the first half" in wrong_column.json()["detail"]
 
 
 async def test_a_correction_is_audited_with_before_and_after(

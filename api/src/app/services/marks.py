@@ -32,29 +32,31 @@ from app.services.support import all_of, integrity_guard, one_or_404
 
 logger = logging.getLogger(__name__)
 
-# Four CA tests (D127). CA Test 5 was retired at the school's request. Its
-# column stays in `result_entries` and `marks_obtainable`, unread, so the
-# scores already approved under it keep the CA Test Total they were approved
-# with; nothing new is ever entered in it.
-CA_COLUMNS = ("ca_test_1", "ca_test_2", "ca_test_3", "ca_test_4")
+# Three CA tests (D129). CA Test 5 (D127) and CA Test 4 (D129) were retired
+# at the school's request. Their columns stay in `result_entries` and
+# `marks_obtainable`, unread, so the scores already approved under them keep
+# the CA Test Total they were approved with; nothing new is entered in them.
+CA_COLUMNS = ("ca_test_1", "ca_test_2", "ca_test_3")
+RETIRED_COLUMNS = ("ca_test_4", "ca_test_5")
 
 # Which columns each sheet carries (§1.2). The first-half sheet ends in Mid
-# Term Test, the second-half sheet in Exam; neither has the other's column, so
-# a value for it would print nowhere and validate nothing.
+# Term Test. The second-half sheet carries the first half's CA tests and Mid
+# Term Test (D129) and ends in Exam, and its Total Weighted Average counts all
+# of them. Exam is never on the first half.
 COLUMNS_BY_HALF: dict[TermHalf, tuple[str, ...]] = {
     TermHalf.FIRST_HALF: (*CA_COLUMNS, "mid_term_test"),
-    TermHalf.SECOND_HALF: (*CA_COLUMNS, "exam"),
+    TermHalf.SECOND_HALF: (*CA_COLUMNS, "mid_term_test", "exam"),
 }
 
-# What a teacher types on each sheet (D127). The second half's CA tests are
-# the first half's, carried over and locked: the teacher enters only the
-# Exam. `COLUMNS_BY_HALF` stays the shape of the sheet, for display and for
-# the average; this is the shape of the input.
+# What a teacher types on each sheet (D127, D129). The second half's CA tests
+# and Mid Term Test are the first half's, carried over and locked: the teacher
+# enters only the Exam. `COLUMNS_BY_HALF` stays the shape of the sheet, for
+# display and for the average; this is the shape of the input.
 ENTERED_BY_HALF: dict[TermHalf, tuple[str, ...]] = {
     TermHalf.FIRST_HALF: (*CA_COLUMNS, "mid_term_test"),
     TermHalf.SECOND_HALF: ("exam",),
 }
-CARRIED_COLUMNS = CA_COLUMNS
+CARRIED_COLUMNS = (*CA_COLUMNS, "mid_term_test")
 
 ALL_COLUMNS = (*CA_COLUMNS, "mid_term_test", "exam")
 
@@ -108,7 +110,7 @@ async def save_marks_obtainable(
     supplied = {column: value for column, value in values.items() if value is not None}
 
     if period.half is TermHalf.SECOND_HALF:
-        # Carried over from the first half (D127), so anything sent for them
+        # Carried over from the first half (D127, D129), so anything sent for them
         # is not this sheet's to set; the first half's values are used below.
         supplied = {
             column: value for column, value in supplied.items() if column not in CARRIED_COLUMNS
@@ -160,7 +162,8 @@ async def save_marks_obtainable(
     # a cleared value clears. A half-updated maxima row is worse than none.
     for column in allowed:
         setattr(record, column, supplied.get(column))
-    record.ca_test_5 = None  # retired (D127)
+    for column in RETIRED_COLUMNS:  # D127, D129
+        setattr(record, column, None)
     if period.half is TermHalf.FIRST_HALF:
         await _carry_ca_maxima(db, actor, period, class_id=class_id, source=record)
     else:
@@ -230,7 +233,7 @@ async def _carry_ca_maxima(
     class_id: uuid.UUID | None,
     source: MarksObtainable,
 ) -> None:
-    """Copy the first half's CA maxima onto the second half's row (D127).
+    """Copy the first half's CA and Mid Term maxima to the second half (D127, D129).
 
     Only an existing second-half row is updated: a row that doesn't exist yet
     picks the values up when the admin sets its Exam maximum.
@@ -240,7 +243,8 @@ async def _carry_ca_maxima(
         return
     for column in CARRIED_COLUMNS:
         setattr(target, column, getattr(source, column))
-    target.ca_test_5 = None
+    for column in RETIRED_COLUMNS:
+        setattr(target, column, None)
 
 
 async def _refuse_if_it_would_invalidate_entered_scores(
@@ -329,7 +333,7 @@ def is_configured(record: MarksObtainable | None, half: TermHalf) -> bool:
     "Configured" means the sheet's terminal column — Mid Term Test or Exam —
     has a maximum, and at least one CA test does. Not all five: N2 is open and
     the school may well use fewer than five CA tests in a given half, so
-    demanding all five would block a term on a number nobody has.
+    demanding every one would block a term on a number nobody has.
     """
     if record is None:
         return False

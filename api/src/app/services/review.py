@@ -477,7 +477,6 @@ def _subject_row(
             "ca_test_1": entry.ca_test_1,
             "ca_test_2": entry.ca_test_2,
             "ca_test_3": entry.ca_test_3,
-            "ca_test_4": entry.ca_test_4,
             "ca_test_total": entry.ca_test_total,
             "mid_term_test": entry.mid_term_test,
             "exam": entry.exam,

@@ -72,7 +72,6 @@ class EntryEditRequest(BaseModel):
     ca_test_1: ScoreValue | None = None
     ca_test_2: ScoreValue | None = None
     ca_test_3: ScoreValue | None = None
-    ca_test_4: ScoreValue | None = None
     mid_term_test: ScoreValue | None = None
     exam: ScoreValue | None = None
 
@@ -83,7 +82,6 @@ class EntryEditRequest(BaseModel):
                 "ca_test_1",
                 "ca_test_2",
                 "ca_test_3",
-                "ca_test_4",
                 "mid_term_test",
                 "exam",
             },
@@ -118,7 +116,6 @@ class CorrectableRowRead(BaseModel):
     ca_test_1: decimal.Decimal | None = None
     ca_test_2: decimal.Decimal | None = None
     ca_test_3: decimal.Decimal | None = None
-    ca_test_4: decimal.Decimal | None = None
     ca_test_total: decimal.Decimal | None = None
     mid_term_test: decimal.Decimal | None = None
     exam: decimal.Decimal | None = None

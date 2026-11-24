@@ -156,9 +156,9 @@ function OpenedPanel({ term, onChanged }: { term: Term; onChanged: () => void })
   );
 }
 
-// Four since D127. On the second half they are the first half's, carried
-// over, so the second-half form shows them locked.
-const CA_COLUMNS = ["ca_test_1", "ca_test_2", "ca_test_3", "ca_test_4"] as const;
+// Three since D129. On the second half they and the Mid Term Test are the
+// first half's, carried over, so the second-half form shows them locked.
+const CA_COLUMNS = ["ca_test_1", "ca_test_2", "ca_test_3"] as const;
 
 function PeriodPanel({
   term,
@@ -298,7 +298,8 @@ function PeriodPanel({
                 >
                   {period.half === "second_half" ? (
                     <p className="text-sm text-[var(--muted)] sm:col-span-3">
-                      The CA tests are carried over from the first half, maximum marks included.
+                      The CA tests and the Mid Term Test are carried over from the first half,
+                      maximum marks included, and count towards this half&rsquo;s average.
                       Change them on the first-half sheet.
                     </p>
                   ) : null}
@@ -316,6 +317,16 @@ function PeriodPanel({
                       />
                     </Field>
                   ))}
+                  {period.half === "second_half" ? (
+                    <Field label="Mid Term Test">
+                      <Input
+                        type="number"
+                        disabled
+                        value={value("mid_term_test")}
+                        onChange={() => undefined}
+                      />
+                    </Field>
+                  ) : null}
                   <Field label={terminalLabel}>
                     <Input
                       type="number"

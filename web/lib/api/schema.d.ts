@@ -2101,8 +2101,6 @@ export interface components {
             ca_test_2?: string | null;
             /** Ca Test 3 */
             ca_test_3?: string | null;
-            /** Ca Test 4 */
-            ca_test_4?: string | null;
             /** Ca Test Total */
             ca_test_total?: string | null;
             /** Exam */
@@ -2693,8 +2691,6 @@ export interface components {
             ca_test_2?: string | null;
             /** Ca Test 3 */
             ca_test_3?: string | null;
-            /** Ca Test 4 */
-            ca_test_4?: string | null;
             /** Ca Test Total */
             ca_test_total?: string | null;
             /**
@@ -2856,8 +2852,6 @@ export interface components {
             ca_test_2?: number | string | null;
             /** Ca Test 3 */
             ca_test_3?: number | string | null;
-            /** Ca Test 4 */
-            ca_test_4?: number | string | null;
             /** Exam */
             exam?: number | string | null;
             /** Mid Term Test */
@@ -2878,8 +2872,6 @@ export interface components {
             ca_test_2?: string | null;
             /** Ca Test 3 */
             ca_test_3?: string | null;
-            /** Ca Test 4 */
-            ca_test_4?: string | null;
             /** Ca Test Total */
             ca_test_total?: string | null;
             /** Exam */
@@ -2916,8 +2908,6 @@ export interface components {
             ca_test_2?: number | string | null;
             /** Ca Test 3 */
             ca_test_3?: number | string | null;
-            /** Ca Test 4 */
-            ca_test_4?: number | string | null;
             /** Exam */
             exam?: number | string | null;
             /** Mid Term Test */
@@ -3155,8 +3145,6 @@ export interface components {
             ca_test_2: string | null;
             /** Ca Test 3 */
             ca_test_3: string | null;
-            /** Ca Test 4 */
-            ca_test_4: string | null;
             /** Class Id */
             class_id: string | null;
             /** Exam */
@@ -3187,8 +3175,6 @@ export interface components {
             ca_test_2?: number | string | null;
             /** Ca Test 3 */
             ca_test_3?: number | string | null;
-            /** Ca Test 4 */
-            ca_test_4?: number | string | null;
             /**
              * Class Id
              * @description null for every class; a class id to override one class.
@@ -3201,7 +3187,7 @@ export interface components {
             exam?: number | string | null;
             /**
              * Mid Term Test
-             * @description First half term only.
+             * @description Set on the first half; the second half carries it (D129).
              */
             mid_term_test?: number | string | null;
         };
@@ -3216,8 +3202,6 @@ export interface components {
             ca_test_2?: string | null;
             /** Ca Test 3 */
             ca_test_3?: string | null;
-            /** Ca Test 4 */
-            ca_test_4?: string | null;
             /** Exam */
             exam?: string | null;
             /**

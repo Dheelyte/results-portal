@@ -78,7 +78,6 @@ PRINTED_COLUMNS = {
         ("ca_test_1", "CA TEST 1"),
         ("ca_test_2", "CA TEST 2"),
         ("ca_test_3", "CA TEST 3"),
-        ("ca_test_4", "CA TEST 4"),
         ("ca_test_total", "CA TEST TOTAL"),
         ("mid_term_test", "MID TERM TEST"),
         ("period_average", "MID TERM AVE."),
@@ -87,8 +86,9 @@ PRINTED_COLUMNS = {
         ("ca_test_1", "CA TEST 1"),
         ("ca_test_2", "CA TEST 2"),
         ("ca_test_3", "CA TEST 3"),
-        ("ca_test_4", "CA TEST 4"),
         ("ca_test_total", "CA TEST TOTAL"),
+        # The first half's, carried over and counted in the average (D129).
+        ("mid_term_test", "MID TERM TEST"),
         ("exam", "EXAM"),
         ("period_average", "TOTAL WEIGHTED AVERAGE"),
     ),

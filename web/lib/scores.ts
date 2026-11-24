@@ -16,7 +16,6 @@ export const COLUMN_LABELS: Record<string, string> = {
   ca_test_1: "CA Test 1",
   ca_test_2: "CA Test 2",
   ca_test_3: "CA Test 3",
-  ca_test_4: "CA Test 4",
   mid_term_test: "Mid Term Test",
   exam: "Exam",
 };

@@ -3047,3 +3047,27 @@ Progress Report Form instead of the scored card. A class has a `report_type`
 
 Migration 0008 adds the two enum types and four columns; every existing class
 and section is `primary`.
+
+## D129 — Three CA tests; the Mid Term Test carries into the second half
+
+**Decision.** At the school's request:
+
+- **CA Test 4 is retired**, as CA Test 5 was (D127). Three CA tests remain.
+  The column stays in both tables, unread, so approved rows keep the CA Test
+  Total they were approved with. Migration 0009 clears it on rows not yet
+  approved, and on Marks Obtainable in terms with nothing approved.
+- **The Mid Term Test is typed on the first half and carried to the second**,
+  maximum included, exactly as the CA tests are (D127): locked on the
+  second-half sheet and form, and a change on the first half follows it.
+  A value sent for it on the second half is ignored, not refused, the same
+  as a CA test's.
+- **It counts in the second half's Total Weighted Average.** The second-half
+  sheet is now CA 1–3, Mid Term Test and Exam, and the average is all of
+  them as a percentage of their marks obtainable (still the N3 placeholder,
+  `grading._percentage_of_obtainable`). The card's second half prints a MID
+  TERM TEST column before EXAM.
+
+Migration 0009 also copies each first-half Mid Term Test (and CA 1–3) onto
+the second-half row, in rows not yet approved. Their stored averages are then
+stale: run `python -m app.recompute_averages` after it. Not reversible; take
+a backup first.

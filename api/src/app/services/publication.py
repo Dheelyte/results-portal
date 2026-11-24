@@ -552,8 +552,8 @@ async def edit_entry(
     for column, value in scores.items():
         if period.half is TermHalf.SECOND_HALF and column in marks.CARRIED_COLUMNS:
             raise Invalid(
-                "The second half's CA tests are carried over from the first half. Correct "
-                "the first-half score and it carries over (D127)."
+                "The second half's CA tests and Mid Term Test are carried over from the "
+                "first half. Correct the first-half score and it carries over (D127, D129)."
             )
         if column not in columns:
             raise Invalid(
@@ -581,7 +581,7 @@ async def edit_entry(
 
     regraded_against = await _regrade_against_snapshot(db, actor, entry)
 
-    # A corrected first-half CA test is the second half's too (D127).
+    # A corrected first-half CA test or Mid Term Test is the second half's too.
     if period.half is TermHalf.FIRST_HALF and set(scores) & set(marks.CARRIED_COLUMNS):
         second = await results.carry_forward(
             db, actor, entry, period=period, class_id=offering.class_id

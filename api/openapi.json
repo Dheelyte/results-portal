@@ -824,17 +824,6 @@
             ],
             "title": "Ca Test 3"
           },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
-          },
           "ca_test_total": {
             "anyOf": [
               {
@@ -2280,17 +2269,6 @@
             ],
             "title": "Ca Test 3"
           },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
-          },
           "ca_test_total": {
             "anyOf": [
               {
@@ -2710,21 +2688,6 @@
             ],
             "title": "Ca Test 3"
           },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
-          },
           "exam": {
             "anyOf": [
               {
@@ -2814,17 +2777,6 @@
               }
             ],
             "title": "Ca Test 3"
-          },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
           },
           "ca_test_total": {
             "anyOf": [
@@ -2984,21 +2936,6 @@
               }
             ],
             "title": "Ca Test 3"
-          },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
           },
           "exam": {
             "anyOf": [
@@ -3675,17 +3612,6 @@
             ],
             "title": "Ca Test 3"
           },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
-          },
           "class_id": {
             "anyOf": [
               {
@@ -3733,7 +3659,6 @@
           "ca_test_1",
           "ca_test_2",
           "ca_test_3",
-          "ca_test_4",
           "mid_term_test",
           "exam"
         ],
@@ -3788,21 +3713,6 @@
             ],
             "title": "Ca Test 3"
           },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
-          },
           "class_id": {
             "anyOf": [
               {
@@ -3845,7 +3755,7 @@
                 "type": "null"
               }
             ],
-            "description": "First half term only.",
+            "description": "Set on the first half; the second half carries it (D129).",
             "title": "Mid Term Test"
           }
         },
@@ -3887,17 +3797,6 @@
               }
             ],
             "title": "Ca Test 3"
-          },
-          "ca_test_4": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ca Test 4"
           },
           "exam": {
             "anyOf": [

@@ -40,7 +40,6 @@ class CardHalf(BaseModel):
     ca_test_1: decimal.Decimal | None = None
     ca_test_2: decimal.Decimal | None = None
     ca_test_3: decimal.Decimal | None = None
-    ca_test_4: decimal.Decimal | None = None
     ca_test_total: decimal.Decimal | None = None
     mid_term_test: decimal.Decimal | None = None
     exam: decimal.Decimal | None = None

@@ -389,7 +389,8 @@ def _label(column: str) -> str:
 
 
 def _half_name(columns: Sequence[str]) -> str:
-    return "first half" if "mid_term_test" in columns else "second half"
+    # Exam is only ever on the second half; Mid Term Test is on both (D129).
+    return "second half" if "exam" in columns else "first half"
 
 
 def _plain(value: decimal.Decimal) -> str:
@@ -518,7 +519,8 @@ async def carry_forward(
 ) -> ResultEntry | None:
     """Copy a first-half row's CA tests onto the second half (D127).
 
-    The second-half sheet's CA columns are locked to the first half's, so
+    The second-half sheet's CA and Mid Term columns are locked to the first
+    half's (D127, D129), so
     every reader (the grid, the review, the card, the parent's page) finds
     them where it always has. The second-half average is recomputed, since
     its CA part just changed. Returns the second-half row, if there is one.
@@ -552,7 +554,8 @@ async def carry_forward(
         db.add(target)
     for column, value in carried.items():
         setattr(target, column, value)
-    target.ca_test_5 = None
+    for column in marks.RETIRED_COLUMNS:
+        setattr(target, column, None)
 
     maxima = await marks.applicable_maxima(
         db, actor, assessment_period_id=second.id, class_id=class_id

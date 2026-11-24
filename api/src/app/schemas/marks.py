@@ -29,8 +29,9 @@ class MarksObtainableSave(BaseModel):
     ca_test_1: ScoreValue | None = None
     ca_test_2: ScoreValue | None = None
     ca_test_3: ScoreValue | None = None
-    ca_test_4: ScoreValue | None = None
-    mid_term_test: ScoreValue | None = Field(default=None, description="First half term only.")
+    mid_term_test: ScoreValue | None = Field(
+        default=None, description="Set on the first half; the second half carries it (D129)."
+    )
     exam: ScoreValue | None = Field(default=None, description="Second half term only.")
 
     def column_values(self) -> dict[str, ScoreValue | None]:
@@ -44,6 +45,5 @@ class MarksObtainableRead(OrmModel):
     ca_test_1: ScoreValue | None
     ca_test_2: ScoreValue | None
     ca_test_3: ScoreValue | None
-    ca_test_4: ScoreValue | None
     mid_term_test: ScoreValue | None
     exam: ScoreValue | None

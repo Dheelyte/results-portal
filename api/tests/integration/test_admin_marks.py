@@ -48,7 +48,6 @@ async def test_setting_the_school_wide_maxima(client: AsyncClient, admin_headers
             "ca_test_1": "8",
             "ca_test_2": "8",
             "ca_test_3": "8",
-            "ca_test_4": "8",
             "mid_term_test": "60",
         },
     )
@@ -77,19 +76,45 @@ async def test_the_first_half_sheet_has_no_exam_column(client: AsyncClient, admi
     assert "other half of the term" in detail
 
 
-async def test_the_second_half_sheet_has_no_mid_term_test_column(
+async def test_the_second_half_takes_its_mid_term_maximum_from_the_first(
     client: AsyncClient, admin_headers
 ) -> None:
+    """D129: the Mid Term Test is carried into the second half, maximum
+    included, so a value sent for it there is ignored, like the CA tests'."""
     _, periods = await a_term_with_periods(client, admin_headers)
+    await client.put(
+        marks_url(periods[TermHalf.FIRST_HALF.value]),
+        headers=admin_headers,
+        json={"ca_test_1": "10", "mid_term_test": "30"},
+    )
 
     response = await client.put(
         marks_url(periods[TermHalf.SECOND_HALF.value]),
         headers=admin_headers,
-        json={"ca_test_1": "8", "mid_term_test": "40"},
+        json={"mid_term_test": "99", "exam": "60"},
     )
 
-    assert response.status_code == 422
-    assert "no mid_term_test column" in response.json()["detail"]
+    assert response.status_code == 200, response.text
+    assert response.json()["mid_term_test"] == "30.00"
+    assert response.json()["ca_test_1"] == "10.00"
+
+
+async def test_a_first_half_mid_term_change_reaches_the_second_half(
+    client: AsyncClient, admin_headers
+) -> None:
+    _, periods = await a_term_with_periods(client, admin_headers)
+    first = marks_url(periods[TermHalf.FIRST_HALF.value])
+    await client.put(first, headers=admin_headers, json={"ca_test_1": "10", "mid_term_test": "30"})
+    await client.put(
+        marks_url(periods[TermHalf.SECOND_HALF.value]), headers=admin_headers, json={"exam": "60"}
+    )
+
+    await client.put(first, headers=admin_headers, json={"ca_test_1": "10", "mid_term_test": "40"})
+
+    rows = (
+        await client.get(marks_url(periods[TermHalf.SECOND_HALF.value]), headers=admin_headers)
+    ).json()
+    assert rows[0]["mid_term_test"] == "40.00"
 
 
 async def test_a_maximum_of_zero_is_refused(client: AsyncClient, admin_headers) -> None:

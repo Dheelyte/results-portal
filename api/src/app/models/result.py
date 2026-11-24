@@ -57,7 +57,7 @@ class MarksObtainable(Base):
     ca_test_3: Mapped[decimal.Decimal | None] = mapped_column(Score)
     ca_test_4: Mapped[decimal.Decimal | None] = mapped_column(Score)
     ca_test_5: Mapped[decimal.Decimal | None] = mapped_column(Score)
-    mid_term_test: Mapped[decimal.Decimal | None] = mapped_column(Score)  # first half only
+    mid_term_test: Mapped[decimal.Decimal | None] = mapped_column(Score)  # both halves (D129)
     exam: Mapped[decimal.Decimal | None] = mapped_column(Score)  # second half only
 
     def __repr__(self) -> str:

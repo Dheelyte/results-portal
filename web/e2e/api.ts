@@ -153,7 +153,8 @@ export async function currentTerm(api: Api): Promise<{ term: Term; periods: Peri
  *
  * The seed does not write these — nothing in this system defaults a maximum,
  * because A13 makes a sheet's readiness depend on them. The figures are A2's
- * placeholders from the card: four CA tests of 8 (D127), a terminal column of 60.
+ * placeholders from the card: three CA tests of 8 (D129), a terminal column of 60.
+ * The second half's CA and Mid Term maxima are carried from the first.
  */
 export async function setMarksObtainable(api: Api, period: Period): Promise<void> {
   const terminal = period.half === "first_half" ? "mid_term_test" : "exam";
@@ -162,7 +163,6 @@ export async function setMarksObtainable(api: Api, period: Period): Promise<void
     ca_test_1: "8",
     ca_test_2: "8",
     ca_test_3: "8",
-    ca_test_4: "8",
     [terminal]: "60",
   });
 }
@@ -213,8 +213,8 @@ export async function fillSheet(
   );
   await api.send("put", `/class-subjects/${classSubjectId}/entries`, {
     assessment_period_id: period.id,
-    // The second half takes only the Exam: its CA tests are the first half's
-    // (D127), so the first half must be filled first.
+    // The second half takes only the Exam: its CA tests and Mid Term Test are
+    // the first half's (D127, D129), so the first half must be filled first.
     rows: sheet.rows.map((row) =>
       period.half === "first_half"
         ? {
@@ -222,7 +222,6 @@ export async function fillSheet(
             ca_test_1: "7",
             ca_test_2: "7",
             ca_test_3: "7",
-            ca_test_4: "7",
             [terminal]: "48",
           }
         : { pupil_id: row.pupil_id, [terminal]: "48" },
